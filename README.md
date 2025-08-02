@@ -3,6 +3,9 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 A simple but powerful tool for Windows users to prevent OLED burn-in and create a distraction-free workspace by automatically blacking them out when idle.
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/93c2a968-e093-4817-a78c-38e94d4823df" alt="OLED Sleeper Demonstration">  
+</p>
 
 ---
 ## The Problem
