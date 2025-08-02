@@ -4,19 +4,14 @@
 #===============================================================================
 #
 # Description:
-#   This PowerShell script serves as an interactive setup wizard for
-#   'OLED-Sleeper.ahk', the AutoHotkey script. It guides the user through a
-#   three-step process:
-#     1. It uses NirSoft's MultiMonitorTool to detect all active monitors.
-#     2. It prompts the user to select which of these monitors should be managed.
-#     3. It asks for an idle-time duration in minutes.
-#
-#   Finally, it launches 'OLED-Sleeper.ahk' in the background with the
-#   selected monitors and timer settings as command-line arguments.
+#   This PowerShell script serves as an interactive setup wizard for the
+#   OLED Sleeper and OLED Dimmer AutoHotkey scripts.
 #
 # Dependencies:
-#   - ..\tools\MultiMonitorTool.exe
+#   - ..\tools\MultiMonitorTool\MultiMonitorTool.exe
+#   - ..\tools\ControlMyMonitor\ControlMyMonitor.exe
 #   - OLED-Sleeper.ahk (in the same src directory)
+#   - OLED-Dimmer.ahk (in the same src directory)
 #
 #===============================================================================
 
@@ -28,24 +23,13 @@ $OutputEncoding = [System.Text.Encoding]::UTF8
 # ==                   FUNCTION DEFINITIONS                    ==
 #=================================================================
 
-# Displays the details of a given monitor object in a clean, readable format.
-# This helps the user easily identify each monitor during the selection process.
 function Show-MonitorDetails {
-    param (
-        [Parameter(Mandatory=$true)]
-        [PSObject]$MonitorObject
-    )
-
-    # Some monitors might have a 'Monitor Name' while others only have a 'Name' (Device ID).
-    # This ensures we always display the most descriptive name available.
-    $modelName = $MonitorObject.'Monitor Name'
-    if ([string]::IsNullOrWhiteSpace($modelName)) {
-        $modelName = $MonitorObject.'Name'
+    param ([Parameter(Mandatory = $true)][PSObject]$MonitorObject)
+    if ([string]::IsNullOrWhiteSpace($MonitorObject.'Monitor Name')) {
+        $MonitorObject.'Monitor Name' = $MonitorObject.'Name'
     }
-
     Write-Host "Monitor Found: " -NoNewline
-    Write-Host $modelName -ForegroundColor Green
-
+    Write-Host $MonitorObject.'Monitor Name' -ForegroundColor Green
     Write-Host "   - Details: $($MonitorObject.Resolution) at position $($MonitorObject.'Left-Top')" -ForegroundColor White
     Write-Host "   - ID: " -NoNewline
     Write-Host $MonitorObject.'Name' -ForegroundColor Gray
@@ -57,92 +41,88 @@ function Show-MonitorDetails {
 #=================================================================
 
 # --- Path Definitions ---
-# Use the script's own location to build robust paths.
-# $PSScriptRoot is the 'src' directory.
-# $projectRoot is the parent directory (the repository root).
 $scriptRoot = $PSScriptRoot
 $projectRoot = (Get-Item $scriptRoot).Parent.FullName
 
-# Define paths for all dependencies relative to the project structure.
-$multiMonitorToolPath = Join-Path -Path $projectRoot -ChildPath "tools\MultiMonitorTool.exe"
-$ahkScriptPath        = Join-Path -Path $scriptRoot -ChildPath "OLED-Sleeper.ahk"
-$csvPath              = Join-Path -Path $projectRoot -ChildPath "monitors.csv"
+$multiMonitorToolPath = Join-Path -Path $projectRoot -ChildPath "tools\MultiMonitorTool\MultiMonitorTool.exe"
+$controlMyMonitorPath = Join-Path -Path $projectRoot -ChildPath "tools\ControlMyMonitor\ControlMyMonitor.exe"
+$sleeperAhkPath = Join-Path -Path $scriptRoot -ChildPath "OLED-Sleeper.ahk"
+$dimmerAhkPath = Join-Path -Path $scriptRoot -ChildPath "OLED-Dimmer.ahk"
+$csvPath = Join-Path -Path $projectRoot -ChildPath "monitors.csv"
 
-# Initialize variables to store user selections.
-$secondaryIDs = New-Object System.Collections.ArrayList
+# --- Data Variables ---
+$managedMonitors = New-Object System.Collections.ArrayList
+$blackoutMonitors = New-Object System.Collections.ArrayList
+$dimmerMonitors = New-Object System.Collections.ArrayList
 $time_min = $null
 $time_ms = $null
 
 # --- Prerequisite Checks ---
-# The script cannot run without its core components. These checks ensure all
-# dependencies are present before proceeding.
-if (-not (Test-Path -Path $multiMonitorToolPath)) {
-    Write-Host "ERROR: MultiMonitorTool.exe not found in the tools directory." -ForegroundColor Red
-    Read-Host "Press Enter to exit"
-    exit
-}
-if (-not (Test-Path -Path $ahkScriptPath)) {
-    Write-Host "ERROR: The AHK script ($ahkScriptPath) was not found." -ForegroundColor Red
-    Read-Host "Press Enter to exit"
-    exit
-}
+if (-not (Test-Path -Path $multiMonitorToolPath)) { Write-Host "ERROR: MultiMonitorTool.exe not found." -ForegroundColor Red; Read-Host; exit }
+if (-not (Test-Path -Path $controlMyMonitorPath)) { Write-Host "ERROR: ControlMyMonitor.exe not found." -ForegroundColor Red; Read-Host; exit }
+if (-not (Test-Path -Path $sleeperAhkPath)) { Write-Host "ERROR: OLED-Sleeper.ahk not found." -ForegroundColor Red; Read-Host; exit }
+if (-not (Test-Path -Path $dimmerAhkPath)) { Write-Host "ERROR: OLED-Dimmer.ahk not found." -ForegroundColor Red; Read-Host; exit }
 
 # --- Data Gathering ---
-# Run MultiMonitorTool silently to export all monitor information into a CSV file.
-# The -Wait flag ensures PowerShell waits for this command to finish before continuing.
 Start-Process -FilePath $multiMonitorToolPath -ArgumentList "/scomma `"$csvPath`"" -Wait
-
-# Verify that the CSV file was created successfully.
-if (-not (Test-Path -Path $csvPath)) {
-    Write-Host "ERROR: monitors.csv not found. Make sure MultiMonitorTool.exe is working." -ForegroundColor Red
-    Read-Host "Press Enter to exit"
-    exit
-}
-
-# Import the monitor data from the CSV and filter for only 'Active' monitors.
+if (-not (Test-Path -Path $csvPath)) { Write-Host "ERROR: monitors.csv not found." -ForegroundColor Red; Read-Host; exit }
 $monitors = Import-Csv -Path $csvPath
 $activeMonitors = $monitors | Where-Object { $_.Active -eq 'Yes' }
-
-# If no active monitors are found, there's nothing to manage. Exit gracefully.
-if ($activeMonitors.Count -lt 1) {
-    Write-Host "ERROR: No active monitors were detected." -ForegroundColor Red
-    Read-Host "Press Enter to exit"
-    if (Test-Path -Path $csvPath) {
-        Remove-Item -Path $csvPath
-    }
-    exit
-}
+if ($activeMonitors.Count -lt 1) { Write-Host "ERROR: No active monitors were detected." -ForegroundColor Red; Read-Host; if (Test-Path -Path $csvPath) { Remove-Item -Path $csvPath }; exit }
 
 #=================================================================
-# ==            MONITOR SELECTION (Multi-Select)               ==
+# ==                  MONITOR & ACTION SETUP                     ==
 #=================================================================
 
+# --- Step 1: Select which monitors to manage ---
 Clear-Host
 Write-Host "--- Step 1: Select Monitors to Manage ---" -ForegroundColor Cyan
-Write-Host "Select one or more monitors to be managed by the script."
-Write-Host "These monitors will be blacked out when idle."
-Write-Host ""
-
-# Iterate through each active monitor and ask the user if they want to manage it.
 foreach ($monitor in $activeMonitors) {
     Show-MonitorDetails -MonitorObject $monitor
-
-    Write-Host "Manage this monitor? (y/n): " -ForegroundColor Yellow -NoNewline
-    $shouldManage = Read-Host
-
-    # If the user answers 'y', add the monitor's device ID to our list.
+    $shouldManage = Read-Host "Manage this monitor? (y/n)"
     if ($shouldManage.ToLower() -eq 'y') {
-        [void]$secondaryIDs.Add($monitor.'Name')
-        Write-Host "  -> Added '$($monitor.'Monitor Name')' to the list." -ForegroundColor Green
+        [void]$managedMonitors.Add($monitor)
     }
     Write-Host "-------------------------------------------------" -ForegroundColor Cyan
 }
 
-# If the user didn't select any monitors, abort the script.
-if ($secondaryIDs.Count -eq 0) {
+if ($managedMonitors.Count -eq 0) {
     Write-Host "No monitors were selected. Aborting script." -ForegroundColor Red
     Read-Host "Press Enter to exit"
     exit
+}
+
+# --- Step 2: Choose an action for each selected monitor ---
+Clear-Host
+Write-Host "--- Step 2: Configure Actions for Selected Monitors ---" -ForegroundColor Cyan
+foreach ($monitor in $managedMonitors) {
+    Write-Host "Configuring action for: $($monitor.'Monitor Name')" -ForegroundColor Green
+    $action = Read-Host "Action? (1 = Blackout, 2 = Dim)"
+    
+    if ($action -eq '1') {
+        [void]$blackoutMonitors.Add($monitor.Name)
+        Write-Host "  -> Set to BLACKOUT." -ForegroundColor White
+    }
+    elseif ($action -eq '2') {
+        while ($true) {
+            $dimLevel = 0  
+            $dimLevelStr = Read-Host "   Enter brightness level (0-100)"
+            if ([int]::TryParse($dimLevelStr, [ref]$dimLevel) -and $dimLevel -ge 0 -and $dimLevel -le 100) {
+                $dimInfo = "$($monitor.Name):$dimLevel"
+                [void]$dimmerMonitors.Add($dimInfo)
+                Write-Host "  -> Set to DIM to $dimLevel%." -ForegroundColor White
+                break
+            }
+            else {
+                Write-Host "   Invalid input. Please enter a number between 0 and 100." -ForegroundColor Red
+            }
+        }
+
+    }
+    else {
+        Write-Host "  -> Invalid choice. Skipping monitor." -ForegroundColor Red
+    }
+    Write-Host "-------------------------------------------------" -ForegroundColor Cyan
 }
 
 #=================================================================
@@ -150,23 +130,16 @@ if ($secondaryIDs.Count -eq 0) {
 #=================================================================
 
 Clear-Host
-Write-Host "--- Step 2: Set Idle Timer ---" -ForegroundColor Cyan
-Write-Host ""
-Write-Host "Monitors selected. Now enter the sleep timer duration."
-Write-Host ""
-
-# Loop indefinitely until the user provides a valid number for the time.
+Write-Host "--- Step 3: Set Idle Timer ---" -ForegroundColor Cyan
+Write-Host "A single timer will be used for all actions."
 while ($true) {
-    Write-Host "Enter the idle time in minutes (e.g., 30, 1.5, 0.5): " -ForegroundColor Yellow -NoNewline
-    $time_min_str = Read-Host
-
-    # Use a culture-invariant parser to handle both '.' and ',' as decimal separators.
+    $time_min_str = Read-Host "Enter the idle time in minutes (e.g., 30, 1.5)"
     $culture = [System.Globalization.CultureInfo]::InvariantCulture
     if ([double]::TryParse($time_min_str, [System.Globalization.NumberStyles]::Float, $culture, [ref]$time_min)) {
-        # Convert the user's input from minutes to milliseconds for the AHK script.
         $time_ms = [math]::Round($time_min * 60000)
-        break # Exit the loop on valid input.
-    } else {
+        break
+    }
+    else {
         Write-Host "Invalid input. Please enter a number." -ForegroundColor Red
     }
 }
@@ -177,40 +150,36 @@ while ($true) {
 
 Clear-Host
 Write-Host "Setup Complete!" -ForegroundColor Green
-Write-Host ""
+$checkEmoji = [System.Char]::ConvertFromUtf32(0x2705)
+$launchedSomething = $false
 
-# Join the list of monitor IDs into a single semicolon-separated string,
-# which is the format expected by the AHK script's command-line arguments.
-$secondaryIDsString = $secondaryIDs -join ';'
-
-# --- Confirmation Summary ---
-# Display a summary of the selected settings to the user.
-Write-Host "MONITORS TO MANAGE: " -ForegroundColor Cyan
-foreach ($id in $secondaryIDs) {
-    Write-Host "   - $id" -ForegroundColor White
+# --- Launch Blackout Script if needed ---
+if ($blackoutMonitors.Count -gt 0) {
+    $blackoutString = $blackoutMonitors -join ';'
+    Start-Process -FilePath $sleeperAhkPath -ArgumentList """$blackoutString""", "$time_ms"
+    Write-Host "$checkEmoji Blackout watcher started for $($blackoutMonitors.Count) monitor(s)." -ForegroundColor Green
+    $launchedSomething = $true
 }
 
-Write-Host "TIMER:                 " -ForegroundColor Cyan -NoNewline
-Write-Host "$time_min minutes ($time_ms ms)" -ForegroundColor White
+# --- Launch Dimmer Script if needed ---
+if ($dimmerMonitors.Count -gt 0) {
+    $dimmerString = $dimmerMonitors -join ';'
+    Start-Process -FilePath $dimmerAhkPath -ArgumentList """$dimmerString""", "$time_ms"
+    Write-Host "$checkEmoji Dimmer watcher started for $($dimmerMonitors.Count) monitor(s)." -ForegroundColor Green
+    $launchedSomething = $true
+}
+
+if (-not $launchedSomething) {
+    Write-Host "No valid actions were configured. Nothing to start." -ForegroundColor Yellow
+}
+
 Write-Host ""
-
-# Define the checkmark emoji for the success message.
-$checkEmoji = [System.Char]::ConvertFromUtf32(0x2705)
-
-# --- Launch Background Process ---
-# Start the AHK script, passing the monitor IDs and the timer in milliseconds
-# as two separate arguments.
-Start-Process -FilePath $ahkScriptPath -ArgumentList """$secondaryIDsString""", "$time_ms"
-
-Write-Host "$checkEmoji Monitor watcher started in the background." -ForegroundColor Green
-Write-Host "This window will close automatically in 10 seconds, or you can close it manually." -ForegroundColor White
+Write-Host "This window will close automatically in 10 seconds."
 Start-Sleep -Seconds 10
 
 #=================================================================
 # ==                         CLEANUP                           ==
 #=================================================================
-
-# Remove the temporary CSV file generated by MultiMonitorTool.
 if (Test-Path -Path $csvPath) {
     Remove-Item -Path $csvPath
 }
