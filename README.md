@@ -26,9 +26,13 @@ This is not only essential for **protecting OLEDs** but is also perfect for any 
 * **Simple Setup:** A user-friendly wizard walks you through the initial configuration.
 
 ---
-## How to Use
+## Requirements
 
-No installation is needed, but you must have **[AutoHotkey v2](https://www.autohotkey.com/)** installed on your system.
+* **Operating System:** Windows 10 or 11.
+* **Dependency:** **[AutoHotkey v2](https://www.autohotkey.com/)** must be installed on your system.
+
+---
+## How to Use
 
 1.  Download the latest release from the [Releases page](https://github.com/Quorthon13/OLED-Sleeper/releases) or clone this repository.
 2.  Unzip the folder to a permanent location on your computer.
@@ -38,14 +42,6 @@ No installation is needed, but you must have **[AutoHotkey v2](https://www.autoh
 That's it! The script will now run in the background and monitor your displays for the rest of your session.
 
 **Note:** To re-launch the watcher after a restart, simply run **`setup.bat`** again.
-
----
-## How It Works
-
-The magic happens in two parts:
-
-1.  **`setup.bat` & `Configure.ps1`**: This is the configuration wizard. It uses **NirSoft's MultiMonitorTool** to get details about your connected displays, then prompts you to choose which ones to manage.
-2.  **`OLED-Sleeper.ahk`**: This is the core AutoHotkey script that runs in the background. It receives the monitor list and timer from the wizard and does the actual work of monitoring for idle activity and showing/hiding the black overlay GUI.
 
 ---
 ## Credits
