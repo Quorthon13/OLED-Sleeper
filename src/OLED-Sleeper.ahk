@@ -6,17 +6,19 @@
 ;
 ; Description:
 ;   Prevents OLED burn-in on secondary displays by monitoring user activity.
-;   If no mouse or window activity is detected on a given monitor for a defined
-;   idle time, it overlays that screen with a full black window.
-;   When activity resumes, the blackout is lifted instantly.
+; If no mouse or window activity is detected on a given monitor for a defined
+; idle time, it reduces brightness to 0 and overlays that screen with a
+; full black window.
+;   When activity resumes, the blackout is lifted and brightness is restored.
 ;
 ; Dependencies:
 ;   - MultiMonitorTool.exe (located in the ..\tools directory)
+;   - ControlMyMonitor.exe (located in the ..\tools directory)
 ;
 ; Usage:
 ;   Run the script with two arguments:
-;     1. A semicolon-separated list of monitor device IDs (e.g. \\.\DISPLAY2)
-;     2. Idle threshold in milliseconds before blackout (e.g. 30000 for 30s)
+;   1. A semicolon-separated list of monitor device IDs (e.g. \\.\DISPLAY2)
+;   2. Idle threshold in milliseconds before blackout (e.g. 30000 for 30s)
 ;
 ;   Example:
 ;     "OLED-Sleeper.ahk" "\\.\DISPLAY2;\\.\DISPLAY3" "30000"
@@ -28,6 +30,7 @@
 global ProjectRoot := A_ScriptDir . "\.."
 global LogFile     := ProjectRoot . "\OLED-Sleeper.log"
 global MultiTool   := ProjectRoot . "\tools\MultiMonitorTool\MultiMonitorTool.exe"
+global ControlTool := ProjectRoot . "\tools\ControlMyMonitor\ControlMyMonitor.exe"
 global TempCsvFile := ProjectRoot . "\monitors_temp.csv"
 
 
@@ -37,7 +40,7 @@ try FileDelete(LogFile) ; Ensure a clean log on every script start
 ; === CONFIGURATION VARIABLES ===
 global MonitorIdList := ""      ; Stores the raw input list of monitor IDs
 global IdleThreshold := 0       ; Time (ms) before a monitor is considered idle
-global CheckInterval := 50     ; Frequency (ms) to check each monitor's state
+global CheckInterval := 50      ; Frequency (ms) to check each monitor's state
 
 ; === INTERNAL STATE ===
 global MonitoredScreens := []   ; List of monitor state maps for each target screen
@@ -72,7 +75,7 @@ IdleThreshold := Integer(A_Args[2])
 Log("Monitor ID list: " . MonitorIdList)
 Log("Idle threshold: " . IdleThreshold . " ms")
 
-; --- Ensure blackout windows are cleaned up on script exit ---
+; --- Ensure overlays are removed and brightness is restored on script exit ---
 OnExit(CleanupOnExit)
 
 ; --- Parse and initialize each monitor ID ---
@@ -96,6 +99,7 @@ for id in monitorIDs {
             "Rect", monitorRect,
             "Gui", blackoutGui,
             "IsBlackedOut", false,
+            "OriginalBrightness", -1, ; -1 indicates not yet recorded
             "LastActiveTime", A_TickCount
         )
         MonitoredScreens.Push(screenState)
@@ -152,14 +156,19 @@ CheckAllMonitors(*) {
             screen['LastActiveTime'] := A_TickCount
 
             if screen['IsBlackedOut'] {
-                Log("Activity resumed on " . screen['ID'] . ". Unhiding overlay.")
+                Log("Activity resumed on " . screen['ID'] . ". Restoring brightness and unhiding overlay.")
+                SetBrightness(screen['ID'], screen['OriginalBrightness'])
                 screen['Gui'].Hide()
                 screen['IsBlackedOut'] := false
             }
 
         ; === Reaction: Monitor has been idle for longer than threshold ===
         } else if !screen['IsBlackedOut'] && (A_TickCount - screen['LastActiveTime'] > IdleThreshold) {
-            Log(screen['ID'] . " exceeded idle threshold. Blacking out.")
+            currentBrightness := GetBrightness(screen['ID'])
+            screen['OriginalBrightness'] := currentBrightness
+
+            Log(screen['ID'] . " exceeded idle threshold. Dimming to 0% and blacking out.")
+            SetBrightness(screen['ID'], 0)
 
             x := rect['Left'], y := rect['Top']
             w := rect['Right'] - rect['Left'], h := rect['Bottom'] - rect['Top']
@@ -171,9 +180,23 @@ CheckAllMonitors(*) {
 
 
 ; ==============================================================================
-; MONITOR RECT RESOLUTION — Uses NirSoft tool to extract monitor positions
+; HELPER FUNCTIONS — Wrappers for external monitor tools
 ; ==============================================================================
 
+; Sets monitor brightness to a specific value using ControlMyMonitor.exe
+SetBrightness(monitorID, brightness) {
+    global ControlTool
+    cmd := Format('"{1}" /SetValue "{2}\Monitor0" 10 {3}', ControlTool, monitorID, brightness)
+    RunWait(cmd,, "Hide")
+}
+
+; Gets the current brightness of a monitor
+GetBrightness(monitorID) {
+    global ControlTool
+    return RunWait(Format('"{1}" /GetValue "{2}\Monitor0" 10', ControlTool, monitorID),, "Hide")
+}
+
+; Gets a monitor's screen coordinates using MultiMonitorTool.exe
 GetMonitorRect(monitorID) {
     global MultiTool, TempCsvFile
     Log("Querying geometry for: " . monitorID)
@@ -226,24 +249,28 @@ GetMonitorRect(monitorID) {
 
 
 ; ==============================================================================
-; CLEANUP FUNCTION — Destroys GUI overlays when script exits
+; CLEANUP FUNCTION — Destroys GUI overlays and restores brightness
 ; ==============================================================================
 
 CleanupOnExit(ExitReason, ExitCode) {
     global MonitoredScreens
     Log("--- Exiting (Reason: " . ExitReason . ") ---")
-    Log("Cleaning up GUI overlays...")
+    Log("Cleaning up GUI overlays and restoring brightness...")
 
     for screen in MonitoredScreens {
         try {
+            if screen['IsBlackedOut'] {
+                Log("Restoring brightness for monitor: " . screen['ID'] . " to " . screen['OriginalBrightness'] . "%")
+                SetBrightness(screen['ID'], screen['OriginalBrightness'])
+            }
             if IsObject(screen['Gui']) {
                 screen['Gui'].Destroy()
                 Log("Destroyed GUI for monitor: " . screen['ID'])
             }
         } catch {
-            Log("WARNING: Failed to destroy GUI for: " . screen['ID'])
+            Log("WARNING: Failed to clean up for: " . screen['ID'])
         }
     }
 
-    Log("All overlays removed. Cleanup complete.")
+    Log("All cleanup complete.")
 }
