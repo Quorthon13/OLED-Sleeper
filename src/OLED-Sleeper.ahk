@@ -1,0 +1,249 @@
+#SingleInstance force
+#Requires AutoHotkey v2.0
+
+;===============================================================================
+; OLED Sleeper
+;
+; Description:
+;   Prevents OLED burn-in on secondary displays by monitoring user activity.
+;   If no mouse or window activity is detected on a given monitor for a defined
+;   idle time, it overlays that screen with a full black window.
+;   When activity resumes, the blackout is lifted instantly.
+;
+; Dependencies:
+;   - MultiMonitorTool.exe (located in the ..\tools directory)
+;
+; Usage:
+;   Run the script with two arguments:
+;     1. A semicolon-separated list of monitor device IDs (e.g. \\.\DISPLAY2)
+;     2. Idle threshold in milliseconds before blackout (e.g. 30000 for 30s)
+;
+;   Example:
+;     "OLED-Sleeper.ahk" "\\.\DISPLAY2;\\.\DISPLAY3" "30000"
+;===============================================================================
+
+
+; === PATH DEFINITIONS ===
+; Build robust paths relative to the script's location.
+global ProjectRoot := A_ScriptDir . "\.."
+global LogFile     := ProjectRoot . "\OLED-Sleeper.log"
+global MultiTool   := ProjectRoot . "\tools\MultiMonitorTool.exe"
+global TempCsvFile := ProjectRoot . "\monitors_temp.csv"
+
+
+; === STARTUP LOG CLEAR ===
+try FileDelete(LogFile) ; Ensure a clean log on every script start
+
+; === CONFIGURATION VARIABLES ===
+global MonitorIdList := ""      ; Stores the raw input list of monitor IDs
+global IdleThreshold := 0       ; Time (ms) before a monitor is considered idle
+global CheckInterval := 250     ; Frequency (ms) to check each monitor's state
+
+; === INTERNAL STATE ===
+global MonitoredScreens := []   ; List of monitor state maps for each target screen
+
+
+; ==============================================================================
+; LOGGING FUNCTION — Appends messages to log file with timestamps
+; ==============================================================================
+
+Log(message) {
+    global LogFile
+    try FileAppend(Format("{1} - {2}`n", A_Now, message), LogFile)
+}
+
+
+; ==============================================================================
+; INITIALIZATION BLOCK — Validates inputs, prepares GUIs, and builds monitor list
+; ==============================================================================
+
+Log("--- Script started ---")
+
+; --- Handle required command-line arguments ---
+if A_Args.Length < 2 {
+    Log("ERROR: Not enough arguments passed.")
+    MsgBox("This script requires 2 arguments:`n1. Monitor ID list`n2. Idle timeout (ms).", "Error", 48)
+    ExitApp
+}
+
+MonitorIdList := A_Args[1]
+IdleThreshold := Integer(A_Args[2])
+
+Log("Monitor ID list: " . MonitorIdList)
+Log("Idle threshold: " . IdleThreshold . " ms")
+
+; --- Ensure blackout windows are cleaned up on script exit ---
+OnExit(CleanupOnExit)
+
+; --- Parse and initialize each monitor ID ---
+monitorIDs := StrSplit(MonitorIdList, ";")
+for id in monitorIDs {
+    id := Trim(id)
+    if id = ""
+        continue
+
+    Log("Attempting to initialize monitor: " . id)
+    monitorRect := GetMonitorRect(id)
+
+    if monitorRect {
+        ; Create a GUI window that fills the screen and is invisible to the taskbar
+        blackoutGui := Gui("+AlwaysOnTop -Caption +ToolWindow -DPIScale")
+        blackoutGui.BackColor := "000000" ; Fully black window
+
+        ; Store state for this monitor
+        screenState := Map(
+            "ID", id,
+            "Rect", monitorRect,
+            "Gui", blackoutGui,
+            "IsBlackedOut", false,
+            "LastActiveTime", A_TickCount
+        )
+        MonitoredScreens.Push(screenState)
+        Log("Monitor initialized: " . id)
+    } else {
+        Log("ERROR: Could not find monitor ID: " . id)
+        MsgBox("Monitor not found: " . id ".`nPlease verify the ID and ensure MultiMonitorTool.exe is available.", "Warning", 48)
+    }
+}
+
+if MonitoredScreens.Length = 0 {
+    Log("FATAL: No valid monitors were initialized.")
+    MsgBox("Initialization failed. No monitors found. Exiting.", "Error", 48)
+    ExitApp
+}
+
+Log("Initialization complete. Monitoring " . MonitoredScreens.Length . " screen(s).")
+SetTimer(CheckAllMonitors, CheckInterval)
+return
+
+
+; ==============================================================================
+; MAIN LOOP — Checks each monitored screen for user activity or inactivity
+; ==============================================================================
+
+CheckAllMonitors(*) {
+    CoordMode("Mouse", "Screen") ; Get mouse position relative to full screen
+    MouseGetPos(&mx, &my)
+
+    for screen in MonitoredScreens {
+        rect := screen['Rect']
+        activity := false
+
+        ; === Activity check 1: Mouse cursor is currently on this monitor ===
+        if (mx >= rect['Left'] && mx < rect['Right'] && my >= rect['Top'] && my < rect['Bottom']) {
+            activity := true
+        }
+
+        ; === Activity check 2: Active window is located on this monitor ===
+        if !activity {
+            try {
+                activeWin := WinActive("A")
+                if activeWin {
+                    WinGetPos(&wx, &wy,,, activeWin)
+                    if (wx >= rect['Left'] && wx < rect['Right'] && wy >= rect['Top'] && wy < rect['Bottom']) {
+                        activity := true
+                    }
+                }
+            }
+        }
+
+        ; === Reaction: Activity detected ===
+        if activity {
+            screen['LastActiveTime'] := A_TickCount
+
+            if screen['IsBlackedOut'] {
+                Log("Activity resumed on " . screen['ID'] . ". Unhiding overlay.")
+                screen['Gui'].Hide()
+                screen['IsBlackedOut'] := false
+            }
+
+        ; === Reaction: Monitor has been idle for longer than threshold ===
+        } else if !screen['IsBlackedOut'] && (A_TickCount - screen['LastActiveTime'] > IdleThreshold) {
+            Log(screen['ID'] . " exceeded idle threshold. Blacking out.")
+
+            x := rect['Left'], y := rect['Top']
+            w := rect['Right'] - rect['Left'], h := rect['Bottom'] - rect['Top']
+            screen['Gui'].Show("x" . x . " y" . y . " w" . w . " h" . h . " NoActivate")
+            screen['IsBlackedOut'] := true
+        }
+    }
+}
+
+
+; ==============================================================================
+; MONITOR RECT RESOLUTION — Uses NirSoft tool to extract monitor positions
+; ==============================================================================
+
+GetMonitorRect(monitorID) {
+    global MultiTool, TempCsvFile
+    Log("Querying geometry for: " . monitorID)
+
+    ; Export current monitor data to temporary CSV file
+    RunWait(Format('"{1}" /scomma "{2}"', MultiTool, TempCsvFile),, "Hide")
+    if !FileExist(TempCsvFile) {
+        Log("ERROR: Output CSV not found after running MultiMonitorTool.")
+        return false
+    }
+
+    csvData := FileRead(TempCsvFile)
+    Loop Parse csvData, "`n", "`r" {
+        if A_Index = 1 || A_LoopField = ""
+            continue ; Skip header or blank line
+
+        columns := []
+        Loop Parse A_LoopField, "CSV" {
+            columns.Push(A_LoopField)
+        }
+
+        ; Column 13 = Monitor ID. Match against target.
+        if (columns.Length >= 13 && columns[13] = monitorID) {
+            Log("Found matching monitor entry.")
+
+            ; Parse resolution and position
+            res := StrSplit(columns[1], "X")
+            width := Integer(Trim(res[1]))
+            height := Integer(Trim(res[2]))
+
+            pos := StrSplit(columns[2], ",")
+            left := Integer(Trim(pos[1]))
+            top := Integer(Trim(pos[2]))
+
+            FileDelete(TempCsvFile)
+
+            return Map(
+                "Left", left,
+                "Top", top,
+                "Right", left + width,
+                "Bottom", top + height
+            )
+        }
+    }
+
+    Log("ERROR: Monitor not found in CSV: " . monitorID)
+    FileDelete(TempCsvFile)
+    return false
+}
+
+
+; ==============================================================================
+; CLEANUP FUNCTION — Destroys GUI overlays when script exits
+; ==============================================================================
+
+CleanupOnExit(ExitReason, ExitCode) {
+    global MonitoredScreens
+    Log("--- Exiting (Reason: " . ExitReason . ") ---")
+    Log("Cleaning up GUI overlays...")
+
+    for screen in MonitoredScreens {
+        try {
+            if IsObject(screen['Gui']) {
+                screen['Gui'].Destroy()
+                Log("Destroyed GUI for monitor: " . screen['ID'])
+            }
+        } catch {
+            Log("WARNING: Failed to destroy GUI for: " . screen['ID'])
+        }
+    }
+
+    Log("All overlays removed. Cleanup complete.")
+}
