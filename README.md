@@ -54,8 +54,8 @@ That's it! The script will now run in the background and monitor your displays f
 
 This project relies on the excellent utilities developed by **NirSoft**:
 
-- [`MultiMonitorTool.exe`](https://www.nirsoft.net/utils/multi_monitor_tool.html)
-- [`ControlMyMonitor.exe`](https://www.nirsoft.net/utils/control_my_monitor.html)
+- [`MultiMonitorTool`](https://www.nirsoft.net/utils/multi_monitor_tool.html)
+- [`ControlMyMonitor`](https://www.nirsoft.net/utils/control_my_monitor.html)
 
 You can find more of their work at [www.nirsoft.net](https://www.nirsoft.net).
 
