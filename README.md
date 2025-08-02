@@ -2,7 +2,8 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-A simple but powerful tool for Windows users to prevent OLED burn-in and create a distraction-free workspace by automatically blacking them out when idle.
+A simple but powerful tool for Windows users to prevent OLED burn-in and create a distraction-free workspace by automatically blacking them out or dimming them when idle.
+
 <p align="center">
   <img src="https://github.com/user-attachments/assets/93c2a968-e093-4817-a78c-38e94d4823df" alt="OLED Sleeper Demonstration">  
 </p>
@@ -15,16 +16,17 @@ OLED displays are susceptible to permanent image retention (burn-in) from static
 ---
 ## The Solution
 
-OLED Sleeper runs quietly in the background, monitoring user activity on a per-screen basis. If a designated monitor is idle for a user-defined period, the script overlays it with a pure black screen. As soon as you move your mouse to that screen, the overlay vanishes instantly.
+OLED Sleeper runs quietly in the background, monitoring user activity on a per-screen basis. If a designated monitor is idle for a user-defined period, the script will either overlay it with a pure black screen or reduce its brightness — depending on your chosen mode.
 
-This is not only essential for **protecting OLEDs** but is also perfect for any user (with **LCD or OLED**) who wants to create a focused environment by selectively blacking out monitors—a feature Windows doesn't offer.
+This is not only essential for **protecting OLEDs** but is also perfect for any user (with **LCD or OLED**) who wants to create a focused environment by selectively blacking out or dimming monitors—a feature Windows doesn't offer.
 
 ---
 ### Features
 
 * **Per-Monitor Control:** Choose exactly which monitors to manage.
 * **Adjustable Idle Timer:** Set any idle duration you want.
-* **Instant Wake-Up:** The black overlay is removed the moment activity is detected.
+* **Two Idle Modes:** Choose between full **blackout** or brightness **dimming** for each monitor.
+* **Instant Wake-Up:** Overlays are removed and brightness is restored the moment activity is detected.
 * **Lightweight:** The background script has a tiny memory and CPU footprint.
 * **Simple Setup:** A user-friendly wizard walks you through the initial configuration.
 
@@ -33,6 +35,7 @@ This is not only essential for **protecting OLEDs** but is also perfect for any 
 
 * **Operating System:** Windows 10 or 11.
 * **Dependency:** **[AutoHotkey v2](https://www.autohotkey.com/)** must be installed on your system.
+* **DDC/CI Support (Required for Dimming Only):** Dimming mode requires a monitor that supports DDC/CI brightness control via VCP codes. Most modern OLED monitors support this, but it is not guaranteed on all displays.
 
 ---
 ## How to Use
@@ -40,7 +43,7 @@ This is not only essential for **protecting OLEDs** but is also perfect for any 
 1.  Download the latest release from the [Releases page](https://github.com/Quorthon13/OLED-Sleeper/releases) or clone this repository.
 2.  Unzip the folder to a permanent location on your computer.
 3.  Double-click **`setup.bat`**.
-4.  Follow the on-screen instructions to select your target monitors and set an idle timer.
+4.  Follow the on-screen instructions to select your target monitors, choose blackout or dim mode, and set an idle timer.
 
 That's it! The script will now run in the background and monitor your displays for the rest of your session.
 
@@ -49,7 +52,13 @@ That's it! The script will now run in the background and monitor your displays f
 ---
 ## Credits
 
-This project relies on the excellent `MultiMonitorTool.exe` utility developed by **NirSoft**. You can find more of their work at [www.nirsoft.net](https://www.nirsoft.net).
+This project relies on the excellent utilities developed by **NirSoft**:
+
+- [`MultiMonitorTool`](https://www.nirsoft.net/utils/multi_monitor_tool.html)
+- [`ControlMyMonitor`](https://www.nirsoft.net/utils/control_my_monitor.html)
+
+You can find more of their work at [www.nirsoft.net](https://www.nirsoft.net).
+
 
 ---
 ## License
