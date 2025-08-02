@@ -1,6 +1,5 @@
-#
 #===============================================================================
-# ==                    OLED Sleeper - Configuration Wizard                    ==
+#==                   OLED Sleeper - Configuration Wizard                     ==
 #===============================================================================
 #
 # Description:
@@ -20,24 +19,33 @@
 $OutputEncoding = [System.Text.Encoding]::UTF8
 
 #=================================================================
-# ==                   FUNCTION DEFINITIONS                    ==
+#==                   FUNCTION DEFINITIONS                      ==
 #=================================================================
 
 function Show-MonitorDetails {
     param ([Parameter(Mandatory = $true)][PSObject]$MonitorObject)
+
+    # If the friendly 'Monitor Name' is blank, fall back to the system 'Name' (e.g., \\.\DISPLAY1)
     if ([string]::IsNullOrWhiteSpace($MonitorObject.'Monitor Name')) {
         $MonitorObject.'Monitor Name' = $MonitorObject.'Name'
     }
-    Write-Host "Monitor Found: " -NoNewline
+
+    # Use gray for labels and distinct colors for the values for better readability.
+    Write-Host "Monitor Found: " -ForegroundColor Gray -NoNewline
     Write-Host $MonitorObject.'Monitor Name' -ForegroundColor Green
-    Write-Host "   - Details: $($MonitorObject.Resolution) at position $($MonitorObject.'Left-Top')" -ForegroundColor White
-    Write-Host "   - ID: " -NoNewline
-    Write-Host $MonitorObject.'Name' -ForegroundColor Gray
-    Write-Host ""
+
+    Write-Host "   - Details: " -ForegroundColor Gray -NoNewline
+    Write-Host "$($MonitorObject.Resolution) at position $($MonitorObject.'Left-Top')" -ForegroundColor White
+
+    Write-Host "   - ID: " -ForegroundColor Gray -NoNewline
+    Write-Host $MonitorObject.'Name' -ForegroundColor White
+    
+    Write-Host "" # Adds a blank line for spacing after each monitor
 }
 
+
 #=================================================================
-# ==                       INITIALIZATION                        ==
+#==                        INITIALIZATION                       ==
 #=================================================================
 
 # --- Path Definitions ---
@@ -49,6 +57,11 @@ $controlMyMonitorPath = Join-Path -Path $projectRoot -ChildPath "tools\ControlMy
 $sleeperAhkPath = Join-Path -Path $scriptRoot -ChildPath "OLED-Sleeper.ahk"
 $dimmerAhkPath = Join-Path -Path $scriptRoot -ChildPath "OLED-Dimmer.ahk"
 $csvPath = Join-Path -Path $projectRoot -ChildPath "monitors.csv"
+
+# --- Emoji Definitions ---
+$checkEmoji = [System.Char]::ConvertFromUtf32(0x2705)      # ✅
+$blackoutEmoji = [System.Char]::ConvertFromUtf32(0x1F31A)   # 🌚
+$dimmerEmoji = [System.Char]::ConvertFromUtf32(0x1F506)     # 🔆
 
 # --- Data Variables ---
 $managedMonitors = New-Object System.Collections.ArrayList
@@ -71,7 +84,7 @@ $activeMonitors = $monitors | Where-Object { $_.Active -eq 'Yes' }
 if ($activeMonitors.Count -lt 1) { Write-Host "ERROR: No active monitors were detected." -ForegroundColor Red; Read-Host; if (Test-Path -Path $csvPath) { Remove-Item -Path $csvPath }; exit }
 
 #=================================================================
-# ==                  MONITOR & ACTION SETUP                     ==
+#==                   MONITOR & ACTION SETUP                    ==
 #=================================================================
 
 # --- Step 1: Select which monitors to manage ---
@@ -95,13 +108,24 @@ if ($managedMonitors.Count -eq 0) {
 # --- Step 2: Choose an action for each selected monitor ---
 Clear-Host
 Write-Host "--- Step 2: Configure Actions for Selected Monitors ---" -ForegroundColor Cyan
+Write-Host ""
+Write-Host "$blackoutEmoji Blackout Mode: " -ForegroundColor Gray -NoNewline
+Write-Host "Covers screen with a black overlay (ideal for OLEDs)." -ForegroundColor White
+Write-Host "$dimmerEmoji Dimmer Mode:  " -ForegroundColor Gray -NoNewline
+Write-Host "Lowers monitor brightness via DDC/CI." -ForegroundColor White
+Write-Host ""
+Write-Host "-------------------------------------------------" -ForegroundColor Cyan
+
 foreach ($monitor in $managedMonitors) {
-    Write-Host "Configuring action for: $($monitor.'Monitor Name')" -ForegroundColor Green
+    Write-Host "Configuring action for: " -ForegroundColor Gray -NoNewline
+    Write-Host "$($monitor.'Monitor Name')" -ForegroundColor Green
+    
     $action = Read-Host "Action? (1 = Blackout, 2 = Dim)"
     
     if ($action -eq '1') {
         [void]$blackoutMonitors.Add($monitor.Name)
-        Write-Host "  -> Set to BLACKOUT." -ForegroundColor White
+        Write-Host "  -> " -ForegroundColor Gray -NoNewline
+        Write-Host "$blackoutEmoji Set to BLACKOUT." -ForegroundColor White
     }
     elseif ($action -eq '2') {
         while ($true) {
@@ -110,30 +134,34 @@ foreach ($monitor in $managedMonitors) {
             if ([int]::TryParse($dimLevelStr, [ref]$dimLevel) -and $dimLevel -ge 0 -and $dimLevel -le 100) {
                 $dimInfo = "$($monitor.Name):$dimLevel"
                 [void]$dimmerMonitors.Add($dimInfo)
-                Write-Host "  -> Set to DIM to $dimLevel%." -ForegroundColor White
+                Write-Host "  -> " -ForegroundColor Gray -NoNewline
+                Write-Host "$dimmerEmoji Set to DIM to $dimLevel%." -ForegroundColor White
                 break
             }
             else {
                 Write-Host "   Invalid input. Please enter a number between 0 and 100." -ForegroundColor Red
             }
         }
-
     }
     else {
-        Write-Host "  -> Invalid choice. Skipping monitor." -ForegroundColor Red
+        Write-Host "  -> " -ForegroundColor Gray -NoNewline
+        Write-Host "Invalid choice. Skipping monitor." -ForegroundColor Red
     }
     Write-Host "-------------------------------------------------" -ForegroundColor Cyan
 }
 
 #=================================================================
-# ==                        TIME INPUT                         ==
+#==                         TIME INPUT                          ==
 #=================================================================
 
 Clear-Host
 Write-Host "--- Step 3: Set Idle Timer ---" -ForegroundColor Cyan
-Write-Host "A single timer will be used for all actions."
+Write-Host "A single timer will be used for all actions." -ForegroundColor White
 while ($true) {
-    $time_min_str = Read-Host "Enter the idle time in minutes (e.g., 30, 1.5)"
+    # We use Write-Host with -NoNewline to color the prompt for Read-Host.
+    Write-Host "Enter the idle time in minutes (e.g., 30, 1.5): " -NoNewline -ForegroundColor Green
+    $time_min_str = Read-Host
+
     $culture = [System.Globalization.CultureInfo]::InvariantCulture
     if ([double]::TryParse($time_min_str, [System.Globalization.NumberStyles]::Float, $culture, [ref]$time_min)) {
         $time_ms = [math]::Round($time_min * 60000)
@@ -145,19 +173,19 @@ while ($true) {
 }
 
 #=================================================================
-# ==                       FINAL ACTION                        ==
+#==                        FINAL ACTION                         ==
 #=================================================================
 
 Clear-Host
 Write-Host "Setup Complete!" -ForegroundColor Green
-$checkEmoji = [System.Char]::ConvertFromUtf32(0x2705)
 $launchedSomething = $false
 
 # --- Launch Blackout Script if needed ---
 if ($blackoutMonitors.Count -gt 0) {
     $blackoutString = $blackoutMonitors -join ';'
     Start-Process -FilePath $sleeperAhkPath -ArgumentList """$blackoutString""", "$time_ms"
-    Write-Host "$checkEmoji Blackout watcher started for $($blackoutMonitors.Count) monitor(s)." -ForegroundColor Green
+    Write-Host "$checkEmoji Blackout watcher: " -ForegroundColor Gray -NoNewline
+    Write-Host "Started for $($blackoutMonitors.Count) monitor(s)." -ForegroundColor Green
     $launchedSomething = $true
 }
 
@@ -165,7 +193,8 @@ if ($blackoutMonitors.Count -gt 0) {
 if ($dimmerMonitors.Count -gt 0) {
     $dimmerString = $dimmerMonitors -join ';'
     Start-Process -FilePath $dimmerAhkPath -ArgumentList """$dimmerString""", "$time_ms"
-    Write-Host "$checkEmoji Dimmer watcher started for $($dimmerMonitors.Count) monitor(s)." -ForegroundColor Green
+    Write-Host "$checkEmoji Dimmer watcher: " -ForegroundColor Gray -NoNewline
+    Write-Host "Started for $($dimmerMonitors.Count) monitor(s)." -ForegroundColor Green
     $launchedSomething = $true
 }
 
@@ -178,7 +207,7 @@ Write-Host "This window will close automatically in 10 seconds."
 Start-Sleep -Seconds 10
 
 #=================================================================
-# ==                         CLEANUP                           ==
+#==                          CLEANUP                            ==
 #=================================================================
 if (Test-Path -Path $csvPath) {
     Remove-Item -Path $csvPath
