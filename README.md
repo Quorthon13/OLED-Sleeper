@@ -2,10 +2,10 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-A simple but powerful tool for Windows users to prevent OLED burn-in and create a distraction-free workspace by automatically blacking them out or dimming them when idle.
+A simple but powerful tool for Windows users to prevent OLED burn-in and create a distraction-free workspace by automatically blacking out or dimming idle monitors.
 
 <p align="center">
-  <img src="https://github.com/user-attachments/assets/93c2a968-e093-4817-a78c-38e94d4823df" alt="OLED Sleeper Demonstration">  
+  <img src="https://github.com/user-attachments/assets/93c2a968-e093-4817-a78c-38e94d4823df" alt="OLED Sleeper Demonstration"> 
 </p>
 
 ---
@@ -40,9 +40,11 @@ If neither is detected for a set time, the monitor is considered idle. No other 
 * **Per-Monitor Control:** Choose exactly which monitors to manage.
 * **Adjustable Idle Timer:** Set any idle duration you want.
 * **Two Idle Modes:** Choose between full **blackout** or brightness **dimming** for each monitor.
+* **Automatic Startup:** Configure once and the script will automatically run every time you log in to Windows.
+* **Resilient State Saving:** Remembers which monitors were dimmed or blacked out, even if your PC shuts down unexpectedly.
 * **Instant Wake-Up:** Overlays are removed and brightness is restored the moment activity is detected.
 * **Lightweight:** Uses minimal memory and CPU.
-* **Simple Setup:** A user-friendly wizard walks you through the initial configuration.
+* **Simple Setup:** A command-line wizard guides you through initial setup, re-configuration, and removal.
 
 ---
 
@@ -56,14 +58,14 @@ If neither is detected for a set time, the monitor is considered idle. No other 
 
 ## How to Use
 
-1. Download the latest release from the [Releases page](https://github.com/Quorthon13/OLED-Sleeper/releases) or clone this repository.
-2. Unzip the folder to a permanent location on your computer.
-3. Double-click **`setup.bat`**.
-4. Follow the on-screen instructions to select your target monitors, choose blackout or dim mode, and set an idle timer.
+1.  Download the latest release from the [Releases page](https://github.com/Quorthon13/OLED-Sleeper/releases) or clone this repository.
+2.  Unzip the folder to a permanent location on your computer (e.g., `C:\Program Files\OLED-Sleeper`).
+3.  Double-click **`Configure.ps1`**.
+4.  A menu will appear:
+    * **To set up for the first time or to change your settings**, choose option `1`. The wizard will guide you through selecting monitors, modes, and an idle time. When prompted, allow it to create the startup task.
+    * **To remove the startup task and settings**, choose option `2`. This will delete the automatic startup shortcut and all saved configurations. Note that this action does not stop any scripts that are currently running.
 
-That's it. The script will now run in the background and monitor your displays for the rest of your session.
-
-**Note:** To re-launch the watcher after a restart, simply run **`setup.bat`** again.
+That's it. Once configured, the scripts will run silently in the background and launch automatically every time you log in.
 
 ---
 
@@ -71,8 +73,8 @@ That's it. The script will now run in the background and monitor your displays f
 
 This project relies on the excellent utilities developed by **NirSoft**:
 
-- [`MultiMonitorTool`](https://www.nirsoft.net/utils/multi_monitor_tool.html)
-- [`ControlMyMonitor`](https://www.nirsoft.net/utils/control_my_monitor.html)
+-   [`MultiMonitorTool`](https://www.nirsoft.net/utils/multi_monitor_tool.html)
+-   [`ControlMyMonitor`](https://www.nirsoft.net/utils/control_my_monitor.html)
 
 You can find more of their work at [www.nirsoft.net](https://www.nirsoft.net).
 

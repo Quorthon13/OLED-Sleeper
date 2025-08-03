@@ -6,3 +6,6 @@
 
 # AutoHotkey editor backup files
 *.bak
+
+# Configuration folder and all its contents
+config/

@@ -32,10 +32,7 @@ global LogFile     := ProjectRoot . "\OLED-Sleeper.log"
 global MultiTool   := ProjectRoot . "\tools\MultiMonitorTool\MultiMonitorTool.exe"
 global ControlTool := ProjectRoot . "\tools\ControlMyMonitor\ControlMyMonitor.exe"
 global TempCsvFile := ProjectRoot . "\monitors_temp.csv"
-
-
-; === STARTUP LOG CLEAR ===
-try FileDelete(LogFile) ; Ensure a clean log on every script start
+global RestoreFile := ProjectRoot . "\config\brightness_restore.dat"
 
 ; === CONFIGURATION VARIABLES ===
 global MonitorIdList := ""      ; Stores the raw input list of monitor IDs
@@ -62,6 +59,27 @@ Log(message) {
 
 Log("--- Script started ---")
 
+; --- Restore Brightness from Previous Session (if needed) ---
+if FileExist(RestoreFile) {
+    Log("Restore file found. Restoring brightness from previous session.")
+    try {
+        loop read RestoreFile
+        {
+            parts := StrSplit(A_LoopReadLine, ":")
+            if (parts.Length = 2) {
+                id := parts[1]
+                brightness := Integer(parts[2])
+                Log("Restoring brightness for " . id . " to " . brightness . "%")
+                SetBrightness(id, brightness)
+            }
+        }
+        FileDelete(RestoreFile)
+        Log("Brightness restored and restore file deleted.")
+    } catch {
+        Log("ERROR: Failed to process brightness restore file.")
+    }
+}
+
 ; --- Handle required command-line arguments ---
 if A_Args.Length < 2 {
     Log("ERROR: Not enough arguments passed.")
@@ -75,7 +93,7 @@ IdleThreshold := Integer(A_Args[2])
 Log("Monitor ID list: " . MonitorIdList)
 Log("Idle threshold: " . IdleThreshold . " ms")
 
-; --- Ensure overlays are removed and brightness is restored on script exit ---
+; --- Ensure overlays are removed on script exit ---
 OnExit(CleanupOnExit)
 
 ; --- Parse and initialize each monitor ID ---
@@ -160,6 +178,7 @@ CheckAllMonitors(*) {
                 SetBrightness(screen['ID'], screen['OriginalBrightness'])
                 screen['Gui'].Hide()
                 screen['IsBlackedOut'] := false
+                ClearRestoreState(screen['ID'])
             }
 
         ; === Reaction: Monitor has been idle for longer than threshold ===
@@ -169,6 +188,7 @@ CheckAllMonitors(*) {
 
             Log(screen['ID'] . " exceeded idle threshold. Dimming to 0% and blacking out.")
             SetBrightness(screen['ID'], 0)
+            SaveRestoreState(screen['ID'], currentBrightness)
 
             x := rect['Left'], y := rect['Top']
             w := rect['Right'] - rect['Left'], h := rect['Bottom'] - rect['Top']
@@ -247,21 +267,83 @@ GetMonitorRect(monitorID) {
     return false
 }
 
+; ==============================================================================
+; STATE MANAGEMENT FUNCTIONS — Manages the brightness_restore.dat file
+; ==============================================================================
+
+SaveRestoreState(monitorID, brightness) {
+    global RestoreFile
+    Log("Saving restore state for " . monitorID . " -> " . brightness . "%")
+    
+    content := ""
+    found := false
+    if FileExist(RestoreFile) {
+        loop read RestoreFile
+        {
+            if InStr(A_LoopReadLine, monitorID . ":") {
+                content .= monitorID . ":" . brightness . "`n"
+                found := true
+            } else {
+                content .= A_LoopReadLine . "`n"
+            }
+        }
+    }
+    if !found {
+        content .= monitorID . ":" . brightness . "`n"
+    }
+    
+    try {
+        file := FileOpen(RestoreFile, "w", "UTF-8")
+        file.Write(Trim(content, "`n"))
+        file.Close()
+    } catch {
+        Log("ERROR: Failed to write to restore file.")
+    }
+}
+
+ClearRestoreState(monitorID) {
+    global RestoreFile
+    Log("Clearing restore state for " . monitorID)
+    
+    if !FileExist(RestoreFile)
+        return
+
+    content := ""
+    loop read RestoreFile
+    {
+        if !InStr(A_LoopReadLine, monitorID . ":") {
+            content .= A_LoopReadLine . "`n"
+        }
+    }
+
+    try {
+        file := FileOpen(RestoreFile, "w", "UTF-8")
+        file.Write(Trim(content, "`n"))
+        file.Close()
+        ; If the file is now empty, delete it
+        if (file.Length = 0) {
+            FileDelete(RestoreFile)
+        }
+    } catch {
+        Log("ERROR: Failed to clear from restore file.")
+    }
+}
+
 
 ; ==============================================================================
-; CLEANUP FUNCTION — Destroys GUI overlays and restores brightness
+; CLEANUP FUNCTION — Destroys GUI overlays and restores brightness on manual exit
 ; ==============================================================================
 
 CleanupOnExit(ExitReason, ExitCode) {
     global MonitoredScreens
     Log("--- Exiting (Reason: " . ExitReason . ") ---")
-    Log("Cleaning up GUI overlays and restoring brightness...")
 
     for screen in MonitoredScreens {
         try {
-            if screen['IsBlackedOut'] {
+            if (screen['IsBlackedOut'] && ExitReason = 'Menu') {
                 Log("Restoring brightness for monitor: " . screen['ID'] . " to " . screen['OriginalBrightness'] . "%")
                 SetBrightness(screen['ID'], screen['OriginalBrightness'])
+                ClearRestoreState(screen['ID'])
             }
             if IsObject(screen['Gui']) {
                 screen['Gui'].Destroy()
@@ -272,5 +354,5 @@ CleanupOnExit(ExitReason, ExitCode) {
         }
     }
 
-    Log("All cleanup complete.")
+    Log("Cleanup completed.")
 }
