@@ -32,10 +32,7 @@ global LogFile     := ProjectRoot . "\OLED-Dimmer.log"
 global MultiTool   := ProjectRoot . "\tools\MultiMonitorTool\MultiMonitorTool.exe"
 global ControlTool := ProjectRoot . "\tools\ControlMyMonitor\ControlMyMonitor.exe"
 global TempCsvFile := ProjectRoot . "\monitors_temp.csv"
-
-
-; === STARTUP LOG CLEAR ===
-try FileDelete(LogFile) ; Ensure a clean log on every script start
+global RestoreFile := ProjectRoot . "\config\brightness_restore.dat"
 
 ; === CONFIGURATION VARIABLES ===
 global MonitorIdList := ""      ; Stores the raw input list of monitor ID and level pairs
@@ -61,6 +58,27 @@ Log(message) {
 ; ==============================================================================
 
 Log("--- Script started ---")
+
+; --- Restore Brightness from Previous Session (if needed) ---
+if FileExist(RestoreFile) {
+    Log("Restore file found. Restoring brightness from previous session.")
+    try {
+        loop read RestoreFile
+        {
+            parts := StrSplit(A_LoopReadLine, ":")
+            if (parts.Length = 2) {
+                id := parts[1]
+                brightness := Integer(parts[2])
+                Log("Restoring brightness for " . id . " to " . brightness . "%")
+                SetBrightness(id, brightness)
+            }
+        }
+        FileDelete(RestoreFile)
+        Log("Brightness restored and restore file deleted.")
+    } catch {
+        Log("ERROR: Failed to process brightness restore file.")
+    }
+}
 
 ; --- Handle required command-line arguments ---
 if A_Args.Length < 2 {
@@ -158,6 +176,7 @@ CheckAllMonitors(*) {
                 Log("Activity resumed on " . screen['ID'] . ". Restoring brightness to " . screen['OriginalBrightness'] . "%.")
                 SetBrightness(screen['ID'], screen['OriginalBrightness'])
                 screen['IsDimmed'] := false
+                ClearRestoreState(screen['ID'])
             }
 
         ; === Reaction: Monitor has been idle for longer than threshold ===
@@ -168,6 +187,7 @@ CheckAllMonitors(*) {
 
             Log(screen['ID'] . " exceeded idle threshold. Dimming from " . currentBrightness . "% to " . screen['TargetDimLevel'] . "%.")
             SetBrightness(screen['ID'], screen['TargetDimLevel'])
+            SaveRestoreState(screen['ID'], currentBrightness)
             screen['IsDimmed'] := true
         }
     }
@@ -242,6 +262,68 @@ GetMonitorRect(monitorID) {
     return false
 }
 
+; ==============================================================================
+; STATE MANAGEMENT FUNCTIONS — Manages the brightness_restore.dat file
+; ==============================================================================
+
+SaveRestoreState(monitorID, brightness) {
+    global RestoreFile
+    Log("Saving restore state for " . monitorID . " -> " . brightness . "%")
+    
+    content := ""
+    found := false
+    if FileExist(RestoreFile) {
+        loop read RestoreFile
+        {
+            if InStr(A_LoopReadLine, monitorID . ":") {
+                content .= monitorID . ":" . brightness . "`n"
+                found := true
+            } else {
+                content .= A_LoopReadLine . "`n"
+            }
+        }
+    }
+    if !found {
+        content .= monitorID . ":" . brightness . "`n"
+    }
+    
+    try {
+        file := FileOpen(RestoreFile, "w", "UTF-8")
+        file.Write(Trim(content, "`n"))
+        file.Close()
+    } catch {
+        Log("ERROR: Failed to write to restore file.")
+    }
+}
+
+ClearRestoreState(monitorID) {
+    global RestoreFile
+    Log("Clearing restore state for " . monitorID)
+    
+    if !FileExist(RestoreFile)
+        return
+
+    content := ""
+    loop read RestoreFile
+    {
+        if !InStr(A_LoopReadLine, monitorID . ":") {
+            content .= A_LoopReadLine . "`n"
+        }
+    }
+
+    try {
+        file := FileOpen(RestoreFile, "w", "UTF-8")
+        file.Write(Trim(content, "`n"))
+        file.Close()
+        ; If the file is now empty, delete it
+        if (file.Length = 0) {
+            FileDelete(RestoreFile)
+        }
+    } catch {
+        Log("ERROR: Failed to clear from restore file.")
+    }
+}
+
 
 ; ==============================================================================
 ; CLEANUP FUNCTION — Restores original brightness when script exits
@@ -250,18 +332,19 @@ GetMonitorRect(monitorID) {
 CleanupOnExit(ExitReason, ExitCode) {
     global MonitoredScreens
     Log("--- Exiting (Reason: " . ExitReason . ") ---")
-    Log("Cleaning up by restoring brightness...")
 
     for screen in MonitoredScreens {
         try {
-            if screen['IsDimmed'] {
+            ; Since OnExit only triggers from a tray menu exit, we always restore.
+            if (screen['IsDimmed'] && ExitReason = 'Menu') {
                 Log("Restoring brightness for monitor: " . screen['ID'] . " to " . screen['OriginalBrightness'] . "%")
                 SetBrightness(screen['ID'], screen['OriginalBrightness'])
+                ClearRestoreState(screen['ID'])
             }
         } catch {
             Log("WARNING: Failed to restore brightness for: " . screen['ID'])
         }
     }
 
-    Log("Brightness restoration complete. Cleanup complete.")
+    Log("Cleanup completed.")
 }
