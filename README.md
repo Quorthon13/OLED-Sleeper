@@ -76,7 +76,7 @@ This project relies on the excellent utilities developed by **NirSoft**:
 -   [`MultiMonitorTool`](https://www.nirsoft.net/utils/multi_monitor_tool.html)
 -   [`ControlMyMonitor`](https://www.nirsoft.net/utils/control_my_monitor.html)
 
-You can find more of their work at [www.nirsoft.net](https://www.nirsoft.net).
+You can find more of their work at [www.nirsoft.net](https://www.nirsoft.net)
 
 ---
 
