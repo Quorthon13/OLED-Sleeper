@@ -31,8 +31,8 @@ global ProjectRoot := A_ScriptDir . "\.."
 global LogFile     := ProjectRoot . "\OLED-Sleeper.log"
 global MultiTool   := ProjectRoot . "\tools\MultiMonitorTool\MultiMonitorTool.exe"
 global ControlTool := ProjectRoot . "\tools\ControlMyMonitor\ControlMyMonitor.exe"
-global TempCsvFile := ProjectRoot . "\monitors_temp.csv"
-global RestoreFile := ProjectRoot . "\config\brightness_restore.dat"
+global TempCsvFile := ProjectRoot . "\monitors_sleeper_temp.csv"
+global RestoreFile := ProjectRoot . "\config\sleeper_restore.dat"
 
 ; === CONFIGURATION VARIABLES ===
 global MonitorIdList := ""      ; Stores the raw input list of monitor IDs
@@ -159,10 +159,16 @@ CheckAllMonitors(*) {
         ; === Activity check 2: Active window is located on this monitor ===
         if !activity {
             try {
-                activeWin := WinActive("A")
-                if activeWin {
-                    WinGetPos(&wx, &wy,,, activeWin)
-                    if (wx >= rect['Left'] && wx < rect['Right'] && wy >= rect['Top'] && wy < rect['Bottom']) {
+                if activeWin := WinActive("A") {
+                    ; Get the window's position (x,y) AND its size (width, height)
+                    WinGetPos(&wx, &wy, &ww, &wh, activeWin)
+
+                    ; Calculate the absolute center point of the window
+                    winCenterX := wx + (ww // 2)
+                    winCenterY := wy + (wh // 2)
+
+                    ; Check if the window's CENTER POINT is on the monitor
+                    if (winCenterX >= rect['Left'] && winCenterX < rect['Right'] && winCenterY >= rect['Top'] && winCenterY < rect['Bottom']) {
                         activity := true
                     }
                 }
@@ -250,6 +256,14 @@ GetMonitorRect(monitorID) {
             pos := StrSplit(columns[2], ",")
             left := Integer(Trim(pos[1]))
             top := Integer(Trim(pos[2]))
+
+            ; Log complete geometry information
+            Log("Monitor Geometry Details:")
+            Log("  Monitor ID: " . monitorID)
+            Log("  Resolution: " . width . "x" . height)
+            Log("  Position: Left=" . left . ", Top=" . top)
+            Log("  Bounds: Right=" . (left + width) . ", Bottom=" . (top + height))
+            Log("  Full Rect: {Left:" . left . ", Top:" . top . ", Right:" . (left + width) . ", Bottom:" . (top + height) . "}")
 
             FileDelete(TempCsvFile)
 
