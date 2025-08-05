@@ -60,7 +60,7 @@ If neither is detected for a set time, the monitor is considered idle. No other 
 
 1.  Download the latest release from the [Releases page](https://github.com/Quorthon13/OLED-Sleeper/releases) or clone this repository.
 2.  Unzip the folder to a permanent location on your computer (e.g., `C:\Program Files\OLED-Sleeper`).
-3.  Double-click **`setup.ps1`**.
+3.  Double-click **`setup.bat`**.
 4.  A menu will appear:
     * **To set up for the first time or to change your settings**, choose option `1`. The wizard will guide you through selecting monitors, modes, and an idle time. When prompted, allow it to create the startup task.
     * **To remove the startup task and settings**, choose option `2`. This will delete the automatic startup shortcut and all saved configurations. Note that this action does not stop any scripts that are currently running.
