@@ -5,7 +5,7 @@
 A simple but powerful tool for Windows users to prevent OLED burn-in and create a distraction-free workspace by automatically blacking out or dimming idle monitors.
 
 <p align="center">
-  <img src="https://github.com/user-attachments/assets/93c2a968-e093-4817-a78c-38e94d4823df" alt="OLED Sleeper Demonstration"> 
+  <img src="https://files.catbox.moe/w0yq57.webp" alt="OLED Sleeper Demonstration"> 
 </p>
 
 ---
