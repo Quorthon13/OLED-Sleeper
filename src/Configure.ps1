@@ -147,7 +147,7 @@ if (-not (Test-Path -Path $startupTaskScriptPath)) { Write-Host "ERROR: Startup-
 Start-Process -FilePath $multiMonitorToolPath -ArgumentList "/scomma `"$csvPath`"" -Wait
 if (-not (Test-Path -Path $csvPath)) { Write-Host "ERROR: monitors.csv not found." -ForegroundColor Red; Read-Host; exit }
 $monitors = Import-Csv -Path $csvPath
-$activeMonitors = $monitors | Where-Object { $_.Active -eq 'Yes' }
+$activeMonitors = @($monitors | Where-Object { $_.Active -eq 'Yes' })
 if ($activeMonitors.Count -lt 1) { Write-Host "ERROR: No active monitors were detected." -ForegroundColor Red; Read-Host; if (Test-Path -Path $csvPath) { Remove-Item -Path $csvPath }; exit }
 
 #=================================================================
