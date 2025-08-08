@@ -3,8 +3,8 @@
 #===============================================================================
 #
 # Description:
-#   This script validates the monitor setup, then reads the saved configuration 
-#   and launches the AHK scripts non-interactively. The AHK scripts are
+#   This script validates the monitor setup, then reads the saved configuration
+#   and launches the AHK script non-interactively. The AHK script is
 #   responsible for restoring brightness from the previous session.
 #
 #===============================================================================
@@ -21,17 +21,16 @@ $scriptRoot = $PSScriptRoot
 $projectRoot = (Get-Item $scriptRoot).Parent.FullName
 
 $sleeperAhkPath = Join-Path -Path $scriptRoot -ChildPath "OLED-Sleeper.ahk"
-$dimmerAhkPath = Join-Path -Path $scriptRoot -ChildPath "OLED-Dimmer.ahk"
 $startupConfigFilePath = Join-Path -Path $projectRoot -ChildPath "config\Startup.config.psd1"
 $multiMonitorToolPath = Join-Path -Path $projectRoot -ChildPath "tools\MultiMonitorTool\MultiMonitorTool.exe"
 $controlMyMonitorPath = Join-Path -Path $projectRoot -ChildPath "tools\ControlMyMonitor\ControlMyMonitor.exe"
 $tempCsvPath = Join-Path -Path $env:TEMP -ChildPath "monitors_startup.csv"
-$shortcutPath = Join-Path -Path ([System.Environment]::GetFolderPath('Startup')) -ChildPath "OLED Startup Task.lnk"
+$shortcutPath = Join-Path -Path ([System.Environment]::GetFolderPath('Startup')) -ChildPath "OLED Sleeper Startup Task.lnk"
 
 # --- Function to handle fatal errors by cleaning up and exiting ---
 function Handle-FatalError {
     param ([string]$ErrorMessage)
-    
+
     $fullMessage = $ErrorMessage + [Environment]::NewLine + [Environment]::NewLine + "The startup task has been automatically removed to prevent future errors. Please run Configure.ps1 to set it up again."
     Show-ErrorPopup -Message $fullMessage
 
@@ -48,7 +47,7 @@ function Handle-FatalError {
     catch {
         # If removal fails, there's not much more we can do. The user has been notified.
     }
-    
+
     exit
 }
 
@@ -68,9 +67,6 @@ if (-not (Test-Path -Path $controlMyMonitorPath)) {
 }
 if (-not (Test-Path -Path $sleeperAhkPath)) {
     Handle-FatalError -ErrorMessage "Dependency not found: OLED-Sleeper.ahk`nPlease ensure all script files are in the 'src' directory."
-}
-if (-not (Test-Path -Path $dimmerAhkPath)) {
-    Handle-FatalError -ErrorMessage "Dependency not found: OLED-Dimmer.ahk`nPlease ensure all script files are in the 'src' directory."
 }
 
 
@@ -92,7 +88,7 @@ Remove-Item -Path $tempCsvPath -Force
 
 # --- Compare stored monitors with current monitors ---
 $activeMonitorIDs = $currentMonitors | Where-Object { $_.Active -eq 'Yes' } | Select-Object -ExpandProperty 'Monitor ID'
-$storedMonitors = $config.BlackoutMonitors + $config.DimmerMonitors
+$storedMonitors = $config.ConfiguredMonitors
 $missingMonitors = @()
 
 foreach ($storedMonitor in $storedMonitors) {
@@ -119,7 +115,7 @@ try {
     if ($ahkProcesses) {
         foreach ($proc in $ahkProcesses) {
             $cimProc = Get-CimInstance -ClassName Win32_Process -Filter "ProcessId = $($proc.Id)"
-            if ($cimProc.CommandLine -like "*OLED-Sleeper.ahk*" -or $cimProc.CommandLine -like "*OLED-Dimmer.ahk*") {
+            if ($cimProc.CommandLine -like "*OLED-Sleeper.ahk*") { # Simplified to look for only one script
                 if ($proc.CloseMainWindow()) {
                     $proc.WaitForExit(2000)
                 }
@@ -135,15 +131,20 @@ catch {
 }
 
 # --- Launch Processes based on Config ---
-# The AHK scripts will now handle restoring brightness upon activity
-if ($config.BlackoutMonitors) {
-    $blackoutString = ($config.BlackoutMonitors.Name) -join ';'
-    Start-Process -FilePath $sleeperAhkPath -ArgumentList """$blackoutString""", "$($config.IdleTimeMS)"
+if ($config.ConfiguredMonitors) {
+    # Build the single argument string for the unified script
+    $argumentParts = $config.ConfiguredMonitors | ForEach-Object {
+        if ($_.Action -eq 'blackout') {
+            "$($_.Name):blackout"
+        }
+        else { # dim
+            "$($_.Name):dim:$($_.DimLevel)"
+        }
+    }
+    $finalArgumentString = $argumentParts -join ';'
+
+    # Launch the single OLED-Sleeper.ahk script with the combined arguments
+    Start-Process -FilePath $sleeperAhkPath -ArgumentList """$finalArgumentString""", "$($config.IdleTimeMS)"
 }
 
-if ($config.DimmerMonitors) {
-    $dimmerString = ($config.DimmerMonitors | ForEach-Object { "$($_.Name):$($_.DimLevel)" }) -join ';'
-    Start-Process -FilePath $dimmerAhkPath -ArgumentList """$dimmerString""", "$($config.IdleTimeMS)"
-}
-
-# The script will now exit. The AHK processes will continue running in the background.
+# The script will now exit. The AHK process will continue running in the background.

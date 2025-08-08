@@ -6,22 +6,23 @@
 ;
 ; Description:
 ;   Prevents OLED burn-in on secondary displays by monitoring user activity.
-; If no mouse or window activity is detected on a given monitor for a defined
-; idle time, it reduces brightness to 0 and overlays that screen with a
-; full black window.
-;   When activity resumes, the blackout is lifted and brightness is restored.
+;   If no mouse or window activity is detected on a given monitor for a defined
+;   idle time, it will either black out the screen or dim it to a specific
+;   brightness level, based on the provided arguments.
 ;
 ; Dependencies:
-;   - MultiMonitorTool.exe (located in the ..\tools directory)
 ;   - ControlMyMonitor.exe (located in the ..\tools directory)
+;   - MultiMonitorTool.exe (located in the ..\tools directory)
 ;
 ; Usage:
 ;   Run the script with two arguments:
-;   1. A semicolon-separated list of monitor device IDs (e.g. \\.\DISPLAY2)
-;   2. Idle threshold in milliseconds before blackout (e.g. 30000 for 30s)
+;   1. A semicolon-separated list of monitor configurations.
+;      - For blackout: \\.\DISPLAY_ID:blackout
+;      - For dimming:  \\.\DISPLAY_ID:dim:LEVEL
+;   2. Idle threshold in milliseconds (e.g., 30000 for 30s)
 ;
 ;   Example:
-;     "OLED-Sleeper.ahk" "\\.\DISPLAY2;\\.\DISPLAY3" "30000"
+;     "OLED-Sleeper.ahk" "\\.\DISPLAY2:blackout;\\.\DISPLAY3:dim:15" "30000"
 ;===============================================================================
 
 
@@ -35,7 +36,7 @@ global TempCsvFile := ProjectRoot . "\monitors_sleeper_temp.csv"
 global RestoreFile := ProjectRoot . "\config\sleeper_restore.dat"
 
 ; === CONFIGURATION VARIABLES ===
-global MonitorIdList := ""      ; Stores the raw input list of monitor IDs
+global MonitorConfigList := ""  ; Stores the raw input list of monitor configurations
 global IdleThreshold := 0       ; Time (ms) before a monitor is considered idle
 global CheckInterval := 50      ; Frequency (ms) to check each monitor's state
 
@@ -54,7 +55,7 @@ Log(message) {
 
 
 ; ==============================================================================
-; INITIALIZATION BLOCK — Validates inputs, prepares GUIs, and builds monitor list
+; INITIALIZATION BLOCK — Validates inputs, prepares state, and builds monitor list
 ; ==============================================================================
 
 Log("--- Script started ---")
@@ -83,23 +84,24 @@ if FileExist(RestoreFile) {
 ; --- Handle required command-line arguments ---
 if A_Args.Length < 2 {
     Log("ERROR: Not enough arguments passed.")
-    MsgBox("This script requires 2 arguments:`n1. Monitor ID list`n2. Idle timeout (ms).", "Error", 48)
+    MsgBox("This script requires 2 arguments:`n1. Monitor configuration list`n2. Idle timeout (ms).", "Error", 48)
     ExitApp
 }
 
-MonitorIdList := A_Args[1]
+MonitorConfigList := A_Args[1]
 IdleThreshold := Integer(A_Args[2])
 
-Log("Monitor ID list: " . MonitorIdList)
+Log("Monitor Config list: " . MonitorConfigList)
 Log("Idle threshold: " . IdleThreshold . " ms")
 
-; --- Ensure overlays are removed on script exit ---
+; --- Ensure cleanup on script exit ---
 OnExit(CleanupOnExit)
 
-; --- Parse and initialize each monitor ID ---
-monitorIDs := StrSplit(MonitorIdList, ";")
-for id in monitorIDs {
-    id := Trim(id)
+; --- Parse and initialize each monitor configuration ---
+for config in StrSplit(MonitorConfigList, ";") {
+    parts := StrSplit(config, ":")
+    id := Trim(parts[1])
+
     if id = ""
         continue
 
@@ -107,21 +109,36 @@ for id in monitorIDs {
     monitorRect := GetMonitorRect(id)
 
     if monitorRect {
-        ; Create a GUI window that fills the screen and is invisible to the taskbar
-        blackoutGui := Gui("+AlwaysOnTop -Caption +ToolWindow -DPIScale")
-        blackoutGui.BackColor := "000000" ; Fully black window
-
-        ; Store state for this monitor
+        ; Base state for any monitored screen
         screenState := Map(
             "ID", id,
             "Rect", monitorRect,
-            "Gui", blackoutGui,
-            "IsBlackedOut", false,
             "OriginalBrightness", -1, ; -1 indicates not yet recorded
+            "IsModified", false,
             "LastActiveTime", A_TickCount
         )
+
+        action := Trim(parts[2])
+        if (action = "blackout" && parts.Length = 2) {
+            ; Create a GUI window that fills the screen and is invisible to the taskbar
+            blackoutGui := Gui("+AlwaysOnTop -Caption +ToolWindow -DPIScale")
+            blackoutGui.BackColor := "000000" ; Fully black window
+
+            screenState["Action"] := "blackout"
+            screenState["Gui"] := blackoutGui
+            Log("Monitor initialized: " . id)
+        }
+        else if (action = "dim" && parts.Length = 3) {
+            screenState["Action"] := "dim"
+            screenState["TargetDimLevel"] := Integer(Trim(parts[3]))
+            Log("Monitor initialized: " . id . " with target dim level: " . screenState["TargetDimLevel"] . "%")
+        }
+        else {
+            Log("WARNING: Invalid monitor configuration skipped: " . config)
+            continue
+        }
+
         MonitoredScreens.Push(screenState)
-        Log("Monitor initialized: " . id)
     } else {
         Log("ERROR: Could not find monitor ID: " . id)
         MsgBox("Monitor not found: " . id ".`nPlease verify the ID and ensure MultiMonitorTool.exe is available.", "Warning", 48)
@@ -162,11 +179,9 @@ CheckAllMonitors(*) {
                 if activeWin := WinActive("A") {
                     ; Get the window's position (x,y) AND its size (width, height)
                     WinGetPos(&wx, &wy, &ww, &wh, activeWin)
-
                     ; Calculate the absolute center point of the window
                     winCenterX := wx + (ww // 2)
                     winCenterY := wy + (wh // 2)
-
                     ; Check if the window's CENTER POINT is on the monitor
                     if (winCenterX >= rect['Left'] && winCenterX < rect['Right'] && winCenterY >= rect['Top'] && winCenterY < rect['Bottom']) {
                         activity := true
@@ -179,27 +194,38 @@ CheckAllMonitors(*) {
         if activity {
             screen['LastActiveTime'] := A_TickCount
 
-            if screen['IsBlackedOut'] {
-                Log("Activity resumed on " . screen['ID'] . ". Restoring brightness and unhiding overlay.")
+            if screen['IsModified'] {
+                if (screen['Action'] = "dim") {
+                    Log("Activity resumed on " . screen['ID'] . ". Restoring brightness to " . screen['OriginalBrightness'] . "%.")
+                } else { ; blackout
+                    Log("Activity resumed on " . screen['ID'] . ". Restoring brightness and unhiding overlay.")
+                    screen['Gui'].Hide()
+                }
                 SetBrightness(screen['ID'], screen['OriginalBrightness'])
-                screen['Gui'].Hide()
-                screen['IsBlackedOut'] := false
+                screen['IsModified'] := false
                 ClearRestoreState(screen['ID'])
             }
 
         ; === Reaction: Monitor has been idle for longer than threshold ===
-        } else if !screen['IsBlackedOut'] && (A_TickCount - screen['LastActiveTime'] > IdleThreshold) {
+        } else if !screen['IsModified'] && (A_TickCount - screen['LastActiveTime'] > IdleThreshold) {
             currentBrightness := GetBrightness(screen['ID'])
             screen['OriginalBrightness'] := currentBrightness
-
-            Log(screen['ID'] . " exceeded idle threshold. Dimming to 0% and blacking out.")
-            SetBrightness(screen['ID'], 0)
             SaveRestoreState(screen['ID'], currentBrightness)
 
-            x := rect['Left'], y := rect['Top']
-            w := rect['Right'] - rect['Left'], h := rect['Bottom'] - rect['Top']
-            screen['Gui'].Show("x" . x . " y" . y . " w" . w . " h" . h . " NoActivate")
-            screen['IsBlackedOut'] := true
+            if (screen['Action'] = "dim") {
+                Log(screen['ID'] . " exceeded idle threshold. Dimming from " . currentBrightness . "% to " . screen['TargetDimLevel'] . "%.")
+                SetBrightness(screen['ID'], screen['TargetDimLevel'])
+            }
+            else { ; blackout
+                Log(screen['ID'] . " exceeded idle threshold. Dimming to 0% and blacking out.")
+                SetBrightness(screen['ID'], 0)
+
+                x := rect['Left'], y := rect['Top']
+                w := rect['Right'] - rect['Left'], h := rect['Bottom'] - rect['Top']
+                screen['Gui'].Show("x" . x . " y" . y . " w" . w . " h" . h . " NoActivate")
+            }
+
+            screen['IsModified'] := true
         }
     }
 }
@@ -282,13 +308,13 @@ GetMonitorRect(monitorID) {
 }
 
 ; ==============================================================================
-; STATE MANAGEMENT FUNCTIONS — Manages the brightness_restore.dat file
+; STATE MANAGEMENT FUNCTIONS — Manages the sleeper_restore.dat file
 ; ==============================================================================
 
 SaveRestoreState(monitorID, brightness) {
     global RestoreFile
     Log("Saving restore state for " . monitorID . " -> " . brightness . "%")
-    
+
     content := ""
     found := false
     if FileExist(RestoreFile) {
@@ -305,7 +331,7 @@ SaveRestoreState(monitorID, brightness) {
     if !found {
         content .= monitorID . ":" . brightness . "`n"
     }
-    
+
     try {
         file := FileOpen(RestoreFile, "w", "UTF-8")
         file.Write(Trim(content, "`n"))
@@ -318,7 +344,7 @@ SaveRestoreState(monitorID, brightness) {
 ClearRestoreState(monitorID) {
     global RestoreFile
     Log("Clearing restore state for " . monitorID)
-    
+
     if !FileExist(RestoreFile)
         return
 
@@ -354,12 +380,13 @@ CleanupOnExit(ExitReason, ExitCode) {
 
     for screen in MonitoredScreens {
         try {
-            if (screen['IsBlackedOut'] && ExitReason = 'Menu') {
+            ; Since OnExit only triggers from a tray menu exit, we always restore.
+            if (screen['IsModified'] && ExitReason = 'Menu') {
                 Log("Restoring brightness for monitor: " . screen['ID'] . " to " . screen['OriginalBrightness'] . "%")
                 SetBrightness(screen['ID'], screen['OriginalBrightness'])
                 ClearRestoreState(screen['ID'])
             }
-            if IsObject(screen['Gui']) {
+            if (screen.Has("Gui") && IsObject(screen['Gui'])) {
                 screen['Gui'].Destroy()
                 Log("Destroyed GUI for monitor: " . screen['ID'])
             }

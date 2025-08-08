@@ -4,14 +4,13 @@
 #
 # Description:
 #   This PowerShell script serves as an interactive setup wizard for the
-#   OLED Sleeper and OLED Dimmer AutoHotkey scripts. It can configure the
-#   scripts to run on startup or remove a previously created startup task.
+#   OLED Sleeper AutoHotkey script. It can configure the
+#   script to run on startup or remove a previously created startup task.
 #
 # Dependencies:
 #   - ..\tools\MultiMonitorTool\MultiMonitorTool.exe
 #   - ..\tools\ControlMyMonitor\ControlMyMonitor.exe
 #   - OLED-Sleeper.ahk (in the same src directory)
-#   - OLED-Dimmer.ahk (in the same src directory)
 #   - Startup-Task.ps1 (in the same src directory)
 #
 #===============================================================================
@@ -41,7 +40,7 @@ function Show-MonitorDetails {
 
     Write-Host "   - ID: " -ForegroundColor Gray -NoNewline
     Write-Host $MonitorObject.'Name' -ForegroundColor White
-    
+
     Write-Host "" # Adds a blank line for spacing after each monitor
 }
 
@@ -57,13 +56,12 @@ $projectRoot = (Get-Item $scriptRoot).Parent.FullName
 $multiMonitorToolPath = Join-Path -Path $projectRoot -ChildPath "tools\MultiMonitorTool\MultiMonitorTool.exe"
 $controlMyMonitorPath = Join-Path -Path $projectRoot -ChildPath "tools\ControlMyMonitor\ControlMyMonitor.exe"
 $sleeperAhkPath = Join-Path -Path $scriptRoot -ChildPath "OLED-Sleeper.ahk"
-$dimmerAhkPath = Join-Path -Path $scriptRoot -ChildPath "OLED-Dimmer.ahk"
 $csvPath = Join-Path -Path $projectRoot -ChildPath "monitors.csv"
 
 # --- Startup Script and Config Paths ---
 $startupTaskScriptPath = Join-Path -Path $scriptRoot -ChildPath "Startup-Task.ps1"
 $startupConfigFilePath = Join-Path -Path $projectRoot -ChildPath "config\Startup.config.psd1"
-$shortcutPath = Join-Path -Path ([System.Environment]::GetFolderPath('Startup')) -ChildPath "OLED Startup Task.lnk"
+$shortcutPath = Join-Path -Path ([System.Environment]::GetFolderPath('Startup')) -ChildPath "OLED Sleeper Startup Task.lnk"
 
 # --- Emoji Definitions ---
 $checkEmoji = [System.Char]::ConvertFromUtf32(0x2705)      # ✅
@@ -73,8 +71,7 @@ $dimmerEmoji = [System.Char]::ConvertFromUtf32(0x1F506)    # 🔆
 
 # --- Data Variables ---
 $managedMonitors = New-Object System.Collections.ArrayList
-$blackoutMonitors = New-Object System.Collections.ArrayList
-$dimmerMonitors = New-Object System.Collections.ArrayList
+$configuredMonitors = New-Object System.Collections.ArrayList
 $time_min = $null
 $time_ms = $null
 
@@ -82,7 +79,7 @@ $time_ms = $null
 #==                           MAIN MENU                         ==
 #=================================================================
 Clear-Host
-Write-Host "--- OLED Sleeper & Dimmer Setup ---" -ForegroundColor Cyan
+Write-Host "--- OLED Sleeper Setup ---" -ForegroundColor Cyan
 Write-Host "1. Configure / Update Startup Task"
 Write-Host "2. Remove Startup Task"
 Write-Host "3. Exit"
@@ -92,7 +89,7 @@ if ($mainChoice -eq '2') {
     # --- REMOVAL LOGIC ---
     Write-Host "`n--- Removing Startup Task & Configuration ---" -ForegroundColor Cyan
     $itemRemoved = $false
-    
+
     # Remove the startup shortcut
     if (Test-Path -Path $shortcutPath) {
         try {
@@ -140,7 +137,6 @@ elseif ($mainChoice -ne '1') {
 if (-not (Test-Path -Path $multiMonitorToolPath)) { Write-Host "ERROR: MultiMonitorTool.exe not found." -ForegroundColor Red; Read-Host; exit }
 if (-not (Test-Path -Path $controlMyMonitorPath)) { Write-Host "ERROR: ControlMyMonitor.exe not found." -ForegroundColor Red; Read-Host; exit }
 if (-not (Test-Path -Path $sleeperAhkPath)) { Write-Host "ERROR: OLED-Sleeper.ahk not found." -ForegroundColor Red; Read-Host; exit }
-if (-not (Test-Path -Path $dimmerAhkPath)) { Write-Host "ERROR: OLED-Dimmer.ahk not found." -ForegroundColor Red; Read-Host; exit }
 if (-not (Test-Path -Path $startupTaskScriptPath)) { Write-Host "ERROR: Startup-Task.ps1 not found." -ForegroundColor Red; Read-Host; exit }
 
 # --- Data Gathering ---
@@ -186,31 +182,32 @@ Write-Host "-------------------------------------------------" -ForegroundColor 
 foreach ($monitor in $managedMonitors) {
     Write-Host "Configuring action for: " -ForegroundColor Gray -NoNewline
     Write-Host "$($monitor.'Monitor Name')" -ForegroundColor Green
-    
+
     $action = Read-Host "Action? (1 = Blackout, 2 = Dim)"
-    
+
     if ($action -eq '1') {
         # Store an object with both Name and Monitor ID
         $monitorInfo = [PSCustomObject]@{
             Name = $monitor.Name
             MonitorID = $monitor.'Monitor ID'
+            Action = 'blackout'
         }
-        [void]$blackoutMonitors.Add($monitorInfo)
+        [void]$configuredMonitors.Add($monitorInfo)
         Write-Host "  -> " -ForegroundColor Gray -NoNewline
         Write-Host "$blackoutEmoji Set to BLACKOUT." -ForegroundColor White
     }
     elseif ($action -eq '2') {
         while ($true) {
-            $dimLevel = 0  
+            $dimLevel = 0
             $dimLevelStr = Read-Host "   Enter brightness level (0-100)"
             if ([int]::TryParse($dimLevelStr, [ref]$dimLevel) -and $dimLevel -ge 0 -and $dimLevel -le 100) {
-                # Store an object with Name, Monitor ID, and Dim Level
                 $monitorInfo = [PSCustomObject]@{
                     Name = $monitor.Name
                     MonitorID = $monitor.'Monitor ID'
+                    Action = 'dim'
                     DimLevel = $dimLevel
                 }
-                [void]$dimmerMonitors.Add($monitorInfo)
+                [void]$configuredMonitors.Add($monitorInfo)
                 Write-Host "  -> " -ForegroundColor Gray -NoNewline
                 Write-Host "$dimmerEmoji Set to DIM to $dimLevel%." -ForegroundColor White
                 break
@@ -260,7 +257,7 @@ Write-Host "--- Step 4: Finalize Setup ---" -ForegroundColor Cyan
 $setupStartup = Read-Host "Set this configuration to run automatically when Windows starts? (y/n)"
 if ($setupStartup.ToLower() -eq 'y') {
     # If yes, we save the config file AND create the startup shortcut.
-    
+
     # --- Save the configuration file ---
     $configDirectory = Split-Path -Path $startupConfigFilePath -Parent
     if (-not (Test-Path -Path $configDirectory)) {
@@ -269,11 +266,10 @@ if ($setupStartup.ToLower() -eq 'y') {
 
     # Create a hashtable to hold the configuration data
     $configData = @{
-        BlackoutMonitors = $blackoutMonitors
-        DimmerMonitors   = $dimmerMonitors
-        IdleTimeMS       = $time_ms
+        ConfiguredMonitors = $configuredMonitors # Save the single list
+        IdleTimeMS         = $time_ms
     }
-    
+
     # Export the rich object data using Export-Clixml
     $configData | Export-Clixml -Path $startupConfigFilePath
 
@@ -288,8 +284,8 @@ if ($setupStartup.ToLower() -eq 'y') {
         $shortcut.Arguments = "-ExecutionPolicy Bypass -WindowStyle Hidden -File `"$startupTaskScriptPath`""
         $shortcut.WorkingDirectory = $scriptRoot
         $shortcut.IconLocation = "powershell.exe,0"
-        $shortcut.Description = "Launches the OLED Dimmer/Sleeper scripts."
-        
+        $shortcut.Description = "Launches the OLED Sleeper script."
+
         $shortcut.Save()
 
         Write-Host "$checkEmoji Shortcut created in your Startup folder. The task will run on next login." -ForegroundColor Green
@@ -301,16 +297,16 @@ if ($setupStartup.ToLower() -eq 'y') {
 
 # --- Terminate Existing AHK Scripts ---
 try {
-    # Get all processes that could be our AHK scripts
+    # Get all processes that could be our AHK script
     $ahkProcesses = Get-Process | Where-Object { $_.ProcessName -like 'AutoHotkey*' }
-    
+
     if ($ahkProcesses) {
         Write-Host "`n--- Gracefully closing existing script instances... ---" -ForegroundColor Cyan
         foreach ($proc in $ahkProcesses) {
-            # We need to get the full command line to identify our specific scripts
+            # We need to get the full command line to identify our specific script
             $cimProc = Get-CimInstance -ClassName Win32_Process -Filter "ProcessId = $($proc.Id)"
-            
-            if ($cimProc.CommandLine -like "*OLED-Sleeper.ahk*" -or $cimProc.CommandLine -like "*OLED-Dimmer.ahk*") {
+
+            if ($cimProc.CommandLine -like "*OLED-Sleeper.ahk*") {
                 Write-Host "Stopping process: $($proc.Name) (PID: $($proc.Id))" -ForegroundColor Red
                 Stop-Process -Id $proc.Id -Force
             }
@@ -324,30 +320,23 @@ catch {
 
 
 # --- Launch Scripts Now ---
-Write-Host "`n--- Launching Scripts Now (for the current session) ---" -ForegroundColor Cyan
-$launchedSomething = $false
+Write-Host "`n--- Launching Script Now (for the current session) ---" -ForegroundColor Cyan
 
-# --- Launch Blackout Watcher if needed ---
-if ($blackoutMonitors.Count -gt 0) {
-    # Extract just the 'Name' property for the command-line argument
-    $blackoutString = ($blackoutMonitors.Name) -join ';'
-    Start-Process -FilePath $sleeperAhkPath -ArgumentList """$blackoutString""", "$time_ms"
-    Write-Host "$checkEmoji Blackout Watcher: " -ForegroundColor Gray -NoNewline
-    Write-Host "Started for $($blackoutMonitors.Count) monitor(s)." -ForegroundColor Green
-    $launchedSomething = $true
-}
+if ($configuredMonitors.Count -gt 0) {
+    # Build the single argument string from the configured monitors list
+    $argumentParts = $configuredMonitors | ForEach-Object {
+        if ($_.Action -eq 'blackout') {
+            "$($_.Name):blackout"
+        } else { # dim
+            "$($_.Name):dim:$($_.DimLevel)"
+        }
+    }
+    $finalArgumentString = $argumentParts -join ';'
 
-# --- Launch Dimmer Watcher if needed ---
-if ($dimmerMonitors.Count -gt 0) {
-    # Build the string in the format "Name:DimLevel"
-    $dimmerString = ($dimmerMonitors | ForEach-Object { "$($_.Name):$($_.DimLevel)" }) -join ';'
-    Start-Process -FilePath $dimmerAhkPath -ArgumentList """$dimmerString""", "$time_ms"
-    Write-Host "$checkEmoji Dimmer Watcher: " -ForegroundColor Gray -NoNewline
-    Write-Host "Started for $($dimmerMonitors.Count) monitor(s)." -ForegroundColor Green
-    $launchedSomething = $true
-}
-
-if (-not $launchedSomething) {
+    Start-Process -FilePath $sleeperAhkPath -ArgumentList """$finalArgumentString""", "$time_ms"
+    Write-Host "$checkEmoji OLED Sleeper: " -ForegroundColor Gray -NoNewline
+    Write-Host "Started for $($configuredMonitors.Count) monitor(s)." -ForegroundColor Green
+} else {
     Write-Host "No valid actions were configured. Nothing to start." -ForegroundColor Yellow
 }
 
