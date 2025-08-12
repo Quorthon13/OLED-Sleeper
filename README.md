@@ -65,7 +65,7 @@ If neither is detected for a set time, the monitor is considered idle. No other 
     * **To set up for the first time or to change your settings**, choose option `1`. The wizard will guide you through selecting monitors, modes, and an idle time. When prompted, allow it to create the startup task.
     * **To remove the startup task and settings**, choose option `2`. This will delete the automatic startup shortcut and all saved configurations. Note that this action does not stop any scripts that are currently running.
 
-That's it. Once configured, the scripts will run silently in the background and launch automatically every time you log in.
+That's it. Once configured, the script will run silently in the background and launch automatically every time you log in.
 
 ---
 
