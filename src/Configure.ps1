@@ -76,6 +76,62 @@ $time_min = $null
 $time_ms = $null
 
 #=================================================================
+#==      SILENTLY VERIFY PREREQUISITES & APPLY COMPATIBILITY FIX      ==
+#=================================================================
+
+# Check 1: Is AutoHotkey installed at all?
+if (-not (Test-Path "Registry::HKEY_CLASSES_ROOT\.ahk")) {
+    Clear-Host
+    Write-Host "-------------------------------------------------" -ForegroundColor Red
+    Write-Host "CONFIGURATION HALTED: Prerequisite check failed." -ForegroundColor Red
+    Write-Host "Reason: AutoHotkey does not appear to be installed, as the `.ahk` file association was not found." -ForegroundColor Yellow
+    Write-Host ""
+    Write-Host "You can download AutoHotkey v2 from the official website:" -ForegroundColor White
+    Write-Host "https://www.autohotkey.com/" -ForegroundColor Cyan
+    Write-Host "-------------------------------------------------" -ForegroundColor Red
+    Read-Host "`nPlease install it and then run this configuration again. Press Enter to exit."
+    exit
+}
+
+# If the first check passes, we can proceed with more detailed validation.
+try {
+    # Find the program associated with .ahk files
+    $fileType = (Get-ItemProperty -Path "Registry::HKEY_CLASSES_ROOT\.ahk").'(default)'
+    $command = (Get-ItemProperty -Path "Registry::HKEY_CLASSES_ROOT\$fileType\shell\open\command").'(default)'
+    $ahkExePath = ($command -split '"')[1]
+
+    # Check 2: Does the .exe exist where the registry says it should?
+    if (-not (Test-Path -Path $ahkExePath)) {
+        throw "Your AutoHotkey installation appears to be corrupt. The registry points to a non-existent file at `"$ahkExePath`"."
+    }
+
+    # Check 3: Is it the correct version (v2)?
+    $versionInfo = (Get-Item $ahkExePath).VersionInfo
+    if ($versionInfo.ProductMajorPart -ne 2) {
+        throw "OLED-Sleeper requires AutoHotkey v2, but version $($versionInfo.ProductVersion) was found. Please install or update to AutoHotkey v2."
+    }
+
+    # If all checks pass, silently apply the High DPI compatibility fix.
+    $regPath = "HKCU:\Software\Microsoft\Windows NT\CurrentVersion\AppCompatFlags\Layers"
+    $currentValue = Get-ItemProperty -Path $regPath -Name $ahkExePath -ErrorAction SilentlyContinue
+    $requiredValue = "~ HIGHDPIAWARE" # Registry value for High DPI override -> "Application"
+
+    if ($currentValue.$ahkExePath -ne $requiredValue) {
+        Set-ItemProperty -Path $regPath -Name $ahkExePath -Value $requiredValue -Force
+    }
+}
+catch {
+    # This block now catches specific errors from the checks above.
+    Clear-Host
+    Write-Host "-------------------------------------------------" -ForegroundColor Red
+    Write-Host "CONFIGURATION HALTED: An error occurred during validation." -ForegroundColor Red
+    Write-Host "Reason: $($_.Exception.Message)" -ForegroundColor Yellow
+    Write-Host "-------------------------------------------------" -ForegroundColor Red
+    Read-Host "`nPlease resolve the issue and run the configuration again. Press Enter to exit."
+    exit
+}
+
+#=================================================================
 #==                           MAIN MENU                         ==
 #=================================================================
 Clear-Host
