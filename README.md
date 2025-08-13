@@ -1,8 +1,8 @@
-# OLED Sleeper 😴
+# OLED Sleeper 😴 – Blackout or Dim Secondary Monitors on Windows
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-A simple but powerful tool for Windows users to prevent OLED burn-in and create a distraction-free workspace by automatically blacking out or dimming idle monitors.
+OLED Sleeper is a lightweight Windows tool to **black out or dim idle monitors**, helping users **prevent OLED burn-in** and **temporarily sleep secondary monitors** for focus, gaming, or distraction-free work.
 
 <p align="center">
   <img src="https://files.catbox.moe/w0yq57.webp" alt="OLED Sleeper Demonstration"> 
@@ -12,39 +12,32 @@ A simple but powerful tool for Windows users to prevent OLED burn-in and create 
 
 ## The Problem
 
-OLED displays are susceptible to permanent image retention (burn-in) from static images. Additionally, many power users want to turn off secondary monitors for focus or gaming without putting the entire computer to sleep. Standard Windows power settings can't do this; it's all or nothing.
-
----
+Many users have multi-monitor setups but want to **turn off or dim secondary monitors temporarily** without putting the entire computer to sleep.  
+OLED and other displays can also suffer from **burn-in or image retention** if static images stay on screen too long.  
+Windows’ built-in power settings are all-or-nothing — there’s no per-monitor control.
 
 ## The Solution
 
-OLED Sleeper runs quietly in the background, checking for activity (mouse movement or active window presence) on each screen. If a designated monitor remains idle for a user-defined period, the script will either overlay it with a pure black screen or reduce its brightness — depending on your chosen mode.
+OLED Sleeper monitors each screen for activity (mouse or active window).  
+When a monitor is idle for a set time, it will either **black it out** or **dim its brightness**, depending on your preference.  
 
-This is useful not only for **protecting OLEDs**, but also for creating a more focused environment on any multi-monitor setup.
-
----
-
-## How It Works
-
-The script checks for:
-
-- **Mouse movement** over each monitor
-- **Active window focus** on that monitor
-
-If neither is detected for a set time, the monitor is considered idle. No other input is monitored.
+Benefits include:  
+- Protecting OLEDs from burn-in  
+- Creating a **distraction-free workspace**  
+- Temporarily **sleeping secondary monitors** while gaming or working  
+- Saving energy on idle screens
 
 ---
 
 ## Features
 
-* **Per-Monitor Control:** Choose exactly which monitors to manage.
-* **Adjustable Idle Timer:** Set any idle duration you want.
-* **Two Idle Modes:** Choose between full **blackout** or brightness **dimming** for each monitor.
-* **Automatic Startup:** Configure once and the script will automatically run every time you log in to Windows.
-* **Resilient State Saving:** Remembers which monitors were dimmed or blacked out, even if your PC shuts down unexpectedly.
-* **Instant Wake-Up:** Overlays are removed and brightness is restored the moment activity is detected.
-* **Lightweight:** Uses minimal memory and CPU.
-* **Simple Setup:** A command-line wizard guides you through initial setup, re-configuration, and removal.
+* **Per-Monitor Control:** Blackout or dim any monitor independently.
+* **Idle Timer:** Customize how long a monitor should be idle before action.
+* **Two Modes:** Full blackout or dimming (DDC/CI supported).
+* **Automatic Startup:** Runs at login without manual intervention.
+* **Focus Mode:** Temporarily hide secondary screens to reduce distractions.
+* **Lightweight:** Minimal CPU/memory usage.
+* **Instant Wake-Up:** Restore monitor immediately when activity is detected.
 
 ---
 
