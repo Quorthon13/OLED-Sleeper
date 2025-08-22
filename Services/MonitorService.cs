@@ -1,0 +1,60 @@
+﻿using OLED_Sleeper.Models;
+using OLED_Sleeper.Native;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Runtime.InteropServices;
+using System.Windows;
+
+namespace OLED_Sleeper.Services
+{
+    public class MonitorService
+    {
+        public List<MonitorInfo> GetMonitors()
+        {
+            var monitors = new List<MonitorInfo>();
+
+            NativeMethods.MonitorEnumProc callback = (IntPtr hMonitor, IntPtr hdcMonitor, ref NativeMethods.Rect lprcMonitor, IntPtr dwData) =>
+            {
+                var mi = new NativeMethods.MonitorInfoEx();
+                mi.cbSize = Marshal.SizeOf(mi);
+                if (NativeMethods.GetMonitorInfo(hMonitor, ref mi))
+                {
+                    NativeMethods.GetDpiForMonitor(hMonitor, NativeMethods.MonitorDpiType.MDT_EFFECTIVE_DPI, out uint dpiX, out _);
+                    monitors.Add(new MonitorInfo
+                    {
+                        DeviceName = mi.szDevice,
+                        Bounds = new Rect(mi.rcMonitor.left, mi.rcMonitor.top, mi.rcMonitor.right - mi.rcMonitor.left, mi.rcMonitor.bottom - mi.rcMonitor.top),
+                        IsPrimary = (mi.dwFlags & 1) == 1,
+                        Dpi = dpiX
+                    });
+                }
+                return true;
+            };
+
+            NativeMethods.EnumDisplayMonitors(IntPtr.Zero, IntPtr.Zero, callback, IntPtr.Zero);
+            EnrichWithHardwareIds(monitors);
+            return monitors;
+        }
+
+        private void EnrichWithHardwareIds(List<MonitorInfo> monitors)
+        {
+            var displayDevice = new NativeMethods.DISPLAY_DEVICE();
+            displayDevice.cb = Marshal.SizeOf(displayDevice);
+            for (uint adapterIndex = 0; NativeMethods.EnumDisplayDevices(null, adapterIndex, ref displayDevice, 0); adapterIndex++)
+            {
+                if ((displayDevice.StateFlags & 1) == 0) continue;
+                var monitorDevice = new NativeMethods.DISPLAY_DEVICE();
+                monitorDevice.cb = Marshal.SizeOf(monitorDevice);
+                for (uint monitorIndex = 0; NativeMethods.EnumDisplayDevices(displayDevice.DeviceName, monitorIndex, ref monitorDevice, 0); monitorIndex++)
+                {
+                    var foundMonitor = monitors.FirstOrDefault(m => m.DeviceName == displayDevice.DeviceName);
+                    if (foundMonitor != null)
+                    {
+                        foundMonitor.HardwareId = monitorDevice.DeviceID;
+                    }
+                }
+            }
+        }
+    }
+}
