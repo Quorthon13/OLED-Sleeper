@@ -1,4 +1,5 @@
-﻿using OLED_Sleeper.Models;
+﻿// File: Services/MonitorLayoutService.cs
+using OLED_Sleeper.Models;
 using OLED_Sleeper.ViewModels;
 using Serilog;
 using System;
@@ -10,7 +11,8 @@ using System.Windows;
 
 namespace OLED_Sleeper.Services
 {
-    public class MonitorLayoutService
+    // Refactored: Implements IMonitorLayoutService for dependency injection.
+    public class MonitorLayoutService : IMonitorLayoutService
     {
         public ObservableCollection<MonitorViewModel> CreateLayout(List<MonitorInfo> monitorInfos, double containerWidth, double containerHeight)
         {
@@ -44,9 +46,8 @@ namespace OLED_Sleeper.Services
             int fallbackMonitorNumber = 1;
             foreach (var monitorInfo in monitorInfos)
             {
-                int displayNumber = fallbackMonitorNumber++;
-                var match = Regex.Match(monitorInfo.DeviceName, @"\d+$");
-                if (match.Success) { int.TryParse(match.Value, out displayNumber); }
+                // Refactored: Centralized display number parsing.
+                int displayNumber = ParseDisplayNumber(monitorInfo.DeviceName, fallbackMonitorNumber++);
                 var monitorVm = new MonitorViewModel(monitorInfo, displayNumber, scale, totalBounds, offsetX, offsetY);
                 Log.Debug("Creating MonitorViewModel for {DeviceName}: ScaledLeft={L}, ScaledTop={T}, ScaledWidth={W}, ScaledHeight={H}",
                     monitorInfo.DeviceName, monitorVm.ScaledLeft, monitorVm.ScaledTop, monitorVm.ScaledWidth, monitorVm.ScaledHeight);
@@ -54,6 +55,17 @@ namespace OLED_Sleeper.Services
             }
             Log.Debug("--- Finished Layout Calculation ---");
             return monitorViewModels;
+        }
+
+        // Refactored: Extracted logic to a separate method for clarity and reuse.
+        private int ParseDisplayNumber(string deviceName, int fallback)
+        {
+            var match = Regex.Match(deviceName, @"\d+$");
+            if (match.Success && int.TryParse(match.Value, out int number))
+            {
+                return number;
+            }
+            return fallback;
         }
     }
 }

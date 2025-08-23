@@ -4,46 +4,43 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:viewModels="clr-namespace:OLED_Sleeper.ViewModels"
-        xmlns:converters="clr-namespace:OLED_Sleeper.Converters"
         xmlns:views="clr-namespace:OLED_Sleeper.Views"
+        xmlns:converters="clr-namespace:OLED_Sleeper.Converters"
         mc:Ignorable="d"
         Title="OLED Sleeper Settings" Height="650" Width="800" MinHeight="500" MinWidth="700"
         d:DataContext="{d:DesignInstance viewModels:MainViewModel}"
         FontFamily="Bahnschrift"
-        Background="#1C1C1E"
+        Background="{StaticResource PrimaryBackgroundColor}"
         WindowStyle="None"
         AllowsTransparency="True"
         WindowChrome.IsHitTestVisibleInChrome="True"
         Icon="/Assets/icon.ico">
 
     <Window.Resources>
-        <!-- Converters for showing/hiding the config panel -->
-        <converters:BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
+        <converters:BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
+        <converters:NullToVisibilityConverter x:Key="NullToVisibilityConverter" IsReversed="False" />
+        <converters:NullToVisibilityConverter x:Key="NotNullToVisibilityConverter" IsReversed="True" />
 
-        <converters:NullToVisibilityConverter x:Key="NullToVisibilityConverter" IsReversed="False"/>
-        <converters:NullToVisibilityConverter x:Key="NotNullToVisibilityConverter" IsReversed="True"/>
-
-        <!-- Styles for the custom title bar buttons -->
         <Style x:Key="WindowButtonStyle" TargetType="Button">
-            <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="Foreground" Value="#F5F5F5"/>
-            <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="Width" Value="46"/>
-            <Setter Property="Height" Value="32"/>
-            <Setter Property="FontFamily" Value="Segoe MDL2 Assets"/>
-            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Foreground" Value="{StaticResource PrimaryForegroundColor}" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Width" Value="46" />
+            <Setter Property="Height" Value="32" />
+            <Setter Property="FontFamily" Value="Segoe MDL2 Assets" />
+            <Setter Property="FontSize" Value="12" />
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
                         <Border Background="{TemplateBinding Background}">
-                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
                         </Border>
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
             <Style.Triggers>
                 <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="Background" Value="#3A3A3C"/>
+                    <Setter Property="Background" Value="{StaticResource TertiaryBackgroundColor}" />
                 </Trigger>
             </Style.Triggers>
         </Style>
@@ -51,49 +48,97 @@
         <Style x:Key="CloseButtonStyle" TargetType="Button" BasedOn="{StaticResource WindowButtonStyle}">
             <Style.Triggers>
                 <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="Background" Value="#E81123"/>
-                    <Setter Property="Foreground" Value="White"/>
+                    <Setter Property="Background" Value="{StaticResource DestructiveColorBrush}" />
+                    <Setter Property="Foreground" Value="White" />
                 </Trigger>
             </Style.Triggers>
         </Style>
+
+        <Style x:Key="ModernActionButton" TargetType="Button">
+            <Setter Property="Foreground" Value="{StaticResource PrimaryForegroundColor}" />
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="Padding" Value="15,8" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="border"
+                                Padding="{TemplateBinding Padding}"
+                                CornerRadius="5"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.5" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </Window.Resources>
 
-    <Border BorderBrush="#3A3A3C" BorderThickness="1">
+    <Border BorderBrush="{StaticResource TertiaryBackgroundColor}" BorderThickness="1">
         <Grid>
             <Grid.RowDefinitions>
-                <RowDefinition Height="32"/>
-                <RowDefinition Height="*"/>
-                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="32" />
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
 
-            <Grid Grid.Row="0" Background="#2D2D30" MouseDown="TitleBar_MouseDown">
+            <Grid Grid.Row="0" Background="{StaticResource SecondaryBackgroundColor}" MouseDown="TitleBar_MouseDown">
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Center">
-                    <Image Source="/Assets/icon.ico" Width="18" Height="18" Margin="8,0,0,0"/>
-                    <TextBlock Text="OLED Sleeper Settings" Foreground="#F5F5F5" Margin="10,0,0,0" VerticalAlignment="Center"/>
+                    <Image Source="/Assets/icon.ico" Width="18" Height="18" Margin="8,0,0,0" />
+                    <TextBlock Text="OLED Sleeper Settings" Foreground="{StaticResource PrimaryForegroundColor}" Margin="10,0,0,0" VerticalAlignment="Center" />
                 </StackPanel>
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                    <Button Style="{StaticResource WindowButtonStyle}" Content="&#xE921;" Click="MinimizeButton_Click" ToolTip="Minimize"/>
-                    <Button Style="{StaticResource WindowButtonStyle}" Content="&#xE922;" Click="MaximizeButton_Click" ToolTip="Maximize"/>
-                    <Button Style="{StaticResource CloseButtonStyle}" Content="&#xE8BB;" Click="CloseButton_Click" ToolTip="Close"/>
+                    <Button Style="{StaticResource WindowButtonStyle}" Content="&#xE921;" Click="MinimizeButton_Click" ToolTip="Minimize" />
+                    <Button Style="{StaticResource WindowButtonStyle}" Content="&#xE922;" Click="MaximizeButton_Click" ToolTip="Maximize" />
+                    <Button Style="{StaticResource CloseButtonStyle}" Content="&#xE8BB;" Click="CloseButton_Click" ToolTip="Close" />
                 </StackPanel>
             </Grid>
 
             <Grid Margin="15" Grid.Row="1">
-                <views:MonitorLayoutView/>
+                <views:MonitorLayoutView />
             </Grid>
 
-            <Border Grid.Row="2" MinHeight="220" Margin="15,0,15,15"
-                    Background="#2D2D30" CornerRadius="8"
+            <Border Grid.Row="2" Margin="15,0,15,15"
+                    Background="{StaticResource SecondaryBackgroundColor}" CornerRadius="8"
                     Visibility="{Binding SelectedMonitor, Converter={StaticResource NotNullToVisibilityConverter}}">
-                <views:MonitorConfigurationView DataContext="{Binding SelectedMonitor.Configuration}"/>
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <views:MonitorConfigurationView Grid.Row="0" DataContext="{Binding SelectedMonitor.Configuration}" />
+
+                    <Border Grid.Row="1" BorderBrush="{StaticResource SeparatorColorBrush}" BorderThickness="0,1,0,0" Margin="0,10,0,0" Padding="15">
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="20,0">
+                            <Button Content="Discard Changes"
+                                    Command="{Binding DiscardChangesCommand}"
+                                    IsEnabled="{Binding IsDirty}"
+                                    Style="{StaticResource ModernActionButton}"
+                                    Background="Transparent" BorderBrush="{StaticResource SecondaryForegroundColor}" BorderThickness="1" />
+                            <Button Content="Save Settings"
+                                    Command="{Binding SaveSettingsCommand}"
+                                    IsEnabled="{Binding IsDirty}"
+                                    Style="{StaticResource ModernActionButton}"
+                                    Background="{StaticResource AccentColorBrush}" Margin="15,0,0,0" />
+                        </StackPanel>
+                    </Border>
+                </Grid>
             </Border>
 
             <Border Grid.Row="2" MinHeight="220" Margin="15,0,15,15"
-                    Background="#2D2D30" CornerRadius="8"
+                    Background="{StaticResource SecondaryBackgroundColor}" CornerRadius="8"
                     Visibility="{Binding SelectedMonitor, Converter={StaticResource NullToVisibilityConverter}}">
                 <TextBlock Text="Click a monitor above to configure its settings."
-                           Foreground="#8E8E93" FontSize="16"
-                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                           Foreground="{StaticResource SecondaryForegroundColor}" FontSize="16"
+                           HorizontalAlignment="Center" VerticalAlignment="Center" />
             </Border>
         </Grid>
     </Border>

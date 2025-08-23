@@ -1,5 +1,4 @@
-﻿// File: /Commands/RelayCommand.cs
-using System;
+﻿using System;
 using System.Windows.Input;
 
 namespace OLED_Sleeper.Commands
@@ -15,10 +14,16 @@ namespace OLED_Sleeper.Commands
             _canExecute = canExecute;
         }
 
+        // Overload for parameter-less delegates
+        public RelayCommand(Action execute, Func<bool>? canExecute = null)
+            : this(p => execute(), p => canExecute?.Invoke() ?? true)
+        {
+        }
+
         public event EventHandler? CanExecuteChanged
         {
-            add => CommandManager.RequerySuggested += value;
-            remove => CommandManager.RequerySuggested -= value;
+            add { CommandManager.RequerySuggested += value; }
+            remove { CommandManager.RequerySuggested -= value; }
         }
 
         public bool CanExecute(object? parameter)

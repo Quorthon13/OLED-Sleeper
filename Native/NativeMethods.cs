@@ -1,5 +1,4 @@
-﻿using System;
-using System.Runtime.InteropServices;
+﻿using System.Runtime.InteropServices;
 
 namespace OLED_Sleeper.Native
 {
@@ -19,9 +18,12 @@ namespace OLED_Sleeper.Native
         [DllImport("Shcore.dll")]
         public static extern int GetDpiForMonitor(IntPtr hmonitor, MonitorDpiType dpiType, out uint dpiX, out uint dpiY);
 
-        public enum MonitorDpiType { MDT_EFFECTIVE_DPI = 0, MDT_DEFAULT = MDT_EFFECTIVE_DPI }
+        public enum MonitorDpiType
+        { MDT_EFFECTIVE_DPI = 0, MDT_DEFAULT = MDT_EFFECTIVE_DPI }
+
         [StructLayout(LayoutKind.Sequential)]
-        public struct Rect { public int left, top, right, bottom; }
+        public struct Rect
+        { public int left, top, right, bottom; }
 
         private const int CCHDEVICENAME = 32;
 
@@ -32,6 +34,7 @@ namespace OLED_Sleeper.Native
             public Rect rcMonitor;
             public Rect rcWork;
             public uint dwFlags;
+
             [MarshalAs(UnmanagedType.ByValTStr, SizeConst = CCHDEVICENAME)]
             public string szDevice;
         }
@@ -40,13 +43,18 @@ namespace OLED_Sleeper.Native
         public struct DISPLAY_DEVICE
         {
             public int cb;
+
             [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 32)]
             public string DeviceName;
+
             [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 128)]
             public string DeviceString;
+
             public uint StateFlags;
+
             [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 128)]
             public string DeviceID;
+
             [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 128)]
             public string DeviceKey;
         }

@@ -1,20 +1,16 @@
-﻿// File: Converters/LeftTopToMarginConverter.cs
+﻿// File: Converters/MultiValueConverter.cs
 using System;
 using System.Globalization;
-using System.Windows;
 using System.Windows.Data;
 
 namespace OLED_Sleeper.Converters
 {
-    public class LeftTopToMarginConverter : IMultiValueConverter
+    // Refactored: New converter to pass multiple values (width, height) to a command.
+    public class MultiValueConverter : IMultiValueConverter
     {
         public object Convert(object[] values, Type targetType, object parameter, CultureInfo culture)
         {
-            if (values.Length == 2 && values[0] is double left && values[1] is double top)
-            {
-                return new Thickness(left, top, 0, 0);
-            }
-            return new Thickness(0);
+            return values.Clone();
         }
 
         public object[] ConvertBack(object value, Type[] targetTypes, object parameter, CultureInfo culture)

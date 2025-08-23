@@ -1,4 +1,4 @@
-﻿// File: /Converters/BooleanToVisibilityConverter.cs
+﻿// File: Converters/BooleanToVisibilityConverter.cs
 using System;
 using System.Globalization;
 using System.Windows;
@@ -10,12 +10,22 @@ namespace OLED_Sleeper.Converters
     {
         public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
         {
-            return (value is bool b && b) ? Visibility.Visible : Visibility.Collapsed;
+            bool boolValue = false;
+            if (value is bool b)
+            {
+                boolValue = b;
+            }
+
+            return boolValue ? Visibility.Visible : Visibility.Collapsed;
         }
 
         public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
         {
-            throw new NotImplementedException();
+            if (value is Visibility visibility)
+            {
+                return visibility == Visibility.Visible;
+            }
+            return false;
         }
     }
 }

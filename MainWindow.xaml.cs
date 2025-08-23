@@ -1,4 +1,4 @@
-﻿using OLED_Sleeper.ViewModels;
+﻿// File: MainWindow.xaml.cs
 using System.ComponentModel;
 using System.Windows;
 using System.Windows.Input;
@@ -7,14 +7,15 @@ namespace OLED_Sleeper
 {
     public partial class MainWindow : Window
     {
+        // Refactored: DataContext is now set from App.xaml.cs via DI.
         public MainWindow()
         {
             InitializeComponent();
-            DataContext = new MainViewModel();
         }
 
         protected override void OnClosing(CancelEventArgs e)
         {
+            // Hides the window instead of closing it, to keep the app running in the tray.
             e.Cancel = true;
             this.Hide();
             base.OnClosing(e);

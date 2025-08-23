@@ -1,4 +1,5 @@
-﻿using OLED_Sleeper.Models;
+﻿// File: Services/MonitorService.cs
+using OLED_Sleeper.Models;
 using OLED_Sleeper.Native;
 using System;
 using System.Collections.Generic;
@@ -8,7 +9,8 @@ using System.Windows;
 
 namespace OLED_Sleeper.Services
 {
-    public class MonitorService
+    // Refactored: Implements IMonitorService for dependency injection.
+    public class MonitorService : IMonitorService
     {
         public List<MonitorInfo> GetMonitors()
         {

@@ -1,7 +1,6 @@
-﻿// File: /ViewModels/MonitorViewModel.cs
-
-using System.Windows;
+﻿// File: ViewModels/MonitorViewModel.cs
 using OLED_Sleeper.Models;
+using System.Windows;
 using System.Windows.Media;
 
 namespace OLED_Sleeper.ViewModels
@@ -10,10 +9,10 @@ namespace OLED_Sleeper.ViewModels
     {
         private readonly MonitorInfo _monitor;
 
-        // Add a property to hold the configuration for this monitor
         public MonitorConfigurationViewModel Configuration { get; }
 
         private bool _isSelected;
+
         public bool IsSelected
         {
             get => _isSelected;
@@ -22,6 +21,10 @@ namespace OLED_Sleeper.ViewModels
 
         public string MonitorTitle => _monitor.IsPrimary ? $"Monitor {DisplayNumber} (Primary)" : $"Monitor {DisplayNumber}";
         public int DisplayNumber { get; }
+
+        // Refactored: Expose HardwareId for settings persistence.
+        public string HardwareId => _monitor.HardwareId;
+
         public string ResolutionText => $"{(int)_monitor.Bounds.Width}x{(int)_monitor.Bounds.Height}";
         public SolidColorBrush BackgroundColor => new SolidColorBrush(Color.FromRgb(60, 60, 60));
 
@@ -35,8 +38,8 @@ namespace OLED_Sleeper.ViewModels
             _monitor = monitor;
             DisplayNumber = displayNumber;
 
-            // Initialize the configuration ViewModel
-            Configuration = new MonitorConfigurationViewModel(monitor);
+            // Refactored: Pass display number to config view model.
+            Configuration = new MonitorConfigurationViewModel(monitor, displayNumber);
 
             ScaledWidth = _monitor.Bounds.Width * scale;
             ScaledHeight = _monitor.Bounds.Height * scale;

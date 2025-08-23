@@ -1,15 +1,21 @@
-﻿using System.Windows;
-using System.Windows.Controls;
+﻿// File: App.xaml.cs
 using Hardcodet.Wpf.TaskbarNotification;
+using Microsoft.Extensions.DependencyInjection;
+using OLED_Sleeper.Services;
+using OLED_Sleeper.ViewModels;
 using Serilog;
+using System;
+using System.Windows;
+using System.Windows.Controls;
 
-// Note: C# namespaces can't use hyphens, so we use an underscore.
 namespace OLED_Sleeper
 {
     public partial class App : Application
     {
         private TaskbarIcon? notifyIcon;
-        private MainWindow? mainWindow;
+
+        // Refactored: Use IServiceProvider for DI.
+        private IServiceProvider? _serviceProvider;
 
         protected override void OnStartup(StartupEventArgs e)
         {
@@ -26,8 +32,31 @@ namespace OLED_Sleeper
 
             base.OnStartup(e);
 
-            mainWindow = new MainWindow();
+            // Refactored: Setup Dependency Injection.
+            var services = new ServiceCollection();
+            ConfigureServices(services);
+            _serviceProvider = services.BuildServiceProvider();
 
+            // Refactored: Resolve MainWindow from DI container.
+            var mainWindow = _serviceProvider.GetRequiredService<MainWindow>();
+            mainWindow.DataContext = _serviceProvider.GetRequiredService<MainViewModel>();
+            this.MainWindow = mainWindow;
+            mainWindow.Show();
+            SetupTaskbarIcon();
+        }
+
+        // Refactored: Method to configure services for DI.
+        private void ConfigureServices(IServiceCollection services)
+        {
+            services.AddSingleton<IMonitorService, MonitorService>();
+            services.AddSingleton<IMonitorLayoutService, MonitorLayoutService>();
+            services.AddSingleton<ISettingsService, SettingsService>();
+            services.AddSingleton<MainViewModel>();
+            services.AddSingleton<MainWindow>();
+        }
+
+        private void SetupTaskbarIcon()
+        {
             notifyIcon = new TaskbarIcon();
             notifyIcon.ToolTipText = "OLED Sleeper";
             notifyIcon.TrayMouseDoubleClick += (sender, args) => ShowMainWindow();
@@ -41,7 +70,6 @@ namespace OLED_Sleeper
             exitMenuItem.Click += (sender, args) => ExitApplication();
             notifyIcon.ContextMenu.Items.Add(exitMenuItem);
 
-            // Load the icon from project resources
             try
             {
                 var iconUri = new Uri("pack://application:,,,/Assets/icon.ico", UriKind.RelativeOrAbsolute);
@@ -56,39 +84,40 @@ namespace OLED_Sleeper
 
         private void ShowMainWindow()
         {
-            if (mainWindow == null)
+            if (this.MainWindow != null)
             {
-                mainWindow = new MainWindow();
-            }
-
-            if (mainWindow.IsVisible)
-            {
-                if (mainWindow.WindowState == WindowState.Minimized)
+                if (this.MainWindow.IsVisible)
                 {
-                    mainWindow.WindowState = WindowState.Normal;
+                    if (this.MainWindow.WindowState == WindowState.Minimized)
+                    {
+                        this.MainWindow.WindowState = WindowState.Normal;
+                    }
+                    this.MainWindow.Activate();
                 }
-                mainWindow.Activate();
-            }
-            else
-            {
-                mainWindow.Show();
+                else
+                {
+                    this.MainWindow.Show();
+                }
             }
         }
 
         private void ExitApplication()
         {
-            Log.Information("--- Application Exiting ---");
-            Log.CloseAndFlush();
-            notifyIcon?.Dispose();
-            Current.Shutdown();
+            ShutdownApp();
         }
 
         protected override void OnExit(ExitEventArgs e)
         {
+            ShutdownApp();
+            base.OnExit(e);
+        }
+
+        private void ShutdownApp()
+        {
             Log.Information("--- Application Exiting ---");
             Log.CloseAndFlush();
             notifyIcon?.Dispose();
-            base.OnExit(e);
+            Current.Shutdown();
         }
     }
 }
