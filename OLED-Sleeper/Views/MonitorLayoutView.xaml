@@ -1,0 +1,163 @@
+﻿<!--
+    MonitorLayoutView.xaml
+
+    This UserControl displays a visual layout of all detected monitors for OLED Sleeper.
+    Each monitor is shown as a scaled, selectable rectangle with its title and resolution.
+    Monitors with unsaved changes are indicated. The layout supports reload and selection.
+    Data binding is used to connect to the MainViewModel and MonitorLayoutViewModel.
+-->
+<UserControl x:Class="OLED_Sleeper.Views.MonitorLayoutView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:converters="clr-namespace:OLED_Sleeper.Converters"
+             mc:Ignorable="d"
+             d:DesignHeight="450" d:DesignWidth="800"
+             SizeChanged="UserControl_SizeChanged"
+             ToolTipService.InitialShowDelay="200">
+
+    <!--
+        Resources:
+        - Converters: Used for margin and visibility binding.
+        - Styles: Custom styles for ToolTip, monitor borders, and refresh button.
+    -->
+    <UserControl.Resources>
+        <converters:LeftTopToMarginConverter x:Key="LeftTopToMarginConverter" />
+        <converters:BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
+
+        <Style TargetType="ToolTip">
+            <Setter Property="OverridesDefaultStyle" Value="true" />
+            <Setter Property="Foreground" Value="{StaticResource PrimaryForegroundColor}" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ToolTip">
+                        <Border Background="{StaticResource TertiaryBackgroundColor}"
+                                BorderBrush="{StaticResource SeparatorColorBrush}"
+                                BorderThickness="1"
+                                CornerRadius="4"
+                                Padding="8,5">
+                            <ContentPresenter />
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="MonitorBorderStyle" TargetType="Border">
+            <Setter Property="Effect">
+                <Setter.Value>
+                    <DropShadowEffect ShadowDepth="2" BlurRadius="10" Color="#000000" Opacity="0.4" />
+                </Setter.Value>
+            </Setter>
+            <Setter Property="BorderThickness" Value="2" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="RenderOptions.BitmapScalingMode" Value="HighQuality" />
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="BorderBrush" Value="{StaticResource AccentColorBrush}" />
+                </Trigger>
+                <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                    <Setter Property="BorderBrush" Value="{StaticResource AccentColorBrush}" />
+                    <Setter Property="BorderThickness" Value="3" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="RefreshButtonStyle" TargetType="Button">
+            <Setter Property="ToolTipService.InitialShowDelay" Value="200" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Foreground" Value="{StaticResource SecondaryForegroundColor}" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}" CornerRadius="15">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="{StaticResource TertiaryBackgroundColor}" />
+                    <Setter Property="Foreground" Value="White" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+    </UserControl.Resources>
+
+    <Grid>
+        <!--
+            Monitor Layout Container:
+            Hosts the ItemsControl that displays all monitors as selectable rectangles.
+        -->
+        <Border x:Name="MonitorLayoutContainer"
+                Background="{StaticResource SecondaryBackgroundColor}"
+                CornerRadius="8">
+            <ItemsControl ItemsSource="{Binding Monitors}">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <Grid ClipToBounds="True" />
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <!--
+                            Each monitor is represented as a Border with a title and resolution.
+                            The border highlights on selection or mouse over.
+                            An orange dot indicates unsaved changes.
+                        -->
+                        <Border Style="{StaticResource MonitorBorderStyle}"
+                                Width="{Binding ScaledWidth}" Height="{Binding ScaledHeight}"
+                                Background="{Binding BackgroundColor}"
+                                CornerRadius="5" HorizontalAlignment="Left" VerticalAlignment="Top">
+                            <Border.Margin>
+                                <MultiBinding Converter="{StaticResource LeftTopToMarginConverter}">
+                                    <Binding Path="ScaledLeft" />
+                                    <Binding Path="ScaledTop" />
+                                </MultiBinding>
+                            </Border.Margin>
+                            <Border.InputBindings>
+                                <MouseBinding MouseAction="LeftClick"
+                                              Command="{Binding DataContext.SelectMonitorCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                              CommandParameter="{Binding}" />
+                            </Border.InputBindings>
+                            <Grid>
+                                <!-- Unsaved changes indicator -->
+                                <Ellipse Width="10" Height="10" Fill="#F5A623"
+                                         HorizontalAlignment="Right" VerticalAlignment="Top"
+                                         Margin="0,5,5,0"
+                                         ToolTip="This monitor has unsaved changes."
+                                         Visibility="{Binding IsDirty, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                                <!-- Monitor title and resolution -->
+                                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding MonitorTitle}"
+                                               Foreground="{StaticResource PrimaryForegroundColor}" FontSize="16" FontWeight="SemiBold"
+                                               HorizontalAlignment="Center" Margin="0,0,0,2" />
+                                    <TextBlock Text="{Binding ResolutionText}"
+                                               Foreground="{StaticResource SecondaryForegroundColor}" FontSize="12"
+                                               HorizontalAlignment="Center" />
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </Border>
+
+        <!-- Layout Title -->
+        <TextBlock Text="Display Layout" IsHitTestVisible="False"
+                   Foreground="{StaticResource SecondaryForegroundColor}" FontSize="14" FontWeight="Light"
+                   HorizontalAlignment="Left" VerticalAlignment="Top"
+                   Margin="15,10,0,0" />
+
+        <!-- Reload Monitors Button -->
+        <Button Command="{Binding ReloadMonitorsCommand}" Content="🔄" FontSize="16"
+                Style="{StaticResource RefreshButtonStyle}"
+                HorizontalAlignment="Right" VerticalAlignment="Top"
+                Margin="0,8,8,0" Width="30" Height="30"
+                ToolTip="Reload Monitors" />
+    </Grid>
+</UserControl>
