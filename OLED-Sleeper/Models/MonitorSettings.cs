@@ -3,7 +3,7 @@
     public class MonitorSettings
     {
         public string HardwareId { get; set; } = string.Empty;
-        public bool IsManaged { get; set; } = true;
+        public bool IsManaged { get; set; } = false;
         public MonitorBehavior Behavior { get; set; } = MonitorBehavior.Dim;
         public double DimLevel { get; set; } = 15;
         public int? IdleValue { get; set; } = 30;

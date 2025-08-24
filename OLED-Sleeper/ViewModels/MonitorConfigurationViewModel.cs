@@ -35,21 +35,38 @@ namespace OLED_Sleeper.ViewModels
         /// </summary>
         public int DisplayNumber { get; }
 
+        // --- Updated: Added explicit error properties for robust UI binding ---
+        public string IdleValueError => this["IdleValue"];
+
+        public string ActiveConditionsError => this["IsActiveOnInput"];
+
         // --- IsManaged ---
         private bool _isManaged;
+
         private bool _initialIsManaged;
+
         /// <summary>
         /// Gets or sets whether this monitor is managed by the application.
         /// </summary>
         public bool IsManaged
         {
             get => _isManaged;
-            set { _isManaged = value; OnPropertyChanged(); UpdateDirtyState(); }
+            // --- Updated: Notifies error properties when changed ---
+            set
+            {
+                _isManaged = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(IdleValueError));
+                OnPropertyChanged(nameof(ActiveConditionsError));
+                UpdateDirtyState();
+            }
         }
 
         // --- Behavior ---
         private MonitorBehavior _behavior;
+
         private MonitorBehavior _initialBehavior;
+
         /// <summary>
         /// Gets or sets the behavior for this monitor (e.g., Dim, Blackout).
         /// </summary>
@@ -68,7 +85,9 @@ namespace OLED_Sleeper.ViewModels
 
         // --- DimLevel ---
         private double _dimLevel;
+
         private double _initialDimLevel;
+
         /// <summary>
         /// Gets or sets the dimming level for the monitor (0-100).
         /// </summary>
@@ -91,17 +110,26 @@ namespace OLED_Sleeper.ViewModels
 
         private int? _idleValue;
         private int? _initialIdleValue;
+
         /// <summary>
         /// Gets or sets the idle time value before the monitor behavior triggers.
         /// </summary>
         public int? IdleValue
         {
             get => _idleValue;
-            set { _idleValue = value; OnPropertyChanged(); UpdateDirtyState(); }
+            // --- Updated: Notifies error property when changed ---
+            set
+            {
+                _idleValue = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(IdleValueError));
+                UpdateDirtyState();
+            }
         }
 
         private TimeUnit _selectedTimeUnit;
         private TimeUnit _initialSelectedTimeUnit;
+
         /// <summary>
         /// Gets or sets the selected time unit for the idle timer.
         /// </summary>
@@ -113,39 +141,64 @@ namespace OLED_Sleeper.ViewModels
 
         // --- Active Conditions ---
         private bool _isActiveOnInput;
+
         private bool _initialIsActiveOnInput;
+
         /// <summary>
         /// Gets or sets whether keyboard/mouse input keeps the monitor active.
         /// </summary>
         public bool IsActiveOnInput
         {
             get => _isActiveOnInput;
-            set { _isActiveOnInput = value; OnPropertyChanged(); UpdateDirtyState(); }
+            // --- Updated: Notifies error property when changed ---
+            set
+            {
+                _isActiveOnInput = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(ActiveConditionsError));
+                UpdateDirtyState();
+            }
         }
 
         private bool _isActiveOnMousePosition;
         private bool _initialIsActiveOnMousePosition;
+
         /// <summary>
         /// Gets or sets whether mouse position keeps the monitor active.
         /// </summary>
         public bool IsActiveOnMousePosition
         {
             get => _isActiveOnMousePosition;
-            set { _isActiveOnMousePosition = value; OnPropertyChanged(); UpdateDirtyState(); }
+            // --- Updated: Notifies error property when changed ---
+            set
+            {
+                _isActiveOnMousePosition = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(ActiveConditionsError));
+                UpdateDirtyState();
+            }
         }
 
         private bool _isActiveOnActiveWindow;
         private bool _initialIsActiveOnActiveWindow;
+
         /// <summary>
         /// Gets or sets whether the active window keeps the monitor active.
         /// </summary>
         public bool IsActiveOnActiveWindow
         {
             get => _isActiveOnActiveWindow;
-            set { _isActiveOnActiveWindow = value; OnPropertyChanged(); UpdateDirtyState(); }
+            // --- Updated: Notifies error property when changed ---
+            set
+            {
+                _isActiveOnActiveWindow = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(ActiveConditionsError));
+                UpdateDirtyState();
+            }
         }
 
-        #endregion
+        #endregion Properties
 
         /// <summary>
         /// Initializes a new instance of the MonitorConfigurationViewModel class for a specific monitor.
@@ -240,7 +293,7 @@ namespace OLED_Sleeper.ViewModels
             };
         }
 
-        #endregion
+        #endregion State Management (Dirty Tracking, Saving, Loading)
 
         #region Validation
 
@@ -280,6 +333,7 @@ namespace OLED_Sleeper.ViewModels
                     case nameof(IdleValue):
                         result = ValidateIdleValue();
                         break;
+
                     case nameof(IsActiveOnInput):
                     case nameof(IsActiveOnMousePosition):
                     case nameof(IsActiveOnActiveWindow):
@@ -312,6 +366,6 @@ namespace OLED_Sleeper.ViewModels
             return null;
         }
 
-        #endregion
+        #endregion Validation
     }
 }

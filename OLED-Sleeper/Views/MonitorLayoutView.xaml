@@ -15,7 +15,8 @@
              mc:Ignorable="d"
              d:DesignHeight="450" d:DesignWidth="800"
              SizeChanged="UserControl_SizeChanged"
-             ToolTipService.InitialShowDelay="200">
+             ToolTipService.InitialShowDelay="200"
+             x:Name="LayoutRoot">
 
     <!--
         Resources:
@@ -121,7 +122,7 @@
                             </Border.Margin>
                             <Border.InputBindings>
                                 <MouseBinding MouseAction="LeftClick"
-                                              Command="{Binding DataContext.SelectMonitorCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                              Command="{Binding DataContext.SelectMonitorCommand, ElementName=LayoutRoot}"
                                               CommandParameter="{Binding}" />
                             </Border.InputBindings>
                             <Grid>
@@ -130,7 +131,8 @@
                                          HorizontalAlignment="Right" VerticalAlignment="Top"
                                          Margin="0,5,5,0"
                                          ToolTip="This monitor has unsaved changes."
-                                         Visibility="{Binding IsDirty, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                                         Visibility="{Binding IsDirty, Converter={StaticResource BooleanToVisibilityConverter}}"
+                                         ToolTipService.InitialShowDelay="200" />
                                 <!-- Monitor title and resolution -->
                                 <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
                                     <TextBlock Text="{Binding MonitorTitle}"

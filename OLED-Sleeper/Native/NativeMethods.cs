@@ -164,6 +164,31 @@ namespace OLED_Sleeper.Native
         [DllImport("Shcore.dll")]
         public static extern int GetDpiForMonitor(IntPtr hmonitor, MonitorDpiType dpiType, out uint dpiX, out uint dpiY);
 
+        [StructLayout(LayoutKind.Sequential)]
+        public struct POINT
+        {
+            public int X;
+            public int Y;
+        }
+
+        [DllImport("user32.dll")]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        public static extern bool GetCursorPos(out POINT lpPoint);
+
+        // Add these new definitions inside the NativeMethods class
+
+        /// <summary>
+        /// Retrieves the value of a specified Desktop Window Manager (DWM) attribute for a window.
+        /// </summary>
+        [DllImport("dwmapi.dll")]
+        public static extern int DwmGetWindowAttribute(IntPtr hwnd, int dwAttribute, out Rect pvAttribute, int cbAttribute);
+
+        /// <summary>
+        /// Use with DwmGetWindowAttribute to get the extended frame bounds rectangle.
+        /// This gets the true visible bounds of the window, excluding invisible borders.
+        /// </summary>
+        public const int DWMWA_EXTENDED_FRAME_BOUNDS = 9;
+
         #endregion Monitor and Display Configuration
     }
 }
