@@ -11,25 +11,27 @@ namespace OLED_Sleeper.Services
     public class DimmerService : IDimmerService
     {
         private readonly IMonitorService _monitorService;
-        private readonly Dictionary<string, uint> _originalBrightnessLevels = new();
+        private readonly IBrightnessStateService _brightnessStateService;
+        private readonly Dictionary<string, uint> _originalBrightnessLevels;
 
-        public DimmerService(IMonitorService monitorService)
+        public DimmerService(IMonitorService monitorService, IBrightnessStateService brightnessStateService)
         {
             _monitorService = monitorService;
+            _brightnessStateService = brightnessStateService;
+            // --- Load the previous state on startup ---
+            _originalBrightnessLevels = _brightnessStateService.LoadState();
         }
 
         public void DimMonitor(string hardwareId, int dimLevel)
         {
-            // Action is a delegate to simplify physical monitor handle management.
             WithPhysicalMonitor(hardwareId, hPhysicalMonitor =>
             {
-                // Get current brightness and store it.
                 if (NativeMethods.GetVCPFeatureAndVCPFeatureReply(hPhysicalMonitor, NativeMethods.VCP_CODE_BRIGHTNESS, IntPtr.Zero, out uint currentBrightness, out _))
                 {
                     _originalBrightnessLevels[hardwareId] = currentBrightness;
-                    Log.Debug("Stored original brightness {OriginalBrightness} for monitor {HardwareId}.", currentBrightness, hardwareId);
+                    // --- Save state to disk immediately after changing it ---
+                    _brightnessStateService.SaveState(_originalBrightnessLevels);
 
-                    // Set the new brightness.
                     if (NativeMethods.SetVCPFeature(hPhysicalMonitor, NativeMethods.VCP_CODE_BRIGHTNESS, (uint)dimLevel))
                     {
                         Log.Information("Successfully dimmed monitor {HardwareId} to {DimLevel}%.", hardwareId, dimLevel);
@@ -42,15 +44,10 @@ namespace OLED_Sleeper.Services
         {
             if (_originalBrightnessLevels.TryGetValue(hardwareId, out uint originalBrightness))
             {
-                WithPhysicalMonitor(hardwareId, hPhysicalMonitor =>
-                {
-                    // Restore the original brightness.
-                    if (NativeMethods.SetVCPFeature(hPhysicalMonitor, NativeMethods.VCP_CODE_BRIGHTNESS, originalBrightness))
-                    {
-                        Log.Information("Successfully restored original brightness {OriginalBrightness} for monitor {HardwareId}.", originalBrightness, hardwareId);
-                        _originalBrightnessLevels.Remove(hardwareId);
-                    }
-                });
+                RestoreBrightness(hardwareId, originalBrightness);
+                _originalBrightnessLevels.Remove(hardwareId);
+                // --- Save state to disk immediately after changing it ---
+                _brightnessStateService.SaveState(_originalBrightnessLevels);
             }
         }
 
@@ -96,6 +93,23 @@ namespace OLED_Sleeper.Services
                     NativeMethods.DestroyPhysicalMonitors(1, physicalMonitors);
                 }
             }
+        }
+
+        public void RestoreBrightness(string hardwareId, uint originalBrightness)
+        {
+            WithPhysicalMonitor(hardwareId, hPhysicalMonitor =>
+            {
+                if (NativeMethods.SetVCPFeature(hPhysicalMonitor, NativeMethods.VCP_CODE_BRIGHTNESS, originalBrightness))
+                {
+                    Log.Information("Restored original brightness {OriginalBrightness} for monitor {HardwareId}.", originalBrightness, hardwareId);
+                }
+            });
+        }
+
+        public Dictionary<string, uint> GetDimmedMonitors()
+        {
+            // Return a copy to prevent external modification
+            return new Dictionary<string, uint>(_originalBrightnessLevels);
         }
     }
 }

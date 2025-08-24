@@ -27,8 +27,7 @@ namespace OLED_Sleeper.Services
             // Callback for EnumDisplayMonitors to collect monitor info
             NativeMethods.MonitorEnumProc callback = (IntPtr hMonitor, IntPtr hdcMonitor, ref NativeMethods.Rect lprcMonitor, IntPtr dwData) =>
             {
-                var mi = new NativeMethods.MonitorInfoEx();
-                mi.cbSize = Marshal.SizeOf(mi);
+                var mi = new NativeMethods.MonitorInfoEx { cbSize = Marshal.SizeOf(typeof(NativeMethods.MonitorInfoEx)) };
                 if (NativeMethods.GetMonitorInfo(hMonitor, ref mi))
                 {
                     NativeMethods.GetDpiForMonitor(hMonitor, NativeMethods.MonitorDpiType.MDT_EFFECTIVE_DPI, out uint dpiX, out _);
@@ -42,7 +41,7 @@ namespace OLED_Sleeper.Services
                             mi.rcMonitor.bottom - mi.rcMonitor.top),
                         IsPrimary = (mi.dwFlags & 1) == 1,
                         Dpi = dpiX,
-                        DisplayNumber = DisplayNumberParser.ParseDisplayNumber(mi.szDevice),
+                        DisplayNumber = DisplayNumberParser.ParseDisplayNumber(mi.szDevice)
                     });
                 }
                 return true;
@@ -57,16 +56,14 @@ namespace OLED_Sleeper.Services
         /// Enriches the list of monitors with hardware IDs by matching device names.
         /// </summary>
         /// <param name="monitors">The list of <see cref="MonitorInfo"/> objects to enrich.</param>
-        private void EnrichWithHardwareIds(List<MonitorInfo> monitors)
+        private static void EnrichWithHardwareIds(List<MonitorInfo> monitors)
         {
-            var displayDevice = new NativeMethods.DISPLAY_DEVICE();
-            displayDevice.cb = Marshal.SizeOf(displayDevice);
+            var displayDevice = new NativeMethods.DISPLAY_DEVICE { cb = Marshal.SizeOf(typeof(NativeMethods.DISPLAY_DEVICE)) };
             for (uint adapterIndex = 0; NativeMethods.EnumDisplayDevices(null, adapterIndex, ref displayDevice, 0); adapterIndex++)
             {
                 // Only consider active display adapters
                 if ((displayDevice.StateFlags & 1) == 0) continue;
-                var monitorDevice = new NativeMethods.DISPLAY_DEVICE();
-                monitorDevice.cb = Marshal.SizeOf(monitorDevice);
+                var monitorDevice = new NativeMethods.DISPLAY_DEVICE { cb = Marshal.SizeOf(typeof(NativeMethods.DISPLAY_DEVICE)) };
                 for (uint monitorIndex = 0; NativeMethods.EnumDisplayDevices(displayDevice.DeviceName, monitorIndex, ref monitorDevice, 0); monitorIndex++)
                 {
                     var foundMonitor = monitors.FirstOrDefault(m => m.DeviceName == displayDevice.DeviceName);

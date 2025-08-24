@@ -13,6 +13,7 @@ namespace OLED_Sleeper.Services
         private readonly IOverlayService _overlayService;
         private readonly ISettingsService _settingsService;
         private readonly IDimmerService _dimmerService;
+        private readonly IBrightnessStateService _brightnessStateService;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="ApplicationOrchestrator"/> class.
@@ -25,12 +26,14 @@ namespace OLED_Sleeper.Services
             IIdleActivityService idleService,
             IOverlayService overlayService,
             ISettingsService settingsService,
-            IDimmerService dimmerService)
+            IDimmerService dimmerService,
+            IBrightnessStateService brightnessStateService)
         {
             _idleService = idleService;
             _overlayService = overlayService;
             _settingsService = settingsService;
             _dimmerService = dimmerService;
+            _brightnessStateService = brightnessStateService;
         }
 
         /// <summary>
@@ -38,12 +41,32 @@ namespace OLED_Sleeper.Services
         /// </summary>
         public void Start()
         {
+            RestoreBrightnessOnStartup();
+
             _idleService.MonitorBecameIdle += OnMonitorBecameIdle;
             _idleService.MonitorBecameActive += OnMonitorBecameActive;
+            AppEvents.RestoreAllMonitorsRequested += RestoreAllMonitors;
 
             var initialSettings = _settingsService.LoadSettings();
             _idleService.UpdateSettings(initialSettings);
             _idleService.Start();
+        }
+
+        private void RestoreBrightnessOnStartup()
+        {
+            Log.Information("Checking for monitors with unrestored brightness...");
+            var state = _brightnessStateService.LoadState();
+            if (state.Any())
+            {
+                Log.Warning("Found {Count} monitors that were left dimmed from a previous session. Attempting to restore.", state.Count);
+                foreach (var entry in state)
+                {
+                    _dimmerService.RestoreBrightness(entry.Key, entry.Value);
+                }
+
+                // Clear the state file now that we've attempted a restore.
+                _brightnessStateService.SaveState(new Dictionary<string, uint>());
+            }
         }
 
         #region Event Handlers
@@ -94,5 +117,32 @@ namespace OLED_Sleeper.Services
         }
 
         #endregion Event Handlers
+
+        public void Stop()
+        {
+            Log.Information("ApplicationOrchestrator is stopping.");
+            RestoreAllMonitors();
+
+            AppEvents.RestoreAllMonitorsRequested -= RestoreAllMonitors;
+            _idleService.Stop();
+        }
+
+        public void RestoreAllMonitors()
+        {
+            Log.Information("Restoring all monitors brightness levels...");
+            var dimmedMonitors = _dimmerService.GetDimmedMonitors();
+
+            if (dimmedMonitors.Any())
+            {
+                foreach (var entry in dimmedMonitors)
+                {
+                    // Use the restore method that doesn't re-save the state
+                    _dimmerService.RestoreBrightness(entry.Key, entry.Value);
+                }
+
+                // Clear the state file since we've handled the restore
+                _brightnessStateService.SaveState(new Dictionary<string, uint>());
+            }
+        }
     }
 }

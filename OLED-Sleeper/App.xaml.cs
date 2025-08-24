@@ -1,5 +1,6 @@
 ﻿using Hardcodet.Wpf.TaskbarNotification;
 using Microsoft.Extensions.DependencyInjection;
+using OLED_Sleeper.Events;
 using OLED_Sleeper.Services;
 using OLED_Sleeper.ViewModels;
 using Serilog;
@@ -25,6 +26,8 @@ namespace OLED_Sleeper
         protected override void OnStartup(StartupEventArgs e)
         {
             base.OnStartup(e);
+            this.SessionEnding += App_SessionEnding;
+
             SetupLogging();
             ConfigureServices();
             StartOrchestrator();
@@ -38,6 +41,7 @@ namespace OLED_Sleeper
         private void ConfigureServices()
         {
             var services = new ServiceCollection();
+            services.AddSingleton<IBrightnessStateService, BrightnessStateService>();
             services.AddSingleton<IDimmerService, DimmerService>();
             services.AddSingleton<IOverlayService, OverlayService>();
             services.AddSingleton<IApplicationOrchestrator, ApplicationOrchestrator>();
@@ -150,6 +154,10 @@ namespace OLED_Sleeper
             if (_isExiting) return; // Prevent re-entrancy
             _isExiting = true;
 
+            Log.Information("Shutdown initiated. Restoring all monitors...");
+
+            AppEvents.TriggerRestoreAllMonitors();
+
             Log.Information("--- Application Exiting ---");
             Log.CloseAndFlush();
             _notifyIcon?.Dispose();
@@ -171,6 +179,13 @@ namespace OLED_Sleeper
                 .CreateLogger();
 
             Log.Information("--- Application Starting ---");
+        }
+
+        private void App_SessionEnding(object sender, SessionEndingCancelEventArgs e)
+        {
+            // This event is raised when the user is logging off or the system is shutting down.
+            // We can perform our cleanup here.
+            ShutdownApp();
         }
     }
 }
