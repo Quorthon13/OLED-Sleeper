@@ -7,6 +7,6 @@ namespace OLED_Sleeper.Services
     // Refactored: Interface for MonitorLayoutService to support dependency injection.
     public interface IMonitorLayoutService
     {
-        ObservableCollection<MonitorViewModel> CreateLayout(List<MonitorInfo> monitorInfos, double containerWidth, double containerHeight);
+        ObservableCollection<MonitorLayoutViewModel> CreateLayout(List<MonitorInfo> monitorInfos, double containerWidth, double containerHeight);
     }
 }

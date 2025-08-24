@@ -62,9 +62,10 @@ namespace OLED_Sleeper
             Log.Information("--- Application Starting ---");
         }
 
-        // Refactored: Method to configure services for DI.
         private void ConfigureServices(IServiceCollection services)
         {
+            services.AddSingleton<IWorkspaceService, WorkspaceService>();
+            services.AddSingleton<ISaveValidationService, SaveValidationService>();
             services.AddSingleton<IMonitorService, MonitorService>();
             services.AddSingleton<IMonitorLayoutService, MonitorLayoutService>();
             services.AddSingleton<ISettingsService, SettingsService>();

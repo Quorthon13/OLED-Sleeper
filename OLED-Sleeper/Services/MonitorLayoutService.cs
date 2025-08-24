@@ -14,15 +14,15 @@ namespace OLED_Sleeper.Services
     // Refactored: Implements IMonitorLayoutService for dependency injection.
     public class MonitorLayoutService : IMonitorLayoutService
     {
-        public ObservableCollection<MonitorViewModel> CreateLayout(List<MonitorInfo> monitorInfos, double containerWidth, double containerHeight)
+        public ObservableCollection<MonitorLayoutViewModel> CreateLayout(List<MonitorInfo> monitorInfos, double containerWidth, double containerHeight)
         {
             Log.Debug("--- Starting Layout Calculation ---");
             Log.Debug("Container size: {Width}x{Height}", containerWidth, containerHeight);
-            var monitorViewModels = new ObservableCollection<MonitorViewModel>();
+            var monitorLayoutViewModels = new ObservableCollection<MonitorLayoutViewModel>();
             if (monitorInfos == null || !monitorInfos.Any())
             {
                 Log.Warning("No monitors found to create layout.");
-                return monitorViewModels;
+                return monitorLayoutViewModels;
             }
             Log.Debug("Calculating layout for {Count} monitors:", monitorInfos.Count);
             foreach (var m in monitorInfos)
@@ -48,13 +48,13 @@ namespace OLED_Sleeper.Services
             {
                 // Refactored: Centralized display number parsing.
                 int displayNumber = ParseDisplayNumber(monitorInfo.DeviceName, fallbackMonitorNumber++);
-                var monitorVm = new MonitorViewModel(monitorInfo, displayNumber, scale, totalBounds, offsetX, offsetY);
-                Log.Debug("Creating MonitorViewModel for {DeviceName}: ScaledLeft={L}, ScaledTop={T}, ScaledWidth={W}, ScaledHeight={H}",
+                var monitorVm = new MonitorLayoutViewModel(monitorInfo, displayNumber, scale, totalBounds, offsetX, offsetY);
+                Log.Debug("Creating MonitorLayoutViewModel for {DeviceName}: ScaledLeft={L}, ScaledTop={T}, ScaledWidth={W}, ScaledHeight={H}",
                     monitorInfo.DeviceName, monitorVm.ScaledLeft, monitorVm.ScaledTop, monitorVm.ScaledWidth, monitorVm.ScaledHeight);
-                monitorViewModels.Add(monitorVm);
+                monitorLayoutViewModels.Add(monitorVm);
             }
             Log.Debug("--- Finished Layout Calculation ---");
-            return monitorViewModels;
+            return monitorLayoutViewModels;
         }
 
         // Refactored: Extracted logic to a separate method for clarity and reuse.

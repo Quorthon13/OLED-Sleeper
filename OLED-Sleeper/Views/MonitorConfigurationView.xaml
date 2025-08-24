@@ -1,4 +1,12 @@
-﻿<UserControl x:Class="OLED_Sleeper.Views.MonitorConfigurationView"
+﻿<!--
+    MonitorConfigurationView.xaml
+
+    This UserControl provides the UI for configuring an individual monitor's settings in OLED Sleeper.
+    It includes controls for enabling management, selecting behavior (Blackout/Dim), adjusting dim level,
+    setting idle timer values, and specifying active conditions. Custom styles are used for a modern look.
+    Data binding is used to connect to the MonitorConfigurationViewModel.
+-->
+<UserControl x:Class="OLED_Sleeper.Views.MonitorConfigurationView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
@@ -10,6 +18,11 @@
              d:DataContext="{d:DesignInstance Type=viewModels:MonitorConfigurationViewModel}"
              FontFamily="Bahnschrift">
 
+    <!--
+        Resources:
+        - EnumToBooleanConverter: Used for radio button binding.
+        - Styles: Custom styles for ToolTip, CheckBox, RadioButton, Slider, TextBox, ComboBox, ComboBoxItem.
+    -->
     <UserControl.Resources>
         <converters:EnumToBooleanConverter x:Key="EnumToBooleanConverter" />
 
@@ -270,8 +283,8 @@
 
     <Grid Margin="25,20">
         <StackPanel>
-            <StackPanel Orientation="Horizontal" VerticalAlignment="Center"
-                        ToolTipService.InitialShowDelay="200">
+            <!-- Monitor Title and Management Toggle -->
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" ToolTipService.InitialShowDelay="200">
                 <StackPanel.ToolTip>
                     <ToolTip>Enable or disable management for this monitor.</ToolTip>
                 </StackPanel.ToolTip>
@@ -283,6 +296,7 @@
 
             <Separator Background="{StaticResource SeparatorColorBrush}" Margin="0,12" />
 
+            <!-- Main Configuration Panel -->
             <StackPanel Margin="0,15,0,0" IsEnabled="{Binding IsManaged}">
                 <Grid>
                     <Grid.ColumnDefinitions>
@@ -294,6 +308,7 @@
                         <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
 
+                    <!-- Behavior Selection -->
                     <StackPanel Grid.Row="0" Grid.Column="0" VerticalAlignment="Center">
                         <TextBlock Text="BEHAVIOR" Foreground="{StaticResource SecondaryForegroundColor}" FontSize="12" FontWeight="Light" Margin="0,0,0,5" />
                         <StackPanel Orientation="Horizontal" Margin="0,5,0,0">
@@ -304,6 +319,7 @@
                         </StackPanel>
                     </StackPanel>
 
+                    <!-- Dim Level Slider -->
                     <StackPanel Grid.Row="0" Grid.Column="1" Margin="40,0,0,0" IsEnabled="{Binding IsDimSliderEnabled}" VerticalAlignment="Center">
                         <TextBlock Text="DIM LEVEL" Foreground="{StaticResource SecondaryForegroundColor}" FontSize="12" FontWeight="Light" />
                         <Grid Margin="0,8,0,0">
@@ -320,6 +336,7 @@
                         </Grid>
                     </StackPanel>
 
+                    <!-- Idle Timer -->
                     <StackPanel Grid.Row="1" Grid.Column="0" Margin="0,20,0,0">
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Text="IDLE TIMER" Foreground="{StaticResource SecondaryForegroundColor}" FontSize="12" FontWeight="Light" />
@@ -358,6 +375,7 @@
                         </Grid>
                     </StackPanel>
 
+                    <!-- Active Conditions -->
                     <StackPanel Grid.Row="1" Grid.Column="1" Margin="40,20,0,0">
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Text="CONSIDER ACTIVE WHEN..." Foreground="{StaticResource SecondaryForegroundColor}" FontSize="12" FontWeight="Light" />

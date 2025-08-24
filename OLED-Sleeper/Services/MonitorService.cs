@@ -9,13 +9,21 @@ using System.Windows;
 
 namespace OLED_Sleeper.Services
 {
-    // Refactored: Implements IMonitorService for dependency injection.
+    /// <summary>
+    /// Provides monitor enumeration and hardware ID enrichment services.
+    /// Implements <see cref="IMonitorService"/> for dependency injection.
+    /// </summary>
     public class MonitorService : IMonitorService
     {
+        /// <summary>
+        /// Enumerates all monitors connected to the system and returns their information.
+        /// </summary>
+        /// <returns>A list of <see cref="MonitorInfo"/> objects representing each monitor.</returns>
         public List<MonitorInfo> GetMonitors()
         {
             var monitors = new List<MonitorInfo>();
 
+            // Callback for EnumDisplayMonitors to collect monitor info
             NativeMethods.MonitorEnumProc callback = (IntPtr hMonitor, IntPtr hdcMonitor, ref NativeMethods.Rect lprcMonitor, IntPtr dwData) =>
             {
                 var mi = new NativeMethods.MonitorInfoEx();
@@ -26,7 +34,11 @@ namespace OLED_Sleeper.Services
                     monitors.Add(new MonitorInfo
                     {
                         DeviceName = mi.szDevice,
-                        Bounds = new Rect(mi.rcMonitor.left, mi.rcMonitor.top, mi.rcMonitor.right - mi.rcMonitor.left, mi.rcMonitor.bottom - mi.rcMonitor.top),
+                        Bounds = new Rect(
+                            mi.rcMonitor.left,
+                            mi.rcMonitor.top,
+                            mi.rcMonitor.right - mi.rcMonitor.left,
+                            mi.rcMonitor.bottom - mi.rcMonitor.top),
                         IsPrimary = (mi.dwFlags & 1) == 1,
                         Dpi = dpiX
                     });
@@ -39,12 +51,17 @@ namespace OLED_Sleeper.Services
             return monitors;
         }
 
+        /// <summary>
+        /// Enriches the list of monitors with hardware IDs by matching device names.
+        /// </summary>
+        /// <param name="monitors">The list of <see cref="MonitorInfo"/> objects to enrich.</param>
         private void EnrichWithHardwareIds(List<MonitorInfo> monitors)
         {
             var displayDevice = new NativeMethods.DISPLAY_DEVICE();
             displayDevice.cb = Marshal.SizeOf(displayDevice);
             for (uint adapterIndex = 0; NativeMethods.EnumDisplayDevices(null, adapterIndex, ref displayDevice, 0); adapterIndex++)
             {
+                // Only consider active display adapters
                 if ((displayDevice.StateFlags & 1) == 0) continue;
                 var monitorDevice = new NativeMethods.DISPLAY_DEVICE();
                 monitorDevice.cb = Marshal.SizeOf(monitorDevice);
