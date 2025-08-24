@@ -1,4 +1,6 @@
-﻿using System.Runtime.InteropServices;
+﻿// File: NativeMethods.cs
+using System;
+using System.Runtime.InteropServices;
 
 namespace OLED_Sleeper.Native
 {
@@ -18,12 +20,35 @@ namespace OLED_Sleeper.Native
         [DllImport("Shcore.dll")]
         public static extern int GetDpiForMonitor(IntPtr hmonitor, MonitorDpiType dpiType, out uint dpiX, out uint dpiY);
 
+        [DllImport("user32.dll")]
+        public static extern bool GetLastInputInfo(ref LASTINPUTINFO plii);
+
+        // --- New API calls for robust idle checking ---
+        [DllImport("user32.dll")]
+        public static extern IntPtr GetForegroundWindow();
+
+        [DllImport("user32.dll")]
+        public static extern bool GetWindowRect(IntPtr hWnd, out Rect lpRect);
+
+        [DllImport("user32.dll")]
+        public static extern IntPtr MonitorFromWindow(IntPtr hwnd, uint dwFlags);
+
+        public const uint MONITOR_DEFAULTTONEAREST = 2;
+        // --- End of New API calls ---
+
         public enum MonitorDpiType
         { MDT_EFFECTIVE_DPI = 0, MDT_DEFAULT = MDT_EFFECTIVE_DPI }
 
         [StructLayout(LayoutKind.Sequential)]
         public struct Rect
         { public int left, top, right, bottom; }
+
+        [StructLayout(LayoutKind.Sequential)]
+        public struct LASTINPUTINFO
+        {
+            public uint cbSize;
+            public uint dwTime;
+        }
 
         private const int CCHDEVICENAME = 32;
 

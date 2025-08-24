@@ -7,13 +7,17 @@
              xmlns:converters="clr-namespace:OLED_Sleeper.Converters"
              mc:Ignorable="d"
              d:DesignHeight="450" d:DesignWidth="800"
-             SizeChanged="UserControl_SizeChanged">
+             SizeChanged="UserControl_SizeChanged"
+             ToolTipService.InitialShowDelay="200">
 
     <UserControl.Resources>
         <converters:LeftTopToMarginConverter x:Key="LeftTopToMarginConverter" />
+        <converters:BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
 
         <Style TargetType="ToolTip">
             <Setter Property="OverridesDefaultStyle" Value="true" />
+            <Setter Property="Foreground" Value="{StaticResource PrimaryForegroundColor}" />
+            <Setter Property="FontSize" Value="12" />
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="ToolTip">
@@ -73,7 +77,6 @@
     </UserControl.Resources>
 
     <Grid>
-        <!-- The flawed SizeObserver and MouseBinding have been removed from this Border -->
         <Border x:Name="MonitorLayoutContainer"
                 Background="{StaticResource SecondaryBackgroundColor}"
                 CornerRadius="8">
@@ -100,14 +103,23 @@
                                               Command="{Binding DataContext.SelectMonitorCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
                                               CommandParameter="{Binding}" />
                             </Border.InputBindings>
-                            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
-                                <TextBlock Text="{Binding MonitorTitle}"
-                                           Foreground="{StaticResource PrimaryForegroundColor}" FontSize="16" FontWeight="SemiBold"
-                                           HorizontalAlignment="Center" Margin="0,0,0,2" />
-                                <TextBlock Text="{Binding ResolutionText}"
-                                           Foreground="{StaticResource SecondaryForegroundColor}" FontSize="12"
-                                           HorizontalAlignment="Center" />
-                            </StackPanel>
+
+                            <Grid>
+                                <Ellipse Width="10" Height="10" Fill="#F5A623"
+                                         HorizontalAlignment="Right" VerticalAlignment="Top"
+                                         Margin="0,5,5,0"
+                                         ToolTip="This monitor has unsaved changes."
+                                         Visibility="{Binding IsDirty, Converter={StaticResource BooleanToVisibilityConverter}}" />
+
+                                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding MonitorTitle}"
+                                               Foreground="{StaticResource PrimaryForegroundColor}" FontSize="16" FontWeight="SemiBold"
+                                               HorizontalAlignment="Center" Margin="0,0,0,2" />
+                                    <TextBlock Text="{Binding ResolutionText}"
+                                               Foreground="{StaticResource SecondaryForegroundColor}" FontSize="12"
+                                               HorizontalAlignment="Center" />
+                                </StackPanel>
+                            </Grid>
                         </Border>
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>

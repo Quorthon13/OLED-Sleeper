@@ -1,4 +1,5 @@
 ﻿// File: MainWindow.xaml.cs
+using OLED_Sleeper.ViewModels;
 using System.ComponentModel;
 using System.Windows;
 using System.Windows.Input;
@@ -7,7 +8,6 @@ namespace OLED_Sleeper
 {
     public partial class MainWindow : Window
     {
-        // Refactored: DataContext is now set from App.xaml.cs via DI.
         public MainWindow()
         {
             InitializeComponent();
@@ -15,10 +15,29 @@ namespace OLED_Sleeper
 
         protected override void OnClosing(CancelEventArgs e)
         {
-            // Hides the window instead of closing it, to keep the app running in the tray.
-            e.Cancel = true;
+            var viewModel = DataContext as MainViewModel;
+            if (viewModel != null && viewModel.IsDirty)
+            {
+                var result = MessageBox.Show(
+                    "You have unsaved changes. Would you like to save them before hiding the window?",
+                    "Unsaved Changes",
+                    MessageBoxButton.YesNoCancel,
+                    MessageBoxImage.Warning);
+
+                if (result == MessageBoxResult.Cancel)
+                {
+                    e.Cancel = true; // Prevents the window from closing/hiding.
+                    return;
+                }
+
+                if (result == MessageBoxResult.Yes)
+                {
+                    viewModel.SaveSettingsCommand.Execute(null);
+                }
+            }
+
             this.Hide();
-            base.OnClosing(e);
+            e.Cancel = true;
         }
 
         private void TitleBar_MouseDown(object sender, MouseButtonEventArgs e)
@@ -41,7 +60,7 @@ namespace OLED_Sleeper
 
         private void CloseButton_Click(object sender, RoutedEventArgs e)
         {
-            this.Hide();
+            this.Close();
         }
     }
 }

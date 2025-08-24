@@ -4,6 +4,9 @@ using OLED_Sleeper.Models;
 using OLED_Sleeper.Services;
 using System.Collections.ObjectModel;
 using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using System.Windows;
 using System.Windows.Input;
 
 namespace OLED_Sleeper.ViewModels
@@ -13,6 +16,7 @@ namespace OLED_Sleeper.ViewModels
         private readonly IMonitorService _monitorService;
         private readonly IMonitorLayoutService _monitorLayoutService;
         private readonly ISettingsService _settingsService;
+        private readonly IIdleActivityService _idleActivityService;
 
         private double _containerWidth;
         private double _containerHeight;
@@ -39,7 +43,30 @@ namespace OLED_Sleeper.ViewModels
         public bool IsDirty
         {
             get => _isDirty;
-            set { _isDirty = value; OnPropertyChanged(); }
+            set
+            {
+                if (_isDirty == value) return;
+                _isDirty = value;
+                OnPropertyChanged();
+                // Update window title when dirty state changes
+                WindowTitle = "OLED Sleeper Settings" + (_isDirty ? "*" : "");
+            }
+        }
+
+        private string _windowTitle = "OLED Sleeper Settings";
+
+        public string WindowTitle
+        {
+            get => _windowTitle;
+            set { _windowTitle = value; OnPropertyChanged(); }
+        }
+
+        private string _saveButtonText = "Save Settings";
+
+        public string SaveButtonText
+        {
+            get => _saveButtonText;
+            set { _saveButtonText = value; OnPropertyChanged(); }
         }
 
         public ICommand ReloadMonitorsCommand { get; }
@@ -49,16 +76,17 @@ namespace OLED_Sleeper.ViewModels
 
         public ObservableCollection<MonitorViewModel> Monitors { get; } = new ObservableCollection<MonitorViewModel>();
 
-        public MainViewModel(IMonitorService monitorService, IMonitorLayoutService monitorLayoutService, ISettingsService settingsService)
+        public MainViewModel(IMonitorService monitorService, IMonitorLayoutService monitorLayoutService, ISettingsService settingsService, IIdleActivityService idleActivityService)
         {
             _monitorService = monitorService;
             _monitorLayoutService = monitorLayoutService;
             _settingsService = settingsService;
+            _idleActivityService = idleActivityService; // Store service
 
             SelectMonitorCommand = new RelayCommand(ExecuteSelectMonitor);
-            ReloadMonitorsCommand = new RelayCommand(RefreshMonitors); // Changed to call the new method
-            SaveSettingsCommand = new RelayCommand(() => ExecuteSaveSettings(), () => IsDirty);
-            DiscardChangesCommand = new RelayCommand(() => ExecuteDiscardChanges(), () => IsDirty);
+            ReloadMonitorsCommand = new RelayCommand(RefreshMonitors);
+            SaveSettingsCommand = new AsyncRelayCommand(ExecuteSaveSettings, () => IsDirty);
+            DiscardChangesCommand = new RelayCommand(ExecuteDiscardChanges, () => IsDirty);
         }
 
         private void ExecuteSelectMonitor(object? parameter)
@@ -69,49 +97,62 @@ namespace OLED_Sleeper.ViewModels
             }
         }
 
-        private void ExecuteSaveSettings()
+        private async Task ExecuteSaveSettings()
         {
+            var invalidMonitors = Monitors
+                .Where(m => m.Configuration.IsManaged && !m.Configuration.IsValid)
+                .ToList();
+
+            if (invalidMonitors.Any())
+            {
+                var errorBuilder = new StringBuilder();
+                errorBuilder.AppendLine("Cannot save due to invalid settings on the following monitors:");
+                foreach (var monitor in invalidMonitors)
+                {
+                    errorBuilder.AppendLine($" - {monitor.MonitorTitle}");
+                }
+                errorBuilder.AppendLine("\nPlease correct the highlighted errors before saving.");
+                MessageBox.Show(errorBuilder.ToString(), "Invalid Settings", MessageBoxButton.OK, MessageBoxImage.Error);
+                return; // Stop the save operation
+            }
+
             var allSettings = Monitors.Select(m => m.Configuration.ToSettings()).ToList();
             _settingsService.SaveSettings(allSettings);
-            foreach (var monitor in Monitors)
+
+            // Notify the idle service about the new settings
+            _idleActivityService.UpdateSettings(allSettings);
+
+            foreach (var monitorVM in Monitors)
             {
-                monitor.Configuration.MarkAsSaved();
+                monitorVM.Configuration.MarkAsSaved();
             }
+
             CheckDirtyState();
+
+            SaveButtonText = "Saved!";
+            await Task.Delay(2000);
+            SaveButtonText = "Save Settings";
         }
 
         private void ExecuteDiscardChanges()
         {
-            // A discard should behave like a full refresh, clearing selection.
             RefreshMonitors();
         }
 
-        // --- Start of Refactoring ---
-
-        /// <summary>
-        /// Public method for the Reload button. Always clears selection and reloads from scratch.
-        /// </summary>
         public void RefreshMonitors()
         {
-            UpdateMonitorsInternal(_containerWidth, _containerHeight, preserveSelection: false);
+            RecalculateLayout(_containerWidth, _containerHeight, preserveSelection: false);
         }
 
-        /// <summary>
-        /// Public method for the View's SizeChanged event. Preserves the current selection.
-        /// </summary>
-        public void RecalculateLayout(double width, double height)
+        public void RecalculateLayout(double width, double height, bool preserveSelection = true)
         {
-            UpdateMonitorsInternal(width, height, preserveSelection: true);
+            UpdateMonitorsInternal(width, height, preserveSelection);
         }
 
-        /// <summary>
-        /// Private worker method that contains the core logic for updating the monitor list and layout.
-        /// </summary>
         private void UpdateMonitorsInternal(double width, double height, bool preserveSelection)
         {
             if (width <= 0 || height <= 0) return;
 
-            // Store dimensions for future use (like a manual refresh)
             _containerWidth = width;
             _containerHeight = height;
 
@@ -129,11 +170,11 @@ namespace OLED_Sleeper.ViewModels
                 {
                     viewModel.Configuration.ApplySettings(setting);
                 }
-                viewModel.Configuration.OnDirtyStateChanged = CheckDirtyState;
+                // Subscribe to each monitor's dirty state change
+                viewModel.OnMonitorDirtyStateChanged = CheckDirtyState;
                 Monitors.Add(viewModel);
             }
 
-            // Re-selection logic is now driven by the preserveSelection flag
             SelectedMonitor = selectedMonitorId != null
                 ? Monitors.FirstOrDefault(m => m.HardwareId == selectedMonitorId)
                 : null;
@@ -141,11 +182,10 @@ namespace OLED_Sleeper.ViewModels
             CheckDirtyState();
         }
 
-        // --- End of Refactoring ---
-
         private void CheckDirtyState()
         {
-            IsDirty = Monitors.Any(m => m.Configuration.IsDirty);
+            // The master dirty state is true if any monitor has unsaved changes.
+            IsDirty = Monitors.Any(m => m.IsDirty);
         }
     }
 }

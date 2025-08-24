@@ -1,4 +1,5 @@
-﻿<Window x:Class="OLED_Sleeper.MainWindow"
+﻿<!-- File: MainWindow.xaml -->
+<Window x:Class="OLED_Sleeper.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
@@ -7,8 +8,9 @@
         xmlns:views="clr-namespace:OLED_Sleeper.Views"
         xmlns:converters="clr-namespace:OLED_Sleeper.Converters"
         mc:Ignorable="d"
-        Title="OLED Sleeper Settings" Height="650" Width="800" MinHeight="500" MinWidth="700"
+        Title="{Binding WindowTitle}"
         d:DataContext="{d:DesignInstance viewModels:MainViewModel}"
+        Height="650" Width="800" MinHeight="500" MinWidth="700"
         FontFamily="Bahnschrift"
         Background="{StaticResource PrimaryBackgroundColor}"
         WindowStyle="None"
@@ -92,7 +94,7 @@
             <Grid Grid.Row="0" Background="{StaticResource SecondaryBackgroundColor}" MouseDown="TitleBar_MouseDown">
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Center">
                     <Image Source="/Assets/icon.ico" Width="18" Height="18" Margin="8,0,0,0" />
-                    <TextBlock Text="OLED Sleeper Settings" Foreground="{StaticResource PrimaryForegroundColor}" Margin="10,0,0,0" VerticalAlignment="Center" />
+                    <TextBlock Text="{Binding WindowTitle}" Foreground="{StaticResource PrimaryForegroundColor}" Margin="10,0,0,0" VerticalAlignment="Center" />
                 </StackPanel>
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
                     <Button Style="{StaticResource WindowButtonStyle}" Content="&#xE921;" Click="MinimizeButton_Click" ToolTip="Minimize" />
@@ -123,7 +125,7 @@
                                     IsEnabled="{Binding IsDirty}"
                                     Style="{StaticResource ModernActionButton}"
                                     Background="Transparent" BorderBrush="{StaticResource SecondaryForegroundColor}" BorderThickness="1" />
-                            <Button Content="Save Settings"
+                            <Button Content="{Binding SaveButtonText}"
                                     Command="{Binding SaveSettingsCommand}"
                                     IsEnabled="{Binding IsDirty}"
                                     Style="{StaticResource ModernActionButton}"

@@ -19,6 +19,37 @@ namespace OLED_Sleeper
 
         protected override void OnStartup(StartupEventArgs e)
         {
+            base.OnStartup(e);
+
+            LogSetup();
+            ServiceSetup();
+            WindowSetup();
+        }
+
+        private void WindowSetup()
+        {
+            var mainWindow = _serviceProvider.GetRequiredService<MainWindow>();
+            mainWindow.DataContext = _serviceProvider.GetRequiredService<MainViewModel>();
+            this.MainWindow = mainWindow;
+            mainWindow.Show();
+            SetupTaskbarIcon();
+        }
+
+        private void ServiceSetup()
+        {
+            var services = new ServiceCollection();
+            ConfigureServices(services);
+            _serviceProvider = services.BuildServiceProvider();
+
+            var settingsService = _serviceProvider.GetRequiredService<ISettingsService>();
+
+            var idleActivityService = _serviceProvider.GetRequiredService<IIdleActivityService>();
+            idleActivityService.UpdateSettings(settingsService.LoadSettings());
+            idleActivityService.Start();
+        }
+
+        private static void LogSetup()
+        {
             var logPath = System.IO.Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
                 "OLED-Sleeper", "Logs", "log-.txt");
@@ -29,20 +60,6 @@ namespace OLED_Sleeper
                 .CreateLogger();
 
             Log.Information("--- Application Starting ---");
-
-            base.OnStartup(e);
-
-            // Refactored: Setup Dependency Injection.
-            var services = new ServiceCollection();
-            ConfigureServices(services);
-            _serviceProvider = services.BuildServiceProvider();
-
-            // Refactored: Resolve MainWindow from DI container.
-            var mainWindow = _serviceProvider.GetRequiredService<MainWindow>();
-            mainWindow.DataContext = _serviceProvider.GetRequiredService<MainViewModel>();
-            this.MainWindow = mainWindow;
-            mainWindow.Show();
-            SetupTaskbarIcon();
         }
 
         // Refactored: Method to configure services for DI.
@@ -51,6 +68,7 @@ namespace OLED_Sleeper
             services.AddSingleton<IMonitorService, MonitorService>();
             services.AddSingleton<IMonitorLayoutService, MonitorLayoutService>();
             services.AddSingleton<ISettingsService, SettingsService>();
+            services.AddSingleton<IIdleActivityService, IdleActivityService>();
             services.AddSingleton<MainViewModel>();
             services.AddSingleton<MainWindow>();
         }
