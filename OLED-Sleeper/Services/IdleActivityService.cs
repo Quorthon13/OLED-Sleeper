@@ -1,4 +1,5 @@
 ﻿// File: Services/IdleActivityService.cs
+using OLED_Sleeper.Events;
 using OLED_Sleeper.Extensions;
 using OLED_Sleeper.Models;
 using OLED_Sleeper.Native;
@@ -15,18 +16,49 @@ namespace OLED_Sleeper.Services
 {
     /// <summary>
     /// A background service that monitors user activity and determines when monitors should be considered idle.
-    /// It uses a combination of system-wide idle time, mouse position, and active window location.
+    /// It manages a dedicated timer for each monitor that only starts counting when qualifying activity stops.
     /// </summary>
     public class IdleActivityService : IIdleActivityService
     {
-        #region Private Classes, Structs, and Enums
+        #region Public Events
+
+        /// <summary>
+        /// Raised when a managed monitor transitions from an active to an idle state.
+        /// </summary>
+        public event EventHandler<MonitorStateEventArgs> MonitorBecameIdle;
+
+        /// <summary>
+        /// Raised when a managed monitor transitions from an idle to an active state.
+        /// </summary>
+        public event EventHandler<MonitorStateEventArgs> MonitorBecameActive;
+
+        #endregion Public Events
+
+        #region Private State Management
+
+        /// <summary>
+        /// Defines the states for our per-monitor state machine.
+        /// </summary>
+        private enum MonitorStateMachine
+        { Active, Counting, Idle }
+
         /// <summary>
         /// A private class to hold the combined state and settings for a monitor being actively managed.
         /// </summary>
         private class ManagedMonitorState
         {
+            public int DisplayNumber { get; set; }
             public MonitorSettings Settings { get; set; }
             public Rect Bounds { get; set; }
+        }
+
+        /// <summary>
+        /// Tracks the timer and state for a single monitor.
+        /// </summary>
+        private class MonitorTimerState
+        {
+            public MonitorStateMachine CurrentState { get; set; } = MonitorStateMachine.Active;
+            public DateTime ActivityStoppedTimestamp { get; set; }
         }
 
         /// <summary>
@@ -37,35 +69,32 @@ namespace OLED_Sleeper.Services
             public readonly uint IdleTimeMilliseconds;
             public readonly Point CursorPosition;
             public readonly Rect ForegroundWindowRect;
+            public readonly IntPtr ForegroundWindowHandle;
 
-            public SystemState(uint idleTime, Point cursorPosition, Rect windowRect)
+            public SystemState(uint idleTime, Point cursorPosition, Rect windowRect, IntPtr windowHandle)
             {
                 IdleTimeMilliseconds = idleTime;
                 CursorPosition = cursorPosition;
                 ForegroundWindowRect = windowRect;
+                ForegroundWindowHandle = windowHandle;
             }
         }
 
         /// <summary>
-        /// --- Updated: Defines the reason for a monitor's active state. ---
-        /// Defines the specific reason why a monitor is considered active.
+        /// A dictionary to hold the state machine for each managed monitor.
         /// </summary>
-        private enum ActivityReason
-        {
-            None, // Used when the monitor is idle.
-            MousePosition,
-            ActiveWindow,
-            SystemInput
-        }
-        #endregion
+        private readonly Dictionary<string, MonitorTimerState> _monitorStates = new();
+
+        #endregion Private State Management
 
         #region Fields
+
         private CancellationTokenSource _cancellationTokenSource;
         private List<ManagedMonitorState> _managedMonitors = new List<ManagedMonitorState>();
-        private readonly Dictionary<string, bool> _idleStateNotified = new Dictionary<string, bool>();
         private readonly object _lock = new object();
         private readonly IMonitorService _monitorService;
-        #endregion
+
+        #endregion Fields
 
         /// <summary>
         /// Initializes a new instance of the <see cref="IdleActivityService"/> class.
@@ -77,6 +106,7 @@ namespace OLED_Sleeper.Services
         }
 
         #region Public Methods
+
         /// <summary>
         /// Starts the background idle checking loop.
         /// </summary>
@@ -112,22 +142,23 @@ namespace OLED_Sleeper.Services
                                     select new ManagedMonitorState
                                     {
                                         Settings = setting,
-                                        Bounds = monitorInfo.Bounds
+                                        Bounds = monitorInfo.Bounds,
+                                        DisplayNumber = monitorInfo.DisplayNumber
                                     }).ToList();
 
-                var unmatchedSettings = activeSettings.Where(s => !_managedMonitors.Any(m => m.Settings.HardwareId == s.HardwareId)).ToList();
-                if (unmatchedSettings.Any())
+                _monitorStates.Clear();
+                foreach (var monitor in _managedMonitors)
                 {
-                    Log.Warning("Found {UnmatchedCount} managed settings with no matching physical monitor attached.", unmatchedSettings.Count);
+                    _monitorStates[monitor.Settings.HardwareId] = new MonitorTimerState();
                 }
-
-                _idleStateNotified.Clear();
             }
             Log.Information("IdleActivityService settings updated. Now tracking {Count} monitors.", _managedMonitors.Count);
         }
-        #endregion
+
+        #endregion Public Methods
 
         #region Private Core Logic
+
         /// <summary>
         /// The main background loop that periodically checks monitor states.
         /// </summary>
@@ -144,12 +175,12 @@ namespace OLED_Sleeper.Services
                 {
                     Log.Error(ex, "Error occurred in the idle check loop.");
                 }
-                await Task.Delay(1000, token);
+                await Task.Delay(200, token);
             }
         }
 
         /// <summary>
-        /// Gathers system state and processes each managed monitor.
+        /// Gathers system state and processes each managed monitor according to the state machine logic.
         /// </summary>
         private void ProcessMonitors()
         {
@@ -159,47 +190,78 @@ namespace OLED_Sleeper.Services
             {
                 foreach (var monitor in _managedMonitors)
                 {
-                    var reason = GetMonitorActivityReason(monitor, systemState);
-                    UpdateMonitorState(monitor, reason, systemState);
+                    var timerState = _monitorStates[monitor.Settings.HardwareId];
+                    var activityReason = GetActivityReason(monitor, systemState);
+                    bool hasActivityNow = activityReason != ActivityReason.None;
+
+                    var eventArgs = new MonitorStateEventArgs(
+                        monitor.Settings.HardwareId, monitor.DisplayNumber, monitor.Bounds,
+                        monitor.Settings, systemState.ForegroundWindowHandle, activityReason);
+
+                    switch (timerState.CurrentState)
+                    {
+                        case MonitorStateMachine.Active:
+                            if (!hasActivityNow)
+                            {
+                                // Activity has stopped. Transition to the Counting state.
+                                timerState.CurrentState = MonitorStateMachine.Counting;
+                                timerState.ActivityStoppedTimestamp = DateTime.UtcNow;
+                            }
+                            break;
+
+                        case MonitorStateMachine.Counting:
+                            if (hasActivityNow)
+                            {
+                                // Activity resumed during the countdown. Transition back to Active.
+                                timerState.CurrentState = MonitorStateMachine.Active;
+                            }
+                            else
+                            {
+                                // Still no activity. Check if the timer has expired.
+                                var elapsed = DateTime.UtcNow - timerState.ActivityStoppedTimestamp;
+                                if (elapsed.TotalMilliseconds >= monitor.Settings.IdleTimeMilliseconds)
+                                {
+                                    // Timer expired. Transition to Idle and raise the event.
+                                    timerState.CurrentState = MonitorStateMachine.Idle;
+                                    Log.Information("Monitor #{DisplayNumber} has become idle after {Seconds}s of inactivity.",
+                                        monitor.DisplayNumber, Math.Round(elapsed.TotalSeconds));
+                                    MonitorBecameIdle?.Invoke(this, eventArgs);
+                                }
+                            }
+                            break;
+
+                        case MonitorStateMachine.Idle:
+                            if (hasActivityNow)
+                            {
+                                // Activity resumed from an idle state. Raise the event.
+                                MonitorBecameActive?.Invoke(this, eventArgs);
+
+                                // Only transition back to Active if the event wasn't ignored by a handler.
+                                if (!eventArgs.IsIgnored)
+                                {
+                                    timerState.CurrentState = MonitorStateMachine.Active;
+                                    Log.Information("Monitor #{DisplayNumber} is now ACTIVE.", monitor.DisplayNumber);
+                                }
+                            }
+                            break;
+                    }
                 }
             }
         }
 
         /// <summary>
-        /// Gathers all required system-wide state information at once.
+        /// Determines the reason for any qualifying activity on a monitor at this exact moment.
         /// </summary>
-        /// <returns>A snapshot of the current system state.</returns>
-        private SystemState GetSystemState()
+        private ActivityReason GetActivityReason(ManagedMonitorState monitor, SystemState state)
         {
-            uint idleTime = GetSystemIdleTimeMilliseconds();
-
-            NativeMethods.GetCursorPos(out var nativePoint);
-            Point cursorPosition = new Point(nativePoint.X, nativePoint.Y);
-
-            IntPtr foregroundWindowHandle = NativeMethods.GetForegroundWindow();
-            Rect windowRect;
-            if (NativeMethods.DwmGetWindowAttribute(foregroundWindowHandle, NativeMethods.DWMWA_EXTENDED_FRAME_BOUNDS, out var nativeWindowRect, Marshal.SizeOf(typeof(NativeMethods.Rect))) == 0)
+            // The user-defined idle time is the main gatekeeper. If the system has been idle for less
+            // than this time, we consider it active due to general input, provided the setting is enabled.
+            if (monitor.Settings.IsActiveOnInput && state.IdleTimeMilliseconds < monitor.Settings.IdleTimeMilliseconds)
             {
-                windowRect = nativeWindowRect.ToWindowsRect();
-            }
-            else
-            {
-                NativeMethods.GetWindowRect(foregroundWindowHandle, out nativeWindowRect);
-                windowRect = nativeWindowRect.ToWindowsRect();
+                return ActivityReason.SystemInput;
             }
 
-            return new SystemState(idleTime, cursorPosition, windowRect);
-        }
-
-        /// <summary>
-        /// --- Updated: Returns the reason for activity, not just a boolean. ---
-        /// Determines why a monitor is active based on its settings and the current system state.
-        /// </summary>
-        /// <param name="monitor">The managed monitor to check.</param>
-        /// <param name="state">The current snapshot of the system state.</param>
-        /// <returns>An <see cref="ActivityReason"/> indicating why the monitor is active, or <c>None</c> if it's idle.</returns>
-        private ActivityReason GetMonitorActivityReason(ManagedMonitorState monitor, SystemState state)
-        {
+            // If the system-wide timer has expired, we then check for monitor-specific "keep-alive" overrides.
             if (monitor.Settings.IsActiveOnMousePosition && monitor.Bounds.Contains(state.CursorPosition))
             {
                 return ActivityReason.MousePosition;
@@ -214,60 +276,35 @@ namespace OLED_Sleeper.Services
                 }
             }
 
-            if (monitor.Settings.IsActiveOnInput && state.IdleTimeMilliseconds < monitor.Settings.IdleTimeMilliseconds)
-            {
-                return ActivityReason.SystemInput;
-            }
-
+            // If no conditions are met, there is no activity.
             return ActivityReason.None;
         }
 
         /// <summary>
-        /// --- Updated: Logs the specific cause of an activity state change. ---
-        /// Updates the notified state of a monitor and logs with detailed cause information if a change has occurred.
+        /// Gathers all required system-wide state information at once.
         /// </summary>
-        /// <param name="monitor">The monitor whose state is being updated.</param>
-        /// <param name="reason">The reason for the monitor's current activity state.</param>
-        /// <param name="state">The current system state, used for logging details.</param>
-        private void UpdateMonitorState(ManagedMonitorState monitor, ActivityReason reason, SystemState state)
+        private SystemState GetSystemState()
         {
-            bool isCurrentlyActive = (reason != ActivityReason.None);
-            bool hasBeenNotifiedAsIdle = _idleStateNotified.ContainsKey(monitor.Settings.HardwareId);
-
-            if (isCurrentlyActive && hasBeenNotifiedAsIdle)
+            uint idleTime = GetSystemIdleTimeMilliseconds();
+            NativeMethods.GetCursorPos(out var nativePoint);
+            Point cursorPosition = new Point(nativePoint.X, nativePoint.Y);
+            IntPtr foregroundWindowHandle = NativeMethods.GetForegroundWindow();
+            Rect windowRect;
+            if (NativeMethods.DwmGetWindowAttribute(foregroundWindowHandle, NativeMethods.DWMWA_EXTENDED_FRAME_BOUNDS, out var nativeWindowRect, Marshal.SizeOf(typeof(NativeMethods.Rect))) == 0)
             {
-                // State changed from idle to active, so log the cause.
-                string causeMessage;
-                switch (reason)
-                {
-                    case ActivityReason.MousePosition:
-                        causeMessage = $"Mouse position {state.CursorPosition} detected on monitor bounds {monitor.Bounds}.";
-                        break;
-                    case ActivityReason.ActiveWindow:
-                        causeMessage = $"Active window at {state.ForegroundWindowRect} intersects with monitor bounds {monitor.Bounds}.";
-                        break;
-                    case ActivityReason.SystemInput:
-                        causeMessage = $"System-wide user input detected (idle time was {state.IdleTimeMilliseconds}ms).";
-                        break;
-                    default:
-                        causeMessage = "Unknown activity detected.";
-                        break;
-                }
-                Log.Information("Monitor {HardwareId} is now ACTIVE. Cause: {Cause}", monitor.Settings.HardwareId, causeMessage);
-                _idleStateNotified.Remove(monitor.Settings.HardwareId);
+                windowRect = nativeWindowRect.ToWindowsRect();
             }
-            else if (!isCurrentlyActive && !hasBeenNotifiedAsIdle)
+            else
             {
-                // State changed from active to idle.
-                _idleStateNotified[monitor.Settings.HardwareId] = true;
-                Log.Information("Monitor {HardwareId} has become idle (no qualifying activity detected).", monitor.Settings.HardwareId);
+                NativeMethods.GetWindowRect(foregroundWindowHandle, out nativeWindowRect);
+                windowRect = nativeWindowRect.ToWindowsRect();
             }
+            return new SystemState(idleTime, cursorPosition, windowRect, foregroundWindowHandle);
         }
 
         /// <summary>
         /// Gets the system-wide user idle time in milliseconds using the GetLastInputInfo API.
         /// </summary>
-        /// <returns>The number of milliseconds since the last user input event.</returns>
         private static uint GetSystemIdleTimeMilliseconds()
         {
             var lastInputInfo = new NativeMethods.LASTINPUTINFO();
@@ -280,6 +317,7 @@ namespace OLED_Sleeper.Services
             }
             return 0;
         }
-        #endregion
+
+        #endregion Private Core Logic
     }
 }

@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Windows;
+using OLED_Sleeper.Helpers;
 
 namespace OLED_Sleeper.Services
 {
@@ -40,7 +41,8 @@ namespace OLED_Sleeper.Services
                             mi.rcMonitor.right - mi.rcMonitor.left,
                             mi.rcMonitor.bottom - mi.rcMonitor.top),
                         IsPrimary = (mi.dwFlags & 1) == 1,
-                        Dpi = dpiX
+                        Dpi = dpiX,
+                        DisplayNumber = DisplayNumberParser.ParseDisplayNumber(mi.szDevice),
                     });
                 }
                 return true;

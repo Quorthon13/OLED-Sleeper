@@ -26,6 +26,7 @@ namespace OLED_Sleeper.ViewModels
         public MonitorConfigurationViewModel Configuration { get; }
 
         private bool _isSelected;
+
         /// <summary>
         /// Gets or sets whether this monitor is currently selected in the UI.
         /// </summary>
@@ -36,6 +37,7 @@ namespace OLED_Sleeper.ViewModels
         }
 
         private bool _isDirty;
+
         /// <summary>
         /// Gets or sets whether this monitor has unsaved changes in its configuration.
         /// </summary>
@@ -48,7 +50,7 @@ namespace OLED_Sleeper.ViewModels
         /// <summary>
         /// The display title for the monitor, including primary indicator if applicable.
         /// </summary>
-        public string MonitorTitle => _monitor.IsPrimary ? $"Monitor {DisplayNumber} (Primary)" : $"Monitor {DisplayNumber}";
+        public string MonitorTitle => _monitor.IsPrimary ? $"Monitor {_monitor.DisplayNumber} (Primary)" : $"Monitor {_monitor.DisplayNumber}";
 
         /// <summary>
         /// The display number for the monitor.
@@ -99,12 +101,11 @@ namespace OLED_Sleeper.ViewModels
         /// <param name="totalBounds">The total bounds of all monitors for layout calculations.</param>
         /// <param name="offsetX">The X offset for layout positioning.</param>
         /// <param name="offsetY">The Y offset for layout positioning.</param>
-        public MonitorLayoutViewModel(MonitorInfo monitor, int displayNumber, double scale, Rect totalBounds, double offsetX, double offsetY)
+        public MonitorLayoutViewModel(MonitorInfo monitor, double scale, Rect totalBounds, double offsetX, double offsetY)
         {
             _monitor = monitor;
-            DisplayNumber = displayNumber;
 
-            Configuration = new MonitorConfigurationViewModel(monitor, displayNumber);
+            Configuration = new MonitorConfigurationViewModel(monitor);
             // Subscribe to the configuration's dirty state changes.
             Configuration.OnDirtyStateChanged = () =>
             {

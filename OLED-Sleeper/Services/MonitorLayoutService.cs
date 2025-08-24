@@ -47,25 +47,13 @@ namespace OLED_Sleeper.Services
             foreach (var monitorInfo in monitorInfos)
             {
                 // Refactored: Centralized display number parsing.
-                int displayNumber = ParseDisplayNumber(monitorInfo.DeviceName, fallbackMonitorNumber++);
-                var monitorVm = new MonitorLayoutViewModel(monitorInfo, displayNumber, scale, totalBounds, offsetX, offsetY);
+                var monitorVm = new MonitorLayoutViewModel(monitorInfo, scale, totalBounds, offsetX, offsetY);
                 Log.Debug("Creating MonitorLayoutViewModel for {DeviceName}: ScaledLeft={L}, ScaledTop={T}, ScaledWidth={W}, ScaledHeight={H}",
                     monitorInfo.DeviceName, monitorVm.ScaledLeft, monitorVm.ScaledTop, monitorVm.ScaledWidth, monitorVm.ScaledHeight);
                 monitorLayoutViewModels.Add(monitorVm);
             }
             Log.Debug("--- Finished Layout Calculation ---");
             return monitorLayoutViewModels;
-        }
-
-        // Refactored: Extracted logic to a separate method for clarity and reuse.
-        private int ParseDisplayNumber(string deviceName, int fallback)
-        {
-            var match = Regex.Match(deviceName, @"\d+$");
-            if (match.Success && int.TryParse(match.Value, out int number))
-            {
-                return number;
-            }
-            return fallback;
         }
     }
 }

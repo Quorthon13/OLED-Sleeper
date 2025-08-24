@@ -28,12 +28,7 @@ namespace OLED_Sleeper.ViewModels
         /// <summary>
         /// The display title for the monitor, including primary indicator if applicable.
         /// </summary>
-        public string MonitorTitle => _monitorInfo.IsPrimary ? $"Monitor {DisplayNumber} (Primary)" : $"Monitor {DisplayNumber}";
-
-        /// <summary>
-        /// The display number for the monitor.
-        /// </summary>
-        public int DisplayNumber { get; }
+        public string MonitorTitle => _monitorInfo.IsPrimary ? $"Monitor {_monitorInfo.DisplayNumber} (Primary)" : $"Monitor {_monitorInfo.DisplayNumber}";
 
         // --- Updated: Added explicit error properties for robust UI binding ---
         public string IdleValueError => this["IdleValue"];
@@ -205,10 +200,9 @@ namespace OLED_Sleeper.ViewModels
         /// </summary>
         /// <param name="monitorInfo">The monitor information model.</param>
         /// <param name="displayNumber">The display number for the monitor.</param>
-        public MonitorConfigurationViewModel(MonitorInfo monitorInfo, int displayNumber)
+        public MonitorConfigurationViewModel(MonitorInfo monitorInfo)
         {
             _monitorInfo = monitorInfo;
-            DisplayNumber = displayNumber;
 
             // Initialize properties from the model's defaults
             ApplySettings(new MonitorSettings());
