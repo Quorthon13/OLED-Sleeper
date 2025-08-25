@@ -1,39 +1,27 @@
 ﻿using OLED_Sleeper.Models;
-using System;
 using System.Windows;
-using static OLED_Sleeper.Services.IdleActivityService; // Required for ActivityReason
 
 namespace OLED_Sleeper.Events
 {
-    public class MonitorStateEventArgs : EventArgs
+    public class MonitorStateEventArgs(
+        string hardwareId,
+        int displayNumber,
+        Rect bounds,
+        MonitorSettings settings,
+        IntPtr foregroundWindowHandle,
+        ActivityReason reason)
+        : EventArgs
     {
-        public string HardwareId { get; }
-        public int DisplayNumber { get; }
-        public Rect Bounds { get; }
-        public MonitorSettings Settings { get; }
-        public IntPtr ForegroundWindowHandle { get; }
-        public ActivityReason Reason { get; }
+        public string HardwareId { get; } = hardwareId;
+        public int DisplayNumber { get; } = displayNumber;
+        public Rect Bounds { get; } = bounds;
+        public MonitorSettings Settings { get; } = settings;
+        public IntPtr ForegroundWindowHandle { get; } = foregroundWindowHandle;
+        public ActivityReason Reason { get; } = reason;
 
         /// <summary>
         /// A subscriber can set this to true to prevent the sender from changing its internal state.
         /// </summary>
-        public bool IsIgnored { get; set; }
-
-        public MonitorStateEventArgs(
-            string hardwareId,
-            int displayNumber,
-            Rect bounds,
-            MonitorSettings settings,
-            IntPtr foregroundWindowHandle,
-            ActivityReason reason)
-        {
-            HardwareId = hardwareId;
-            DisplayNumber = displayNumber;
-            Bounds = bounds;
-            Settings = settings;
-            ForegroundWindowHandle = foregroundWindowHandle;
-            Reason = reason;
-            IsIgnored = false;
-        }
+        public bool IsIgnored { get; set; } = false;
     }
 }

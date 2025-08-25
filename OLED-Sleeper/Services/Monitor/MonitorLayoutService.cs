@@ -1,5 +1,6 @@
 ﻿// File: Services/MonitorLayoutService.cs
 using OLED_Sleeper.Models;
+using OLED_Sleeper.Services.Monitor.Interfaces;
 using OLED_Sleeper.ViewModels;
 using Serilog;
 using System;
@@ -9,7 +10,7 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using System.Windows;
 
-namespace OLED_Sleeper.Services
+namespace OLED_Sleeper.Services.Monitor
 {
     // Refactored: Implements IMonitorLayoutService for dependency injection.
     public class MonitorLayoutService : IMonitorLayoutService

@@ -1,7 +1,9 @@
-﻿using OLED_Sleeper.ViewModels;
+﻿using OLED_Sleeper.Services.Monitor.Interfaces;
+using OLED_Sleeper.Services.Workspace.Interfaces;
+using OLED_Sleeper.ViewModels;
 using System.Collections.ObjectModel;
 
-namespace OLED_Sleeper.Services
+namespace OLED_Sleeper.Services.Workspace
 {
     /// <summary>
     /// Provides workspace management, including monitor discovery, settings loading,
@@ -9,8 +11,8 @@ namespace OLED_Sleeper.Services
     /// </summary>
     public class WorkspaceService : IWorkspaceService
     {
-        private readonly IMonitorManagerService _monitorManager;
-        private readonly ISettingsService _settingsService;
+        private readonly IMonitorInfoManager _monitorManager;
+        private readonly IMonitorSettingsFileService _settingsService;
         private readonly IMonitorLayoutService _monitorLayoutService;
 
         /// <summary>
@@ -20,8 +22,8 @@ namespace OLED_Sleeper.Services
         /// <param name="settingsService">Service for loading and saving monitor settings.</param>
         /// <param name="monitorLayoutService">Service for creating monitor layout view models.</param>
         public WorkspaceService(
-            IMonitorManagerService monitorManager,
-            ISettingsService settingsService,
+            IMonitorInfoManager monitorManager,
+            IMonitorSettingsFileService settingsService,
             IMonitorLayoutService monitorLayoutService)
         {
             _monitorManager = monitorManager;

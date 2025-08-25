@@ -2,7 +2,8 @@
 using OLED_Sleeper.Commands;
 using OLED_Sleeper.Events;
 using OLED_Sleeper.Models;
-using OLED_Sleeper.Services;
+using OLED_Sleeper.Services.Monitor.Interfaces;
+using OLED_Sleeper.Services.Workspace.Interfaces;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Threading.Tasks;
@@ -26,17 +27,17 @@ namespace OLED_Sleeper.ViewModels
         /// <summary>
         /// Service for loading and saving monitor settings.
         /// </summary>
-        private readonly ISettingsService _settingsService;
+        private readonly IMonitorSettingsFileService _settingsService;
 
         /// <summary>
         /// Service for handling idle activity and updating monitor states.
         /// </summary>
-        private readonly IIdleActivityService _idleActivityService;
+        private readonly IMonitorIdleDetectionService _idleActivityService;
 
         /// <summary>
         /// Service for validating monitor settings before saving.
         /// </summary>
-        private readonly ISaveValidationService _saveValidationService;
+        private readonly IMonitorSettingsValidationService _saveValidationService;
 
         /// <summary>
         /// The width of the container used for monitor layout calculations.
@@ -167,13 +168,13 @@ namespace OLED_Sleeper.ViewModels
         /// <param name="settingsService">Service for settings persistence.</param>
         /// <param name="idleActivityService">Service for idle activity monitoring.</param>
         /// <param name="saveValidationService">Service for validating settings before save.</param>
-        public MainViewModel(IWorkspaceService workspaceService, ISettingsService settingsService,
-                             IIdleActivityService idleActivityService, ISaveValidationService saveValidationService)
+        public MainViewModel(IWorkspaceService workspaceService, IMonitorSettingsFileService settingsService,
+                             IMonitorIdleDetectionService monitorIdleDetectionService, IMonitorSettingsValidationService monitorSettingsValidationService)
         {
             _workspaceService = workspaceService;
             _settingsService = settingsService;
-            _idleActivityService = idleActivityService;
-            _saveValidationService = saveValidationService;
+            _idleActivityService = monitorIdleDetectionService;
+            _saveValidationService = monitorSettingsValidationService;
 
             SelectMonitorCommand = new RelayCommand(ExecuteSelectMonitor);
             ReloadMonitorsCommand = new RelayCommand(RefreshMonitors);

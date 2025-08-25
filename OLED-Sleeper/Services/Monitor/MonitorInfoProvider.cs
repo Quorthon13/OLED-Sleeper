@@ -1,4 +1,4 @@
-﻿// File: Services/MonitorService.cs
+﻿// File: Services/MonitorInfoProvider.cs
 using OLED_Sleeper.Models;
 using OLED_Sleeper.Native;
 using System;
@@ -8,14 +8,15 @@ using System.Runtime.InteropServices;
 using System.Windows;
 using OLED_Sleeper.Helpers;
 using Serilog;
+using OLED_Sleeper.Services.Monitor.Interfaces;
 
-namespace OLED_Sleeper.Services
+namespace OLED_Sleeper.Services.Monitor
 {
     /// <summary>
     /// Provides monitor enumeration and hardware ID enrichment services.
-    /// Implements <see cref="IMonitorService"/> for dependency injection.
+    /// Implements <see cref="IMonitorInfoProvider"/> for dependency injection.
     /// </summary>
-    public class MonitorService : IMonitorService
+    public class MonitorInfoProvider : IMonitorInfoProvider
     {
         /// <summary>
         /// Enumerates all monitors connected to the system and returns their information.

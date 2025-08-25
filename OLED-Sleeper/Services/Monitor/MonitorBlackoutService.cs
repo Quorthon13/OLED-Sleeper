@@ -1,18 +1,16 @@
-﻿// File: Services/OverlayService.cs
-using OLED_Sleeper.Native;
-using System;
-using System.Collections.Generic;
+﻿using OLED_Sleeper.Native;
+using OLED_Sleeper.Services.Monitor.Interfaces;
 using System.Windows;
 using System.Windows.Interop;
 using System.Windows.Media;
 
-namespace OLED_Sleeper.Services
+namespace OLED_Sleeper.Services.Monitor
 {
     /// <summary>
     /// Provides overlay window management for monitor blackout overlays.
-    /// Implements <see cref="IOverlayService"/>.
+    /// Implements <see cref="IMonitorBlackoutService"/>.
     /// </summary>
-    public class OverlayService : IOverlayService
+    public class MonitorBlackoutService : IMonitorBlackoutService
     {
         private readonly Dictionary<string, Window> _overlayWindows = new();
         private readonly HashSet<IntPtr> _overlayHandles = new();
@@ -24,7 +22,7 @@ namespace OLED_Sleeper.Services
         /// <param name="bounds">The virtual screen coordinates of the monitor.</param>
         public void ShowBlackoutOverlay(string hardwareId, Rect bounds)
         {
-            Application.Current.Dispatcher.Invoke(() =>
+            System.Windows.Application.Current.Dispatcher.Invoke(() =>
             {
                 if (_overlayWindows.ContainsKey(hardwareId)) return;
 
@@ -49,7 +47,7 @@ namespace OLED_Sleeper.Services
         /// <param name="hardwareId">The unique hardware ID of the monitor.</param>
         public void HideOverlay(string hardwareId)
         {
-            Application.Current.Dispatcher.Invoke(() =>
+            System.Windows.Application.Current.Dispatcher.Invoke(() =>
             {
                 if (_overlayWindows.TryGetValue(hardwareId, out var overlay))
                 {

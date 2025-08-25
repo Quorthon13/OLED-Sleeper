@@ -1,6 +1,9 @@
-﻿namespace OLED_Sleeper.Services
+// File: Services/IMonitorDimmingService.cs
+using System.Collections.Generic;
+
+namespace OLED_Sleeper.Services.Monitor.Interfaces
 {
-    public interface IDimmerService
+    public interface IMonitorDimmingService
     {
         void DimMonitor(string hardwareId, int dimLevel);
 

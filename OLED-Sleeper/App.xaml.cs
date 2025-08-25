@@ -1,12 +1,17 @@
 ﻿using Hardcodet.Wpf.TaskbarNotification;
+
 using Microsoft.Extensions.DependencyInjection;
 using OLED_Sleeper.Events;
-using OLED_Sleeper.Services;
+using OLED_Sleeper.Services.Application.Interfaces;
+using OLED_Sleeper.Services.Monitor.Interfaces;
+using OLED_Sleeper.Services.Workspace.Interfaces;
 using OLED_Sleeper.ViewModels;
 using Serilog;
-using System;
 using System.Windows;
 using System.Windows.Controls;
+using OLED_Sleeper.Services.Application;
+using OLED_Sleeper.Services.Monitor;
+using OLED_Sleeper.Services.Workspace;
 
 namespace OLED_Sleeper
 {
@@ -41,17 +46,17 @@ namespace OLED_Sleeper
         private void ConfigureServices()
         {
             var services = new ServiceCollection();
-            services.AddSingleton<IMonitorManagerService, MonitorManagerService>();
-            services.AddSingleton<IBrightnessStateService, BrightnessStateService>();
-            services.AddSingleton<IDimmerService, DimmerService>();
-            services.AddSingleton<IOverlayService, OverlayService>();
+            services.AddSingleton<IMonitorInfoManager, MonitorInfoManager>();
+            services.AddSingleton<IMonitorBrightnessStateService, MonitorBrightnessStateService>();
+            services.AddSingleton<IMonitorDimmingService, MonitorDimmingService>();
+            services.AddSingleton<IMonitorBlackoutService, MonitorBlackoutService>();
             services.AddSingleton<IApplicationOrchestrator, ApplicationOrchestrator>();
             services.AddSingleton<IWorkspaceService, WorkspaceService>();
-            services.AddSingleton<ISaveValidationService, SaveValidationService>();
-            services.AddSingleton<IMonitorService, MonitorService>();
+            services.AddSingleton<IMonitorSettingsValidationService, MonitorSettingsValidationService>();
+            services.AddSingleton<IMonitorInfoProvider, MonitorInfoProvider>();
             services.AddSingleton<IMonitorLayoutService, MonitorLayoutService>();
-            services.AddSingleton<ISettingsService, SettingsService>();
-            services.AddSingleton<IIdleActivityService, IdleActivityService>();
+            services.AddSingleton<IMonitorSettingsFileService, MonitorSettingsFileService>();
+            services.AddSingleton<IMonitorIdleDetectionService, MonitorIdleDetectionService>();
             services.AddSingleton<MainViewModel>();
             services.AddSingleton<MainWindow>();
             _serviceProvider = services.BuildServiceProvider();
@@ -74,6 +79,7 @@ namespace OLED_Sleeper
         /// </summary>
         private void SetupMainWindow()
         {
+            if (_serviceProvider == null) return;
             var mainWindow = _serviceProvider.GetRequiredService<MainWindow>();
             mainWindow.DataContext = _serviceProvider.GetRequiredService<MainViewModel>();
             MainWindow = mainWindow;

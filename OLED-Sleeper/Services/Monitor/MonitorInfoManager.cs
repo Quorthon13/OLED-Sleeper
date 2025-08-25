@@ -1,18 +1,19 @@
 ﻿using OLED_Sleeper.Models;
+using OLED_Sleeper.Services.Monitor.Interfaces;
 using Serilog;
 using System.Collections.Generic;
 
-namespace OLED_Sleeper.Services
+namespace OLED_Sleeper.Services.Monitor
 {
-    public class MonitorManagerService : IMonitorManagerService
+    public class MonitorInfoManager : IMonitorInfoManager
     {
-        private readonly IMonitorService _monitorService;
+        private readonly IMonitorInfoProvider _monitorInfoProvider;
         private List<MonitorInfo> _cachedMonitors;
         private readonly object _lock = new object();
 
-        public MonitorManagerService(IMonitorService monitorService)
+        public MonitorInfoManager(IMonitorInfoProvider monitorInfoProvider)
         {
-            _monitorService = monitorService;
+            _monitorInfoProvider = monitorInfoProvider;
         }
 
         public List<MonitorInfo> GetCurrentMonitors()
@@ -40,7 +41,7 @@ namespace OLED_Sleeper.Services
         private void RefreshMonitorsInternal()
         {
             // This is now the ONLY place where GetMonitors() is called.
-            _cachedMonitors = _monitorService.GetMonitors();
+            _cachedMonitors = _monitorInfoProvider.GetMonitors();
         }
     }
 }

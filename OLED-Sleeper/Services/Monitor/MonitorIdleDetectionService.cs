@@ -1,8 +1,9 @@
-﻿// File: Services/IdleActivityService.cs
+﻿// File: Services/MonitorIdleDetectionService.cs
 using OLED_Sleeper.Events;
 using OLED_Sleeper.Extensions;
 using OLED_Sleeper.Models;
 using OLED_Sleeper.Native;
+using OLED_Sleeper.Services.Monitor.Interfaces;
 using Serilog;
 using System;
 using System.Collections.Generic;
@@ -12,13 +13,13 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 
-namespace OLED_Sleeper.Services
+namespace OLED_Sleeper.Services.Monitor
 {
     /// <summary>
     /// Monitors user activity and determines when managed monitors become idle or active.
     /// Manages a timer for each monitor, raising events on state transitions.
     /// </summary>
-    public class IdleActivityService : IIdleActivityService
+    public class MonitorIdleDetectionService : IMonitorIdleDetectionService
     {
         #region Events
 
@@ -39,7 +40,7 @@ namespace OLED_Sleeper.Services
         private CancellationTokenSource _cancellationTokenSource;
         private List<ManagedMonitorState> _managedMonitors = new();
         private readonly object _lock = new();
-        private readonly IMonitorManagerService _monitorManager;
+        private readonly IMonitorInfoManager _monitorManager;
         private readonly Dictionary<string, MonitorTimerState> _monitorStates = new();
 
         #endregion Fields
@@ -93,10 +94,10 @@ namespace OLED_Sleeper.Services
         #endregion Nested Types
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="IdleActivityService"/> class.
+        /// Initializes a new instance of the <see cref="MonitorIdleDetectionService"/> class.
         /// </summary>
         /// <param name="monitorManager">Service for monitor information.</param>
-        public IdleActivityService(IMonitorManagerService monitorManager)
+        public MonitorIdleDetectionService(IMonitorInfoManager monitorManager)
         {
             _monitorManager = monitorManager;
         }
@@ -108,14 +109,14 @@ namespace OLED_Sleeper.Services
         {
             _cancellationTokenSource = new CancellationTokenSource();
             Task.Run(() => IdleCheckLoop(_cancellationTokenSource.Token));
-            Log.Information("IdleActivityService started.");
+            Log.Information("MonitorIdleDetectionService started.");
         }
 
         /// <inheritdoc/>
         public void Stop()
         {
             _cancellationTokenSource?.Cancel();
-            Log.Information("IdleActivityService stopped.");
+            Log.Information("MonitorIdleDetectionService stopped.");
         }
 
         /// <inheritdoc/>
@@ -141,7 +142,7 @@ namespace OLED_Sleeper.Services
                     _monitorStates[monitor.Settings.HardwareId] = new MonitorTimerState();
                 }
             }
-            Log.Information("IdleActivityService settings updated. Now tracking {Count} monitors.", _managedMonitors.Count);
+            Log.Information("MonitorIdleDetectionService settings updated. Now tracking {Count} monitors.", _managedMonitors.Count);
         }
 
         #endregion Public Methods

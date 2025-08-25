@@ -1,9 +1,9 @@
 ﻿using OLED_Sleeper.Models;
 using System.Collections.Generic;
 
-namespace OLED_Sleeper.Services
+namespace OLED_Sleeper.Services.Monitor.Interfaces
 {
-    public interface IMonitorManagerService
+    public interface IMonitorInfoManager
     {
         /// <summary>
         /// Gets the current list of monitors, from the cache if available.

@@ -1,20 +1,21 @@
 ﻿using OLED_Sleeper.Models;
 using OLED_Sleeper.Native;
+using OLED_Sleeper.Services.Monitor.Interfaces;
 using Serilog;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.InteropServices;
 
-namespace OLED_Sleeper.Services
+namespace OLED_Sleeper.Services.Monitor
 {
-    public class DimmerService : IDimmerService
+    public class MonitorDimmingService : IMonitorDimmingService
     {
-        private readonly IMonitorManagerService _monitorManager;
-        private readonly IBrightnessStateService _brightnessStateService;
+        private readonly IMonitorInfoManager _monitorManager;
+        private readonly IMonitorBrightnessStateService _brightnessStateService;
         private readonly Dictionary<string, uint> _originalBrightnessLevels;
 
-        public DimmerService(IMonitorManagerService monitorManager, IBrightnessStateService brightnessStateService)
+        public MonitorDimmingService(IMonitorInfoManager monitorManager, IMonitorBrightnessStateService brightnessStateService)
         {
             _monitorManager = monitorManager;
             _brightnessStateService = brightnessStateService;

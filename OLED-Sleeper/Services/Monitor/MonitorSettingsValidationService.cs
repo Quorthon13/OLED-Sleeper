@@ -1,13 +1,14 @@
-﻿// File: Services/SaveValidationService.cs
+﻿// File: Services/MonitorSettingsValidationService.cs
+using OLED_Sleeper.Services.Monitor.Interfaces;
 using OLED_Sleeper.ViewModels;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Windows;
 
-namespace OLED_Sleeper.Services
+namespace OLED_Sleeper.Services.Monitor
 {
-    public class SaveValidationService : ISaveValidationService
+    public class MonitorSettingsValidationService : IMonitorSettingsValidationService
     {
         public bool ValidateAndNotify(IEnumerable<MonitorLayoutViewModel> monitors)
         {

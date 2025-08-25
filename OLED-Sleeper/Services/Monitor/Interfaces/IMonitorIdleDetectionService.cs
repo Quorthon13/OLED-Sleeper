@@ -1,11 +1,12 @@
-﻿using OLED_Sleeper.Events;
+// File: Services/IMonitorIdleDetectionService.cs
+using OLED_Sleeper.Events;
 using OLED_Sleeper.Models;
 using System;
 using System.Collections.Generic;
 
-namespace OLED_Sleeper.Services
+namespace OLED_Sleeper.Services.Monitor.Interfaces
 {
-    public interface IIdleActivityService
+    public interface IMonitorIdleDetectionService
     {
         event EventHandler<MonitorStateEventArgs> MonitorBecameIdle;
 
