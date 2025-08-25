@@ -7,6 +7,7 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using System.Windows;
 using OLED_Sleeper.Helpers;
+using Serilog;
 
 namespace OLED_Sleeper.Services
 {
@@ -48,8 +49,25 @@ namespace OLED_Sleeper.Services
             };
 
             NativeMethods.EnumDisplayMonitors(IntPtr.Zero, IntPtr.Zero, callback, IntPtr.Zero);
-            EnrichWithHardwareIds(monitors);
+
+            EnrichMonitorInfo(monitors);
             return monitors;
+        }
+
+        private void EnrichMonitorInfo(List<MonitorInfo> monitors)
+        {
+            EnrichWithDdcCiSupportInfo(monitors);
+
+            EnrichWithHardwareIds(monitors);
+        }
+
+        private void EnrichWithDdcCiSupportInfo(List<MonitorInfo> monitors)
+        {
+            foreach (var monitor in monitors)
+            {
+                monitor.IsDdcCiSupported = CheckDdcCiSupport(monitor.DeviceName);
+                Log.Debug("DDC/CI support for monitor with DeviceName {DeviceName}: {IsSupported}", monitor.DeviceName, monitor.IsDdcCiSupported);
+            }
         }
 
         /// <summary>
@@ -73,6 +91,36 @@ namespace OLED_Sleeper.Services
                     }
                 }
             }
+        }
+
+        private bool CheckDdcCiSupport(string deviceName)
+        {
+            bool isSupported = false;
+            // This is a simplified version of the helper from DimmerService
+            // to get a physical monitor handle for testing.
+            NativeMethods.MonitorEnumProc callback = (IntPtr hMonitor, IntPtr hdc, ref NativeMethods.Rect rect, IntPtr data) =>
+            {
+                var mi = new NativeMethods.MonitorInfoEx();
+                mi.cbSize = Marshal.SizeOf(mi);
+                if (NativeMethods.GetMonitorInfo(hMonitor, ref mi) && mi.szDevice == deviceName)
+                {
+                    var physicalMonitors = new NativeMethods.PHYSICAL_MONITOR[1];
+                    if (NativeMethods.GetPhysicalMonitorsFromHMONITOR(hMonitor, 1, physicalMonitors))
+                    {
+                        IntPtr hPhysicalMonitor = physicalMonitors[0].hPhysicalMonitor;
+                        // Try the safe, read-only command. If it succeeds, the monitor supports DDC/CI.
+                        if (NativeMethods.GetCapabilitiesStringLength(hPhysicalMonitor, out _))
+                        {
+                            isSupported = true;
+                        }
+                        NativeMethods.DestroyPhysicalMonitors(1, physicalMonitors);
+                    }
+                }
+                return !isSupported; // Stop enumerating once we've found and checked our monitor.
+            };
+
+            NativeMethods.EnumDisplayMonitors(IntPtr.Zero, IntPtr.Zero, callback, IntPtr.Zero);
+            return isSupported;
         }
     }
 }

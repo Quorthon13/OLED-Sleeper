@@ -39,7 +39,7 @@ namespace OLED_Sleeper.Services
         private CancellationTokenSource _cancellationTokenSource;
         private List<ManagedMonitorState> _managedMonitors = new();
         private readonly object _lock = new();
-        private readonly IMonitorService _monitorService;
+        private readonly IMonitorManagerService _monitorManager;
         private readonly Dictionary<string, MonitorTimerState> _monitorStates = new();
 
         #endregion Fields
@@ -95,10 +95,10 @@ namespace OLED_Sleeper.Services
         /// <summary>
         /// Initializes a new instance of the <see cref="IdleActivityService"/> class.
         /// </summary>
-        /// <param name="monitorService">Service for monitor information.</param>
-        public IdleActivityService(IMonitorService monitorService)
+        /// <param name="monitorManager">Service for monitor information.</param>
+        public IdleActivityService(IMonitorManagerService monitorManager)
         {
-            _monitorService = monitorService;
+            _monitorManager = monitorManager;
         }
 
         #region Public Methods
@@ -122,7 +122,7 @@ namespace OLED_Sleeper.Services
         public void UpdateSettings(List<MonitorSettings> monitorSettings)
         {
             var activeSettings = monitorSettings.Where(s => s.IsManaged).ToList();
-            var allMonitors = _monitorService.GetMonitors();
+            var allMonitors = _monitorManager.GetCurrentMonitors();
 
             lock (_lock)
             {

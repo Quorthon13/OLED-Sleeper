@@ -331,6 +331,17 @@ namespace OLED_Sleeper.Native
         [return: MarshalAs(UnmanagedType.Bool)]
         public static extern bool SetVCPFeature(IntPtr hPhysicalMonitor, byte bVCPCode, uint dwNewValue);
 
+        /// <summary>
+        /// Retrieves the length, in characters, of the DDC/CI capabilities string for a physical monitor.
+        /// </summary>
+        /// <param name="hPhysicalMonitor">A handle to the physical monitor.</param>
+        /// <param name="pdwCapabilitiesStringLengthInCharacters">When this method returns, contains the length of the capabilities string, in characters.</param>
+        /// <returns>True if the function succeeds; otherwise, false.</returns>
+        /// <seealso href="https://learn.microsoft.com/en-us/windows/win32/api/dxva2/nf-dxva2-getcapabilitiesstringlength"/>
+        [DllImport("dxva2.dll", EntryPoint = "GetCapabilitiesStringLength")]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        public static extern bool GetCapabilitiesStringLength(IntPtr hPhysicalMonitor, out uint pdwCapabilitiesStringLengthInCharacters);
+
         #endregion DDC/CI (Monitor Brightness)
     }
 }

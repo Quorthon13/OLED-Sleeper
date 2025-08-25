@@ -9,22 +9,22 @@ namespace OLED_Sleeper.Services
     /// </summary>
     public class WorkspaceService : IWorkspaceService
     {
-        private readonly IMonitorService _monitorService;
+        private readonly IMonitorManagerService _monitorManager;
         private readonly ISettingsService _settingsService;
         private readonly IMonitorLayoutService _monitorLayoutService;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="WorkspaceService"/> class.
         /// </summary>
-        /// <param name="monitorService">Service for monitor enumeration.</param>
+        /// <param name="monitorManager">Service for monitor enumeration.</param>
         /// <param name="settingsService">Service for loading and saving monitor settings.</param>
         /// <param name="monitorLayoutService">Service for creating monitor layout view models.</param>
         public WorkspaceService(
-            IMonitorService monitorService,
+            IMonitorManagerService monitorManager,
             ISettingsService settingsService,
             IMonitorLayoutService monitorLayoutService)
         {
-            _monitorService = monitorService;
+            _monitorManager = monitorManager;
             _settingsService = settingsService;
             _monitorLayoutService = monitorLayoutService;
         }
@@ -37,7 +37,7 @@ namespace OLED_Sleeper.Services
         /// <returns>An observable collection of <see cref="MonitorLayoutViewModel"/> for UI binding.</returns>
         public ObservableCollection<MonitorLayoutViewModel> BuildWorkspace(double containerWidth, double containerHeight)
         {
-            var monitorInfos = _monitorService.GetMonitors();
+            var monitorInfos = _monitorManager.GetCurrentMonitors();
             var savedSettings = _settingsService.LoadSettings();
             var monitorLayoutViewModels = _monitorLayoutService.CreateLayout(monitorInfos, containerWidth, containerHeight);
 

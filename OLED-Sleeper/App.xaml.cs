@@ -41,6 +41,7 @@ namespace OLED_Sleeper
         private void ConfigureServices()
         {
             var services = new ServiceCollection();
+            services.AddSingleton<IMonitorManagerService, MonitorManagerService>();
             services.AddSingleton<IBrightnessStateService, BrightnessStateService>();
             services.AddSingleton<IDimmerService, DimmerService>();
             services.AddSingleton<IOverlayService, OverlayService>();

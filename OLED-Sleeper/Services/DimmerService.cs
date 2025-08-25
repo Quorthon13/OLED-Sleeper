@@ -10,13 +10,13 @@ namespace OLED_Sleeper.Services
 {
     public class DimmerService : IDimmerService
     {
-        private readonly IMonitorService _monitorService;
+        private readonly IMonitorManagerService _monitorManager;
         private readonly IBrightnessStateService _brightnessStateService;
         private readonly Dictionary<string, uint> _originalBrightnessLevels;
 
-        public DimmerService(IMonitorService monitorService, IBrightnessStateService brightnessStateService)
+        public DimmerService(IMonitorManagerService monitorManager, IBrightnessStateService brightnessStateService)
         {
-            _monitorService = monitorService;
+            _monitorManager = monitorManager;
             _brightnessStateService = brightnessStateService;
             // --- Load the previous state on startup ---
             _originalBrightnessLevels = _brightnessStateService.LoadState();
@@ -56,7 +56,7 @@ namespace OLED_Sleeper.Services
         /// </summary>
         private void WithPhysicalMonitor(string hardwareId, Action<IntPtr> action)
         {
-            var allMonitors = _monitorService.GetMonitors();
+            var allMonitors = _monitorManager.GetCurrentMonitors();
             var targetMonitor = allMonitors.FirstOrDefault(m => m.HardwareId == hardwareId);
             if (targetMonitor == null) return;
 

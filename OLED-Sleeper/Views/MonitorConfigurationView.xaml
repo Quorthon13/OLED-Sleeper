@@ -300,22 +300,17 @@
 
                     <StackPanel Grid.Row="0" Grid.Column="0" VerticalAlignment="Center" ToolTipService.InitialShowDelay="200">
                         <StackPanel.ToolTip>
-                            <ToolTip>
-                                <TextBlock>
-                                    Choose how the monitor reacts after the idle timer expires.
-                                    <LineBreak /><LineBreak />
-                                    • <Run FontWeight="SemiBold">Blackout:</Run> Turns the monitor completely black.
-                                    <LineBreak />
-                                    • <Run FontWeight="SemiBold">Dim:</Run> Reduces the monitor's brightness to the specified level.
-                                </TextBlock>
-                            </ToolTip>
+                            <ToolTip Content="{Binding BehaviorSectionTooltip}" />
                         </StackPanel.ToolTip>
                         <TextBlock Text="BEHAVIOR" Foreground="{StaticResource SecondaryForegroundColor}" FontSize="12" FontWeight="Light" Margin="0,0,0,5" />
                         <StackPanel Orientation="Horizontal" Margin="0,5,0,0">
                             <RadioButton Content="Blackout" GroupName="Behavior" Style="{StaticResource ModernRadioButton}"
                                          IsChecked="{Binding Behavior, Converter={StaticResource EnumToBooleanConverter}, ConverterParameter={x:Static models:MonitorBehavior.Blackout}, UpdateSourceTrigger=PropertyChanged}" />
                             <RadioButton Content="Dim" GroupName="Behavior" Style="{StaticResource ModernRadioButton}" Margin="25,0,0,0"
-                                         IsChecked="{Binding Behavior, Converter={StaticResource EnumToBooleanConverter}, ConverterParameter={x:Static models:MonitorBehavior.Dim}, UpdateSourceTrigger=PropertyChanged}" />
+                                         IsChecked="{Binding Behavior, Converter={StaticResource EnumToBooleanConverter}, ConverterParameter={x:Static models:MonitorBehavior.Dim}, UpdateSourceTrigger=PropertyChanged}"
+                                         IsEnabled="{Binding IsDimBehaviorEnabled}"
+                                         ToolTip="{Binding DimBehaviorTooltip}"
+                                         ToolTipService.InitialShowDelay="200" />
                         </StackPanel>
                     </StackPanel>
 
@@ -371,16 +366,16 @@
                         <StackPanel.ToolTip>
                             <ToolTip>
                                 <TextBlock>
-                                    <Run FontWeight="SemiBold" TextDecorations="Underline">Monitor-Specific Conditions</Run><LineBreak/>
-                                    These options prevent ONLY this monitor from sleeping.<LineBreak/><LineBreak/>
-                                    • <Run FontWeight="SemiBold">Mouse cursor is on this monitor:</Run><LineBreak/>
-                                    <Span Foreground="{StaticResource SecondaryForegroundColor}">Keeps this monitor awake just by leaving your mouse on it.</Span><LineBreak/>
-                                    • <Run FontWeight="SemiBold">Contains the active window:</Run><LineBreak/>
+                                    <Run FontWeight="SemiBold" TextDecorations="Underline">Monitor-Specific Conditions</Run><LineBreak />
+                                    These options prevent ONLY this monitor from sleeping.<LineBreak /><LineBreak />
+                                    • <Run FontWeight="SemiBold">Mouse cursor is on this monitor:</Run><LineBreak />
+                                    <Span Foreground="{StaticResource SecondaryForegroundColor}">Keeps this monitor awake just by leaving your mouse on it.</Span><LineBreak />
+                                    • <Run FontWeight="SemiBold">Contains the active window:</Run><LineBreak />
                                     <Span Foreground="{StaticResource SecondaryForegroundColor}">Keeps the monitor awake if it has the application you're currently using (the window you last clicked).</Span>
-                                    <LineBreak/><LineBreak/>
-                                    <Run FontWeight="SemiBold" TextDecorations="Underline">General Condition</Run><LineBreak/>
-                                    This option is system-wide.<LineBreak/><LineBreak/>
-                                    • <Run FontWeight="SemiBold">System-wide user input:</Run><LineBreak/>
+                                    <LineBreak /><LineBreak />
+                                    <Run FontWeight="SemiBold" TextDecorations="Underline">General Condition</Run><LineBreak />
+                                    This option is system-wide.<LineBreak /><LineBreak />
+                                    • <Run FontWeight="SemiBold">System-wide user input:</Run><LineBreak />
                                     <Span Foreground="{StaticResource SecondaryForegroundColor}">Standard behavior. Any input on ANY monitor keeps ALL monitors active.</Span>
                                 </TextBlock>
                             </ToolTip>

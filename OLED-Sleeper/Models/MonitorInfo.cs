@@ -11,5 +11,6 @@ namespace OLED_Sleeper.Models
         public bool IsPrimary { get; set; }
         public uint Dpi { get; set; }
         public int DisplayNumber { get; set; }
+        public bool IsDdcCiSupported { get; set; }
     }
 }
