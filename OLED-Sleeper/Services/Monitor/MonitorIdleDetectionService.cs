@@ -1,5 +1,4 @@
-﻿// File: Services/MonitorIdleDetectionService.cs
-using OLED_Sleeper.Events;
+﻿using OLED_Sleeper.Events;
 using OLED_Sleeper.Extensions;
 using OLED_Sleeper.Models;
 using OLED_Sleeper.Native;
@@ -23,14 +22,10 @@ namespace OLED_Sleeper.Services.Monitor
     {
         #region Events
 
-        /// <summary>
-        /// Raised when a managed monitor transitions from active to idle.
-        /// </summary>
+        /// <inheritdoc/>
         public event EventHandler<MonitorStateEventArgs> MonitorBecameIdle;
 
-        /// <summary>
-        /// Raised when a managed monitor transitions from idle to active.
-        /// </summary>
+        /// <inheritdoc/>
         public event EventHandler<MonitorStateEventArgs> MonitorBecameActive;
 
         #endregion Events
@@ -51,7 +46,11 @@ namespace OLED_Sleeper.Services.Monitor
         /// State machine for per-monitor activity.
         /// </summary>
         private enum MonitorStateMachine
-        { Active, Counting, Idle }
+        {
+            Active,
+            Counting,
+            Idle
+        }
 
         /// <summary>
         /// Holds state and settings for a managed monitor.
@@ -180,56 +179,86 @@ namespace OLED_Sleeper.Services.Monitor
             {
                 foreach (var monitor in _managedMonitors)
                 {
-                    var timerState = _monitorStates[monitor.Settings.HardwareId];
-                    var activityReason = GetActivityReason(monitor, systemState);
-                    bool hasActivityNow = activityReason != ActivityReason.None;
+                    ProcessSingleMonitor(monitor, systemState);
+                }
+            }
+        }
 
-                    var eventArgs = new MonitorStateEventArgs(
-                        monitor.Settings.HardwareId, monitor.DisplayNumber, monitor.Bounds,
-                        monitor.Settings, systemState.ForegroundWindowHandle, activityReason);
+        /// <summary>
+        /// Processes a single managed monitor according to the state machine logic.
+        /// </summary>
+        /// <param name="monitor">The managed monitor.</param>
+        /// <param name="systemState">Current system state.</param>
+        private void ProcessSingleMonitor(ManagedMonitorState monitor, SystemState systemState)
+        {
+            var timerState = _monitorStates[monitor.Settings.HardwareId];
+            var activityReason = GetActivityReason(monitor, systemState);
+            bool hasActivityNow = activityReason != ActivityReason.None;
 
-                    switch (timerState.CurrentState)
-                    {
-                        case MonitorStateMachine.Active:
-                            if (!hasActivityNow)
-                            {
-                                // Activity stopped. Start counting.
-                                timerState.CurrentState = MonitorStateMachine.Counting;
-                                timerState.ActivityStoppedTimestamp = DateTime.UtcNow;
-                            }
-                            break;
+            var eventArgs = new MonitorStateEventArgs(
+                monitor.Settings.HardwareId, monitor.DisplayNumber, monitor.Bounds,
+                monitor.Settings, systemState.ForegroundWindowHandle, activityReason);
 
-                        case MonitorStateMachine.Counting:
-                            if (hasActivityNow)
-                            {
-                                // Activity resumed. Back to active.
-                                timerState.CurrentState = MonitorStateMachine.Active;
-                            }
-                            else
-                            {
-                                var elapsed = DateTime.UtcNow - timerState.ActivityStoppedTimestamp;
-                                if (elapsed.TotalMilliseconds >= monitor.Settings.IdleTimeMilliseconds)
-                                {
-                                    timerState.CurrentState = MonitorStateMachine.Idle;
-                                    Log.Information("Monitor #{DisplayNumber} has become idle after {Seconds}s of inactivity.",
-                                        monitor.DisplayNumber, Math.Round(elapsed.TotalSeconds));
-                                    MonitorBecameIdle?.Invoke(this, eventArgs);
-                                }
-                            }
-                            break;
+            switch (timerState.CurrentState)
+            {
+                case MonitorStateMachine.Active:
+                    HandleActiveState(timerState, hasActivityNow);
+                    break;
+                case MonitorStateMachine.Counting:
+                    HandleCountingState(timerState, monitor, hasActivityNow, eventArgs);
+                    break;
+                case MonitorStateMachine.Idle:
+                    HandleIdleState(timerState, monitor, hasActivityNow, eventArgs);
+                    break;
+            }
+        }
 
-                        case MonitorStateMachine.Idle:
-                            if (hasActivityNow)
-                            {
-                                MonitorBecameActive?.Invoke(this, eventArgs);
-                                if (!eventArgs.IsIgnored)
-                                {
-                                    timerState.CurrentState = MonitorStateMachine.Active;
-                                    Log.Information("Monitor #{DisplayNumber} is now ACTIVE.", monitor.DisplayNumber);
-                                }
-                            }
-                            break;
-                    }
+        /// <summary>
+        /// Handles the Active state for a monitor.
+        /// </summary>
+        private void HandleActiveState(MonitorTimerState timerState, bool hasActivityNow)
+        {
+            if (!hasActivityNow)
+            {
+                timerState.CurrentState = MonitorStateMachine.Counting;
+                timerState.ActivityStoppedTimestamp = DateTime.UtcNow;
+            }
+        }
+
+        /// <summary>
+        /// Handles the Counting state for a monitor.
+        /// </summary>
+        private void HandleCountingState(MonitorTimerState timerState, ManagedMonitorState monitor, bool hasActivityNow, MonitorStateEventArgs eventArgs)
+        {
+            if (hasActivityNow)
+            {
+                timerState.CurrentState = MonitorStateMachine.Active;
+            }
+            else
+            {
+                var elapsed = DateTime.UtcNow - timerState.ActivityStoppedTimestamp;
+                if (elapsed.TotalMilliseconds >= monitor.Settings.IdleTimeMilliseconds)
+                {
+                    timerState.CurrentState = MonitorStateMachine.Idle;
+                    Log.Information("Monitor #{DisplayNumber} has become idle after {Seconds}s of inactivity.",
+                        monitor.DisplayNumber, Math.Round(elapsed.TotalSeconds));
+                    MonitorBecameIdle?.Invoke(this, eventArgs);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Handles the Idle state for a monitor.
+        /// </summary>
+        private void HandleIdleState(MonitorTimerState timerState, ManagedMonitorState monitor, bool hasActivityNow, MonitorStateEventArgs eventArgs)
+        {
+            if (hasActivityNow)
+            {
+                MonitorBecameActive?.Invoke(this, eventArgs);
+                if (!eventArgs.IsIgnored)
+                {
+                    timerState.CurrentState = MonitorStateMachine.Active;
+                    Log.Information("Monitor #{DisplayNumber} is now ACTIVE.", monitor.DisplayNumber);
                 }
             }
         }
@@ -242,20 +271,46 @@ namespace OLED_Sleeper.Services.Monitor
         /// <returns>The activity reason.</returns>
         private static ActivityReason GetActivityReason(ManagedMonitorState monitor, SystemState state)
         {
-            if (monitor.Settings.IsActiveOnInput && state.IdleTimeMilliseconds < monitor.Settings.IdleTimeMilliseconds)
+            if (IsSystemInputActive(monitor, state))
                 return ActivityReason.SystemInput;
 
-            if (monitor.Settings.IsActiveOnMousePosition && monitor.Bounds.Contains(state.CursorPosition))
+            if (IsMousePositionActive(monitor, state))
                 return ActivityReason.MousePosition;
 
+            if (IsActiveWindowActive(monitor, state))
+                return ActivityReason.ActiveWindow;
+
+            return ActivityReason.None;
+        }
+
+        /// <summary>
+        /// Checks if system input should be considered activity for the monitor.
+        /// </summary>
+        private static bool IsSystemInputActive(ManagedMonitorState monitor, SystemState state)
+        {
+            return monitor.Settings.IsActiveOnInput && state.IdleTimeMilliseconds < monitor.Settings.IdleTimeMilliseconds;
+        }
+
+        /// <summary>
+        /// Checks if mouse position should be considered activity for the monitor.
+        /// </summary>
+        private static bool IsMousePositionActive(ManagedMonitorState monitor, SystemState state)
+        {
+            return monitor.Settings.IsActiveOnMousePosition && monitor.Bounds.Contains(state.CursorPosition);
+        }
+
+        /// <summary>
+        /// Checks if the active window should be considered activity for the monitor.
+        /// </summary>
+        private static bool IsActiveWindowActive(ManagedMonitorState monitor, SystemState state)
+        {
             if (monitor.Settings.IsActiveOnActiveWindow)
             {
                 Rect intersection = Rect.Intersect(monitor.Bounds, state.ForegroundWindowRect);
                 if (!intersection.IsEmpty && intersection.Width > 0 && intersection.Height > 0)
-                    return ActivityReason.ActiveWindow;
+                    return true;
             }
-
-            return ActivityReason.None;
+            return false;
         }
 
         /// <summary>
@@ -268,17 +323,26 @@ namespace OLED_Sleeper.Services.Monitor
             NativeMethods.GetCursorPos(out var nativePoint);
             Point cursorPosition = new(nativePoint.X, nativePoint.Y);
             IntPtr foregroundWindowHandle = NativeMethods.GetForegroundWindow();
-            Rect windowRect;
+            Rect windowRect = GetForegroundWindowRect(foregroundWindowHandle);
+            return new SystemState(idleTime, cursorPosition, windowRect, foregroundWindowHandle);
+        }
+
+        /// <summary>
+        /// Gets the rectangle of the foreground window.
+        /// </summary>
+        /// <param name="foregroundWindowHandle">The handle to the foreground window.</param>
+        /// <returns>The window rectangle.</returns>
+        private static Rect GetForegroundWindowRect(IntPtr foregroundWindowHandle)
+        {
             if (NativeMethods.DwmGetWindowAttribute(foregroundWindowHandle, NativeMethods.DWMWA_EXTENDED_FRAME_BOUNDS, out var nativeWindowRect, Marshal.SizeOf(typeof(NativeMethods.Rect))) == 0)
             {
-                windowRect = nativeWindowRect.ToWindowsRect();
+                return nativeWindowRect.ToWindowsRect();
             }
             else
             {
                 NativeMethods.GetWindowRect(foregroundWindowHandle, out nativeWindowRect);
-                windowRect = nativeWindowRect.ToWindowsRect();
+                return nativeWindowRect.ToWindowsRect();
             }
-            return new SystemState(idleTime, cursorPosition, windowRect, foregroundWindowHandle);
         }
 
         /// <summary>

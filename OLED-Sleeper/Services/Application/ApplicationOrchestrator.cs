@@ -94,7 +94,7 @@ namespace OLED_Sleeper.Services.Application
         {
             _monitorIdleDetectionService.MonitorBecameIdle += OnMonitorBecameIdle;
             _monitorIdleDetectionService.MonitorBecameActive += OnMonitorBecameActive;
-            AppEvents.RestoreAllMonitorsRequested += RestoreAllMonitors;
+            AppNotifications.RestoreAllMonitorsRequested += RestoreAllMonitors;
         }
 
         /// <summary>
@@ -125,7 +125,7 @@ namespace OLED_Sleeper.Services.Application
         {
             Log.Information("ApplicationOrchestrator is stopping.");
             RestoreAllMonitors();
-            AppEvents.RestoreAllMonitorsRequested -= RestoreAllMonitors;
+            AppNotifications.RestoreAllMonitorsRequested -= RestoreAllMonitors;
             _monitorIdleDetectionService.Stop();
             _monitorStateWatcher.MonitorsChanged -= OnMonitorsChanged;
             _monitorStateWatcher.Stop();

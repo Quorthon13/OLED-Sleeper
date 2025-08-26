@@ -2,13 +2,11 @@
 using OLED_Sleeper.Services.Workspace.Interfaces;
 using OLED_Sleeper.ViewModels;
 using System.Collections.ObjectModel;
+using System.Linq;
 
 namespace OLED_Sleeper.Services.Workspace
 {
-    /// <summary>
-    /// Provides workspace management, including monitor discovery, settings loading,
-    /// and layout ViewModel construction for the main application UI.
-    /// </summary>
+    /// <inheritdoc/>
     public class WorkspaceService : IWorkspaceService
     {
         private readonly IMonitorInfoManager _monitorManager;
@@ -31,31 +29,34 @@ namespace OLED_Sleeper.Services.Workspace
             _monitorLayoutService = monitorLayoutService;
         }
 
-        /// <summary>
-        /// Builds the workspace by discovering monitors, loading settings, and constructing layout view models.
-        /// </summary>
-        /// <param name="containerWidth">The width of the container for layout scaling.</param>
-        /// <param name="containerHeight">The height of the container for layout scaling.</param>
-        /// <returns>An observable collection of <see cref="MonitorLayoutViewModel"/> for UI binding.</returns>
+        /// <inheritdoc/>
         public ObservableCollection<MonitorLayoutViewModel> BuildWorkspace(double containerWidth, double containerHeight)
         {
             var monitorInfos = _monitorManager.GetCurrentMonitors();
             var savedSettings = _settingsService.LoadSettings();
             var monitorLayoutViewModels = _monitorLayoutService.CreateLayout(monitorInfos, containerWidth, containerHeight);
 
-            foreach (var viewModel in monitorLayoutViewModels)
+            ApplySettingsToViewModels(monitorLayoutViewModels, savedSettings);
+
+            return monitorLayoutViewModels;
+        }
+
+        /// <summary>
+        /// Applies saved settings to the corresponding monitor layout view models.
+        /// </summary>
+        /// <param name="viewModels">The collection of monitor layout view models.</param>
+        /// <param name="savedSettings">The list of saved monitor settings.</param>
+        private static void ApplySettingsToViewModels(ObservableCollection<MonitorLayoutViewModel> viewModels, System.Collections.Generic.List<Models.MonitorSettings> savedSettings)
+        {
+            foreach (var viewModel in viewModels)
             {
-                // Apply saved settings to each monitor if available
                 var setting = savedSettings.FirstOrDefault(s => s.HardwareId == viewModel.HardwareId);
                 if (setting != null)
                 {
                     viewModel.Configuration.ApplySettings(setting);
-                    // Establish the loaded settings as the new "saved" state for dirty tracking
                     viewModel.Configuration.MarkAsSaved();
                 }
             }
-
-            return monitorLayoutViewModels;
         }
     }
 }

@@ -164,7 +164,7 @@ namespace OLED_Sleeper
 
             Log.Information("Shutdown initiated. Restoring all monitors...");
 
-            AppEvents.TriggerRestoreAllMonitors();
+            AppNotifications.TriggerRestoreAllMonitors();
 
             Log.Information("--- Application Exiting ---");
             Log.CloseAndFlush();

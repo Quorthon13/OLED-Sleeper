@@ -1,90 +1,81 @@
-﻿using OLED_Sleeper.Models;
+﻿using System.Runtime.InteropServices;
 using OLED_Sleeper.Native;
 using OLED_Sleeper.Services.Monitor.Interfaces;
 using Serilog;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Runtime.InteropServices;
 
 namespace OLED_Sleeper.Services.Monitor
 {
+    /// <summary>
+    /// Provides services for dimming and restoring monitor brightness using DDC/CI.
+    /// </summary>
     public class MonitorDimmingService : IMonitorDimmingService
     {
         private readonly IMonitorInfoManager _monitorManager;
         private readonly IMonitorBrightnessStateService _brightnessStateService;
         private readonly Dictionary<string, uint> _originalBrightnessLevels;
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="MonitorDimmingService"/> class.
+        /// </summary>
+        /// <param name="monitorManager">The monitor info manager.</param>
+        /// <param name="brightnessStateService">The brightness state service.</param>
         public MonitorDimmingService(IMonitorInfoManager monitorManager, IMonitorBrightnessStateService brightnessStateService)
         {
             _monitorManager = monitorManager;
             _brightnessStateService = brightnessStateService;
-            // --- Load the previous state on startup ---
             _originalBrightnessLevels = _brightnessStateService.LoadState();
         }
 
+        /// <inheritdoc />
         public void DimMonitor(string hardwareId, int dimLevel)
         {
             WithPhysicalMonitor(hardwareId, hPhysicalMonitor =>
             {
-                if (NativeMethods.GetVCPFeatureAndVCPFeatureReply(hPhysicalMonitor, NativeMethods.VCP_CODE_BRIGHTNESS, IntPtr.Zero, out uint currentBrightness, out _))
-                {
-                    _originalBrightnessLevels[hardwareId] = currentBrightness;
-                    // --- Save state to disk immediately after changing it ---
-                    _brightnessStateService.SaveState(_originalBrightnessLevels);
-
-                    if (NativeMethods.SetVCPFeature(hPhysicalMonitor, NativeMethods.VCP_CODE_BRIGHTNESS, (uint)dimLevel))
-                    {
-                        Log.Information("Successfully dimmed monitor {HardwareId} to {DimLevel}%.", hardwareId, dimLevel);
-                    }
-                }
+                var currentBrightness = GetCurrentBrightness(hPhysicalMonitor, hardwareId);
+                if (currentBrightness == uint.MaxValue) return;
+                SaveOriginalBrightness(hardwareId, currentBrightness);
+                SetMonitorBrightness(hPhysicalMonitor, hardwareId, (uint)dimLevel);
             });
         }
 
+        /// <inheritdoc />
         public void UndimMonitor(string hardwareId)
         {
-            if (_originalBrightnessLevels.TryGetValue(hardwareId, out uint originalBrightness))
+            if (_originalBrightnessLevels.TryGetValue(hardwareId, out var originalBrightness))
             {
                 RestoreBrightness(hardwareId, originalBrightness);
-                _originalBrightnessLevels.Remove(hardwareId);
-                // --- Save state to disk immediately after changing it ---
-                _brightnessStateService.SaveState(_originalBrightnessLevels);
+                RemoveOriginalBrightness(hardwareId);
             }
         }
 
+        /// <inheritdoc />
+        public void RestoreBrightness(string hardwareId, uint originalBrightness)
+        {
+            WithPhysicalMonitor(hardwareId, hPhysicalMonitor =>
+            {
+                SetMonitorBrightness(hPhysicalMonitor, hardwareId, originalBrightness, isRestore: true);
+            });
+        }
+
+        /// <inheritdoc />
+        public Dictionary<string, uint> GetDimmedMonitors() => new(_originalBrightnessLevels);
+
+        #region Private Helpers
+
         /// <summary>
-        /// Helper method to safely get and destroy physical monitor handles.
+        /// Safely obtains and destroys a physical monitor handle, executing the provided action.
         /// </summary>
+        /// <param name="hardwareId">The hardware ID of the monitor.</param>
+        /// <param name="action">The action to perform with the monitor handle.</param>
         private void WithPhysicalMonitor(string hardwareId, Action<IntPtr> action)
         {
-            var allMonitors = _monitorManager.GetCurrentMonitors();
-            var targetMonitor = allMonitors.FirstOrDefault(m => m.HardwareId == hardwareId);
-            if (targetMonitor == null) return;
-
-            IntPtr hMonitor = NativeMethods.MonitorFromWindow(IntPtr.Zero, NativeMethods.MONITOR_DEFAULTTONEAREST); // A bit of a hack to get an HWND on the right monitor
-            // A more robust solution would find a window on the target monitor or use EnumDisplayMonitors.
-            // For now, we find the monitor by iterating through them.
-
-            var monitors = new List<IntPtr>();
-            NativeMethods.MonitorEnumProc callback = (IntPtr monitor, IntPtr hdc, ref NativeMethods.Rect rect, IntPtr data) =>
-            {
-                var mi = new NativeMethods.MonitorInfoEx();
-                mi.cbSize = Marshal.SizeOf(mi);
-                if (NativeMethods.GetMonitorInfo(monitor, ref mi) && mi.szDevice == targetMonitor.DeviceName)
-                {
-                    monitors.Add(monitor);
-                }
-                return true;
-            };
-            NativeMethods.EnumDisplayMonitors(IntPtr.Zero, IntPtr.Zero, callback, IntPtr.Zero);
-            hMonitor = monitors.FirstOrDefault();
-
+            var hMonitor = FindMonitorHandleByHardwareId(hardwareId);
             if (hMonitor == IntPtr.Zero) return;
 
             var physicalMonitors = new NativeMethods.PHYSICAL_MONITOR[1];
             if (NativeMethods.GetPhysicalMonitorsFromHMONITOR(hMonitor, 1, physicalMonitors))
             {
-                IntPtr hPhysicalMonitor = physicalMonitors[0].hPhysicalMonitor;
+                var hPhysicalMonitor = physicalMonitors[0].hPhysicalMonitor;
                 try
                 {
                     action(hPhysicalMonitor);
@@ -96,21 +87,90 @@ namespace OLED_Sleeper.Services.Monitor
             }
         }
 
-        public void RestoreBrightness(string hardwareId, uint originalBrightness)
+        /// <summary>
+        /// Finds the monitor handle (HMONITOR) for the given hardware ID.
+        /// </summary>
+        /// <param name="hardwareId">The hardware ID of the monitor.</param>
+        /// <returns>The HMONITOR handle, or IntPtr.Zero if not found.</returns>
+        private IntPtr FindMonitorHandleByHardwareId(string hardwareId)
         {
-            WithPhysicalMonitor(hardwareId, hPhysicalMonitor =>
+            var allMonitors = _monitorManager.GetCurrentMonitors();
+            var targetMonitor = allMonitors.FirstOrDefault(m => m.HardwareId == hardwareId);
+            if (targetMonitor == null) return IntPtr.Zero;
+
+            var monitors = new List<IntPtr>();
+            NativeMethods.MonitorEnumProc callback = (IntPtr monitor, IntPtr hdc, ref NativeMethods.Rect rect, IntPtr data) =>
             {
-                if (NativeMethods.SetVCPFeature(hPhysicalMonitor, NativeMethods.VCP_CODE_BRIGHTNESS, originalBrightness))
+                var mi = new NativeMethods.MonitorInfoEx { cbSize = Marshal.SizeOf(typeof(NativeMethods.MonitorInfoEx)) };
+                if (NativeMethods.GetMonitorInfo(monitor, ref mi) && mi.szDevice == targetMonitor.DeviceName)
                 {
-                    Log.Information("Restored original brightness {OriginalBrightness} for monitor {HardwareId}.", originalBrightness, hardwareId);
+                    monitors.Add(monitor);
                 }
-            });
+                return true;
+            };
+            NativeMethods.EnumDisplayMonitors(IntPtr.Zero, IntPtr.Zero, callback, IntPtr.Zero);
+            return monitors.FirstOrDefault();
         }
 
-        public Dictionary<string, uint> GetDimmedMonitors()
+        /// <summary>
+        /// Gets the current brightness of the monitor, or uint.MaxValue if failed.
+        /// </summary>
+        /// <param name="hPhysicalMonitor">The physical monitor handle.</param>
+        /// <param name="hardwareId">The hardware ID of the monitor.</param>
+        /// <returns>The current brightness, or uint.MaxValue if failed.</returns>
+        private uint GetCurrentBrightness(IntPtr hPhysicalMonitor, string hardwareId)
         {
-            // Return a copy to prevent external modification
-            return new Dictionary<string, uint>(_originalBrightnessLevels);
+            if (NativeMethods.GetVCPFeatureAndVCPFeatureReply(hPhysicalMonitor, NativeMethods.VCP_CODE_BRIGHTNESS, IntPtr.Zero, out var currentBrightness, out _))
+            {
+                return currentBrightness;
+            }
+            Log.Warning("Failed to get current brightness for monitor {HardwareId}.", hardwareId);
+            return uint.MaxValue;
         }
+
+        /// <summary>
+        /// Saves the original brightness for the monitor and persists the state.
+        /// </summary>
+        /// <param name="hardwareId">The hardware ID of the monitor.</param>
+        /// <param name="brightness">The brightness value to save.</param>
+        private void SaveOriginalBrightness(string hardwareId, uint brightness)
+        {
+            _originalBrightnessLevels[hardwareId] = brightness;
+            _brightnessStateService.SaveState(_originalBrightnessLevels);
+        }
+
+        /// <summary>
+        /// Removes the original brightness entry for the monitor and persists the state.
+        /// </summary>
+        /// <param name="hardwareId">The hardware ID of the monitor.</param>
+        private void RemoveOriginalBrightness(string hardwareId)
+        {
+            _originalBrightnessLevels.Remove(hardwareId);
+            _brightnessStateService.SaveState(_originalBrightnessLevels);
+        }
+
+        /// <summary>
+        /// Sets the brightness of the monitor and logs the operation.
+        /// </summary>
+        /// <param name="hPhysicalMonitor">The physical monitor handle.</param>
+        /// <param name="hardwareId">The hardware ID of the monitor.</param>
+        /// <param name="brightness">The brightness value to set.</param>
+        /// <param name="isRestore">True if restoring, false if dimming.</param>
+        private void SetMonitorBrightness(IntPtr hPhysicalMonitor, string hardwareId, uint brightness, bool isRestore = false)
+        {
+            if (NativeMethods.SetVCPFeature(hPhysicalMonitor, NativeMethods.VCP_CODE_BRIGHTNESS, brightness))
+            {
+                if (isRestore)
+                {
+                    Log.Information("Restored original brightness {OriginalBrightness} for monitor {HardwareId}.", brightness, hardwareId);
+                }
+                else
+                {
+                    Log.Information("Successfully dimmed monitor {HardwareId} to {DimLevel}%.", hardwareId, brightness);
+                }
+            }
+        }
+
+        #endregion Private Helpers
     }
 }

@@ -1,9 +1,10 @@
-// File: Services/IMonitorInfoProvider.cs
 using OLED_Sleeper.Models;
-using System.Collections.Generic;
 
 namespace OLED_Sleeper.Services.Monitor.Interfaces
 {
+    /// <summary>
+    /// Defines the contract for providing basic monitor information and DDC/CI support.
+    /// </summary>
     public interface IMonitorInfoProvider
     {
         /// <summary>
@@ -15,11 +16,15 @@ namespace OLED_Sleeper.Services.Monitor.Interfaces
         /// <summary>
         /// Returns whether the given monitor supports DDC/CI.
         /// </summary>
+        /// <param name="monitor">The monitor to check.</param>
+        /// <returns>True if DDC/CI is supported; otherwise, false.</returns>
         bool GetDdcCiSupport(MonitorInfo monitor);
 
         /// <summary>
         /// Returns the hardware ID for the given monitor.
         /// </summary>
+        /// <param name="monitor">The monitor to get the hardware ID for.</param>
+        /// <returns>The hardware ID string.</returns>
         string GetHardwareId(MonitorInfo monitor);
     }
 }

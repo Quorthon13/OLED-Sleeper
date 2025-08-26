@@ -1,7 +1,6 @@
 ﻿using OLED_Sleeper.Models;
 using OLED_Sleeper.Services.Monitor.Interfaces;
 using Serilog;
-using System.Collections.Generic;
 
 namespace OLED_Sleeper.Services.Monitor
 {
@@ -11,12 +10,15 @@ namespace OLED_Sleeper.Services.Monitor
     public class MonitorInfoManager : IMonitorInfoManager
     {
         #region Fields
+
         private readonly IMonitorInfoProvider _monitorInfoProvider;
         private List<MonitorInfo> _cachedMonitors;
         private readonly object _lock = new object();
-        #endregion
+
+        #endregion Fields
 
         #region Constructor
+
         /// <summary>
         /// Initializes a new instance of the <see cref="MonitorInfoManager"/> class.
         /// </summary>
@@ -25,9 +27,11 @@ namespace OLED_Sleeper.Services.Monitor
         {
             _monitorInfoProvider = monitorInfoProvider;
         }
-        #endregion
+
+        #endregion Constructor
 
         #region Public Methods
+
         /// <summary>
         /// Gets the current list of monitors, from the cache if available.
         /// </summary>
@@ -65,9 +69,11 @@ namespace OLED_Sleeper.Services.Monitor
         {
             return _monitorInfoProvider.GetAllMonitorsBasicInfo();
         }
-        #endregion
+
+        #endregion Public Methods
 
         #region Private Methods
+
         /// <summary>
         /// Refreshes the monitor cache by retrieving basic info and enriching each monitor with DDC/CI support and hardware ID.
         /// </summary>
@@ -81,6 +87,7 @@ namespace OLED_Sleeper.Services.Monitor
             }
             _cachedMonitors = monitors;
         }
-        #endregion
+
+        #endregion Private Methods
     }
 }

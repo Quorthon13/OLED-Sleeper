@@ -30,9 +30,11 @@ namespace OLED_Sleeper.Services.Monitor
         public MonitorStateWatcher(IMonitorInfoManager monitorInfoManager, double pollIntervalMs = 2000)
         {
             _monitorInfoManager = monitorInfoManager;
-            _pollTimer = new Timer(pollIntervalMs);
+            _pollTimer = new Timer(pollIntervalMs)
+            {
+                AutoReset = true
+            };
             _pollTimer.Elapsed += PollTimerElapsed;
-            _pollTimer.AutoReset = true;
         }
 
         /// <summary>
@@ -64,6 +66,9 @@ namespace OLED_Sleeper.Services.Monitor
             }
         }
 
+        /// <summary>
+        /// Handles the timer elapsed event to poll for monitor changes.
+        /// </summary>
         private void PollTimerElapsed(object sender, ElapsedEventArgs e)
         {
             lock (_lock)
@@ -81,6 +86,9 @@ namespace OLED_Sleeper.Services.Monitor
         /// <summary>
         /// Compares two monitor lists for equality based on device name set and count.
         /// </summary>
+        /// <param name="a">First monitor list.</param>
+        /// <param name="b">Second monitor list.</param>
+        /// <returns>True if the lists are equal; otherwise, false.</returns>
         private static bool AreMonitorListsEqual(IReadOnlyList<MonitorInfo> a, IReadOnlyList<MonitorInfo> b)
         {
             if (a == null || b == null) return false;
@@ -89,17 +97,17 @@ namespace OLED_Sleeper.Services.Monitor
             var bNames = new HashSet<string>();
             foreach (var m in a) aNames.Add(m.DeviceName);
             foreach (var m in b) bNames.Add(m.DeviceName);
-
             return aNames.SetEquals(bNames);
         }
 
         /// <summary>
         /// Enriches a list of MonitorInfo objects with DDC/CI support and hardware ID.
         /// </summary>
+        /// <param name="monitors">The list of monitors to enrich.</param>
         private void EnrichMonitorInfoList(List<MonitorInfo> monitors)
         {
             if (monitors == null) return;
-            if (_monitorInfoManager is MonitorInfoManager manager && manager != null)
+            if (_monitorInfoManager is MonitorInfoManager manager)
             {
                 var provider = typeof(MonitorInfoManager)
                     .GetField("_monitorInfoProvider", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)

@@ -33,24 +33,6 @@ namespace OLED_Sleeper.Helpers
         }
 
         /// <summary>
-        /// Compares two monitor lists for equality based on device name and display number.
-        /// </summary>
-        /// <param name="a">First monitor list.</param>
-        /// <param name="b">Second monitor list.</param>
-        /// <returns>True if lists are equal, false otherwise.</returns>
-        public static bool AreMonitorListsEqual(IReadOnlyList<MonitorInfo>? a, IReadOnlyList<MonitorInfo>? b)
-        {
-            if (a == null || b == null) return false;
-            if (a.Count != b.Count) return false;
-            for (var i = 0; i < a.Count; i++)
-            {
-                if (a[i].DeviceName != b[i].DeviceName || a[i].DisplayNumber != b[i].DisplayNumber)
-                    return false;
-            }
-            return true;
-        }
-
-        /// <summary>
         /// Parses the display number from a device name string.
         /// </summary>
         /// <param name="deviceName">The device name string.</param>

@@ -1,6 +1,4 @@
-﻿// File: NativeMethods.cs
-using System;
-using System.Runtime.InteropServices;
+﻿using System.Runtime.InteropServices;
 
 namespace OLED_Sleeper.Native
 {

@@ -1,12 +1,8 @@
-﻿// File: ViewModels/MainViewModel.cs
-using OLED_Sleeper.Commands;
+﻿using OLED_Sleeper.Commands;
 using OLED_Sleeper.Events;
-using OLED_Sleeper.Models;
 using OLED_Sleeper.Services.Monitor.Interfaces;
 using OLED_Sleeper.Services.Workspace.Interfaces;
 using System.Collections.ObjectModel;
-using System.Linq;
-using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
 
@@ -269,7 +265,7 @@ namespace OLED_Sleeper.ViewModels
         /// </summary>
         private async Task ExecuteSaveSettings()
         {
-            AppEvents.TriggerRestoreAllMonitors();
+            AppNotifications.TriggerRestoreAllMonitors();
 
             if (!ValidateSettings())
             {

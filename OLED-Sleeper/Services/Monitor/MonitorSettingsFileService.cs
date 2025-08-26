@@ -1,5 +1,4 @@
-﻿// File: Services/MonitorSettingsFileService.cs
-using OLED_Sleeper.Models;
+﻿using OLED_Sleeper.Models;
 using OLED_Sleeper.Services.Monitor.Interfaces;
 using Serilog;
 using System;

@@ -1,6 +1,5 @@
 ﻿using OLED_Sleeper.Services.Monitor.Interfaces;
 using Serilog;
-using System.Collections.Generic;
 using System.IO;
 using System.Text.Json;
 
@@ -69,6 +68,6 @@ namespace OLED_Sleeper.Services.Monitor
             }
         }
 
-        #endregion
+        #endregion IMonitorBrightnessStateService Implementation
     }
 }

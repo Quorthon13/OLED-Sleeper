@@ -1,10 +1,18 @@
-﻿// File: Models/MonitorBehavior.cs
-namespace OLED_Sleeper.Models
+﻿namespace OLED_Sleeper.Models
 {
-    // Refactored: Enum to replace "magic strings" for monitor behavior.
+    /// <summary>
+    /// Specifies the behavior to apply to a monitor when it becomes idle.
+    /// </summary>
     public enum MonitorBehavior
     {
+        /// <summary>
+        /// Dim the monitor's brightness.
+        /// </summary>
         Dim,
+
+        /// <summary>
+        /// Apply a blackout overlay to the monitor.
+        /// </summary>
         Blackout
     }
 }
