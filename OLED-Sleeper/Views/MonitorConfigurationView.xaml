@@ -1,12 +1,4 @@
-﻿<!--
-    MonitorConfigurationView.xaml
-
-    This UserControl provides the UI for configuring an individual monitor's settings in OLED Sleeper.
-    It includes controls for enabling management, selecting behavior (Blackout/Dim), adjusting dim level,
-    setting idle timer values, and specifying active conditions. Custom styles are used for a modern look.
-    Data binding is used to connect to the MonitorConfigurationViewModel.
--->
-<UserControl x:Class="OLED_Sleeper.Views.MonitorConfigurationView"
+﻿<UserControl x:Class="OLED_Sleeper.Views.MonitorConfigurationView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
@@ -18,13 +10,9 @@
              d:DataContext="{d:DesignInstance Type=viewModels:MonitorConfigurationViewModel}"
              FontFamily="Bahnschrift">
 
-    <!--
-        Resources:
-        - EnumToBooleanConverter: Used for radio button binding.
-        - Styles: Custom styles for ToolTip, CheckBox, RadioButton, Slider, TextBox, ComboBox, ComboBoxItem.
-    -->
     <UserControl.Resources>
         <converters:EnumToBooleanConverter x:Key="EnumToBooleanConverter" />
+        <converters:StringNullOrEmptyToVisibilityConverter x:Key="ErrorVisibilityConverter" />
 
         <Style TargetType="ToolTip">
             <Setter Property="OverridesDefaultStyle" Value="true" />
@@ -161,6 +149,10 @@
                             <Trigger Property="IsKeyboardFocused" Value="True">
                                 <Setter TargetName="border" Property="BorderBrush" Value="{StaticResource AccentColorBrush}" />
                             </Trigger>
+
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.5" />
+                            </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
                 </Setter.Value>
@@ -283,7 +275,6 @@
 
     <Grid Margin="25,20">
         <StackPanel>
-            <!-- Monitor Title and Management Toggle -->
             <StackPanel Orientation="Horizontal" VerticalAlignment="Center" ToolTipService.InitialShowDelay="200">
                 <StackPanel.ToolTip>
                     <ToolTip>Enable or disable management for this monitor.</ToolTip>
@@ -296,7 +287,6 @@
 
             <Separator Background="{StaticResource SeparatorColorBrush}" Margin="0,12" />
 
-            <!-- Main Configuration Panel -->
             <StackPanel Margin="0,15,0,0" IsEnabled="{Binding IsManaged}">
                 <Grid>
                     <Grid.ColumnDefinitions>
@@ -308,18 +298,22 @@
                         <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
 
-                    <!-- Behavior Selection -->
-                    <StackPanel Grid.Row="0" Grid.Column="0" VerticalAlignment="Center">
+                    <StackPanel Grid.Row="0" Grid.Column="0" VerticalAlignment="Center" ToolTipService.InitialShowDelay="200">
+                        <StackPanel.ToolTip>
+                            <ToolTip Content="{Binding BehaviorSectionTooltip}" />
+                        </StackPanel.ToolTip>
                         <TextBlock Text="BEHAVIOR" Foreground="{StaticResource SecondaryForegroundColor}" FontSize="12" FontWeight="Light" Margin="0,0,0,5" />
                         <StackPanel Orientation="Horizontal" Margin="0,5,0,0">
                             <RadioButton Content="Blackout" GroupName="Behavior" Style="{StaticResource ModernRadioButton}"
                                          IsChecked="{Binding Behavior, Converter={StaticResource EnumToBooleanConverter}, ConverterParameter={x:Static models:MonitorBehavior.Blackout}, UpdateSourceTrigger=PropertyChanged}" />
                             <RadioButton Content="Dim" GroupName="Behavior" Style="{StaticResource ModernRadioButton}" Margin="25,0,0,0"
-                                         IsChecked="{Binding Behavior, Converter={StaticResource EnumToBooleanConverter}, ConverterParameter={x:Static models:MonitorBehavior.Dim}, UpdateSourceTrigger=PropertyChanged}" />
+                                         IsChecked="{Binding Behavior, Converter={StaticResource EnumToBooleanConverter}, ConverterParameter={x:Static models:MonitorBehavior.Dim}, UpdateSourceTrigger=PropertyChanged}"
+                                         IsEnabled="{Binding IsDimBehaviorEnabled}"
+                                         ToolTip="{Binding DimBehaviorTooltip}"
+                                         ToolTipService.InitialShowDelay="200" />
                         </StackPanel>
                     </StackPanel>
 
-                    <!-- Dim Level Slider -->
                     <StackPanel Grid.Row="0" Grid.Column="1" Margin="40,0,0,0" IsEnabled="{Binding IsDimSliderEnabled}" VerticalAlignment="Center">
                         <TextBlock Text="DIM LEVEL" Foreground="{StaticResource SecondaryForegroundColor}" FontSize="12" FontWeight="Light" />
                         <Grid Margin="0,8,0,0">
@@ -336,24 +330,13 @@
                         </Grid>
                     </StackPanel>
 
-                    <!-- Idle Timer -->
-                    <StackPanel Grid.Row="1" Grid.Column="0" Margin="0,20,0,0">
+                    <StackPanel Grid.Row="1" Grid.Column="0" Margin="0,20,0,0" ToolTipService.InitialShowDelay="200">
+                        <StackPanel.ToolTip>
+                            <ToolTip Content="Set the duration of user inactivity required before the selected behavior is triggered." />
+                        </StackPanel.ToolTip>
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Text="IDLE TIMER" Foreground="{StaticResource SecondaryForegroundColor}" FontSize="12" FontWeight="Light" />
-                            <TextBlock Text="*" Foreground="{StaticResource DestructiveColorBrush}" FontWeight="Bold" Margin="4,-2,0,0" VerticalAlignment="Top">
-                                <TextBlock.Style>
-                                    <Style TargetType="TextBlock">
-                                        <Setter Property="Visibility" Value="Collapsed" />
-                                        <Style.Triggers>
-                                            <DataTrigger Binding="{Binding Path=(Validation.Errors)[IdleValue].Count, RelativeSource={RelativeSource AncestorType=UserControl}}" Value="1">
-                                                <Setter Property="Visibility" Value="Visible" />
-                                            </DataTrigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </TextBlock.Style>
-                            </TextBlock>
                         </StackPanel>
-
                         <Grid Margin="0,8,0,0">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto" />
@@ -367,7 +350,11 @@
                                           Style="{StaticResource ModernComboBox}" />
                             </StackPanel>
                             <StackPanel Grid.Column="1" Margin="10,0,0,0">
-                                <TextBlock Text="Value" Foreground="{StaticResource SecondaryForegroundColor}" FontSize="11" Margin="4,0,0,3" />
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="Value" Foreground="{StaticResource SecondaryForegroundColor}" FontSize="11" Margin="4,0,0,3" />
+                                    <TextBlock Text="*" Foreground="{StaticResource DestructiveColorBrush}" FontWeight="Bold" Margin="4,-2,0,0" VerticalAlignment="Top"
+                                               Visibility="{Binding IdleValueError, Converter={StaticResource ErrorVisibilityConverter}}" />
+                                </StackPanel>
                                 <TextBox x:Name="IdleValueTextBox" Width="80"
                                          Style="{StaticResource ModernTextBox}"
                                          Text="{Binding IdleValue, UpdateSourceTrigger=PropertyChanged, ValidatesOnDataErrors=True, TargetNullValue=''}" />
@@ -375,43 +362,37 @@
                         </Grid>
                     </StackPanel>
 
-                    <!-- Active Conditions -->
-                    <StackPanel Grid.Row="1" Grid.Column="1" Margin="40,20,0,0">
+                    <StackPanel Grid.Row="1" Grid.Column="1" Margin="40,20,0,0" ToolTipService.InitialShowDelay="200">
+                        <StackPanel.ToolTip>
+                            <ToolTip>
+                                <TextBlock>
+                                    <Run FontWeight="SemiBold" TextDecorations="Underline">Monitor-Specific Conditions</Run><LineBreak />
+                                    These options prevent ONLY this monitor from sleeping.<LineBreak /><LineBreak />
+                                    • <Run FontWeight="SemiBold">Mouse cursor is on this monitor:</Run><LineBreak />
+                                    <Span Foreground="{StaticResource SecondaryForegroundColor}">Keeps this monitor awake just by leaving your mouse on it.</Span><LineBreak />
+                                    • <Run FontWeight="SemiBold">Contains the active window:</Run><LineBreak />
+                                    <Span Foreground="{StaticResource SecondaryForegroundColor}">Keeps the monitor awake if it has the application you're currently using (the window you last clicked).</Span>
+                                    <LineBreak /><LineBreak />
+                                    <Run FontWeight="SemiBold" TextDecorations="Underline">General Condition</Run><LineBreak />
+                                    This option is system-wide.<LineBreak /><LineBreak />
+                                    • <Run FontWeight="SemiBold">System-wide user input:</Run><LineBreak />
+                                    <Span Foreground="{StaticResource SecondaryForegroundColor}">Standard behavior. Any input on ANY monitor keeps ALL monitors active.</Span>
+                                </TextBlock>
+                            </ToolTip>
+                        </StackPanel.ToolTip>
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Text="CONSIDER ACTIVE WHEN..." Foreground="{StaticResource SecondaryForegroundColor}" FontSize="12" FontWeight="Light" />
-                            <TextBlock Text="*" Foreground="{StaticResource DestructiveColorBrush}" FontWeight="Bold" Margin="4,-2,0,0" VerticalAlignment="Top">
-                                <TextBlock.Style>
-                                    <Style TargetType="TextBlock">
-                                        <Setter Property="Visibility" Value="Collapsed" />
-                                        <Style.Triggers>
-                                            <DataTrigger Binding="{Binding Path=(Validation.Errors)[IsActiveOnInput].Count, RelativeSource={RelativeSource AncestorType=UserControl}}" Value="1">
-                                                <Setter Property="Visibility" Value="Visible" />
-                                            </DataTrigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </TextBlock.Style>
-                            </TextBlock>
+                            <TextBlock Text="*" Foreground="{StaticResource DestructiveColorBrush}" FontWeight="Bold" Margin="4,-2,0,0" VerticalAlignment="Top"
+                                Visibility="{Binding ActiveConditionsError, Converter={StaticResource ErrorVisibilityConverter}}" />
                         </StackPanel>
 
                         <StackPanel Margin="0,8,0,0">
                             <CheckBox Margin="0,0,0,8" Style="{StaticResource ModernCheckBox}" Content="System has user input"
-                                      IsChecked="{Binding IsActiveOnInput, UpdateSourceTrigger=PropertyChanged, ValidatesOnDataErrors=True}">
-                                <CheckBox.ToolTip>
-                                    <ToolTip>Considers the monitor active if there is recent keyboard or mouse activity anywhere on the system. This is the standard method.</ToolTip>
-                                </CheckBox.ToolTip>
-                            </CheckBox>
+                                IsChecked="{Binding IsActiveOnInput, UpdateSourceTrigger=PropertyChanged, ValidatesOnDataErrors=True}" />
                             <CheckBox Margin="0,0,0,8" Style="{StaticResource ModernCheckBox}" Content="Mouse cursor is on this monitor"
-                                      IsChecked="{Binding IsActiveOnMousePosition, UpdateSourceTrigger=PropertyChanged, ValidatesOnDataErrors=True}">
-                                <CheckBox.ToolTip>
-                                    <ToolTip>Considers the monitor active if the mouse cursor is positioned over it, even if the mouse is not moving.</ToolTip>
-                                </CheckBox.ToolTip>
-                            </CheckBox>
+                                IsChecked="{Binding IsActiveOnMousePosition, UpdateSourceTrigger=PropertyChanged, ValidatesOnDataErrors=True}" />
                             <CheckBox Margin="0,0,0,0" Style="{StaticResource ModernCheckBox}" Content="Application is focused on this monitor"
-                                      IsChecked="{Binding IsActiveOnActiveWindow, UpdateSourceTrigger=PropertyChanged, ValidatesOnDataErrors=True}">
-                                <CheckBox.ToolTip>
-                                    <ToolTip>Considers the monitor active if it contains the currently focused application window (e.g., a full-screen video player or game).</ToolTip>
-                                </CheckBox.ToolTip>
-                            </CheckBox>
+                                IsChecked="{Binding IsActiveOnActiveWindow, UpdateSourceTrigger=PropertyChanged, ValidatesOnDataErrors=True}" />
                         </StackPanel>
                     </StackPanel>
                 </Grid>

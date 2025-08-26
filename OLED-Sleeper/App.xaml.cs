@@ -1,54 +1,181 @@
-﻿// File: App.xaml.cs
-using Hardcodet.Wpf.TaskbarNotification;
+﻿using Hardcodet.Wpf.TaskbarNotification;
+
 using Microsoft.Extensions.DependencyInjection;
-using OLED_Sleeper.Services;
+using OLED_Sleeper.Events;
+using OLED_Sleeper.Services.Application.Interfaces;
+using OLED_Sleeper.Services.Monitor.Interfaces;
+using OLED_Sleeper.Services.Workspace.Interfaces;
 using OLED_Sleeper.ViewModels;
 using Serilog;
-using System;
 using System.Windows;
 using System.Windows.Controls;
+using OLED_Sleeper.Services.Application;
+using OLED_Sleeper.Services.Monitor;
+using OLED_Sleeper.Services.Workspace;
 
 namespace OLED_Sleeper
 {
+    /// <summary>
+    /// Interaction logic for the application. Handles startup, DI, logging, and tray icon.
+    /// </summary>
     public partial class App : Application
     {
-        private TaskbarIcon? notifyIcon;
-
-        // Refactored: Use IServiceProvider for DI.
+        private TaskbarIcon? _notifyIcon;
         private IServiceProvider? _serviceProvider;
+        private bool _isExiting = false;
 
+        /// <summary>
+        /// Application entry point. Sets up logging, services, and main window.
+        /// </summary>
+        /// <param name="e">Startup event arguments.</param>
         protected override void OnStartup(StartupEventArgs e)
         {
             base.OnStartup(e);
+            this.SessionEnding += App_SessionEnding;
 
-            LogSetup();
-            ServiceSetup();
-            WindowSetup();
-        }
-
-        private void WindowSetup()
-        {
-            var mainWindow = _serviceProvider.GetRequiredService<MainWindow>();
-            mainWindow.DataContext = _serviceProvider.GetRequiredService<MainViewModel>();
-            this.MainWindow = mainWindow;
-            mainWindow.Show();
+            SetupLogging();
+            ConfigureServices();
+            StartOrchestrator();
             SetupTaskbarIcon();
+            SetupMainWindow();
         }
 
-        private void ServiceSetup()
+        /// <summary>
+        /// Configures dependency injection services.
+        /// </summary>
+        private void ConfigureServices()
         {
             var services = new ServiceCollection();
-            ConfigureServices(services);
+            services.AddSingleton<IMonitorInfoManager, MonitorInfoManager>();
+            services.AddSingleton<IMonitorStateWatcher, MonitorStateWatcher>();
+            services.AddSingleton<IMonitorBrightnessStateService, MonitorBrightnessStateService>();
+            services.AddSingleton<IMonitorDimmingService, MonitorDimmingService>();
+            services.AddSingleton<IMonitorBlackoutService, MonitorBlackoutService>();
+            services.AddSingleton<IApplicationOrchestrator, ApplicationOrchestrator>();
+            services.AddSingleton<IWorkspaceService, WorkspaceService>();
+            services.AddSingleton<IMonitorSettingsValidationService, MonitorSettingsValidationService>();
+            services.AddSingleton<IMonitorInfoProvider, MonitorInfoProvider>();
+            services.AddSingleton<IMonitorLayoutService, MonitorLayoutService>();
+            services.AddSingleton<IMonitorSettingsFileService, MonitorSettingsFileService>();
+            services.AddSingleton<IMonitorIdleDetectionService, MonitorIdleDetectionService>();
+            services.AddSingleton<MainViewModel>();
+            services.AddSingleton<MainWindow>();
             _serviceProvider = services.BuildServiceProvider();
-
-            var settingsService = _serviceProvider.GetRequiredService<ISettingsService>();
-
-            var idleActivityService = _serviceProvider.GetRequiredService<IIdleActivityService>();
-            idleActivityService.UpdateSettings(settingsService.LoadSettings());
-            idleActivityService.Start();
         }
 
-        private static void LogSetup()
+        /// <summary>
+        /// Starts the application orchestrator service.
+        /// </summary>
+        private void StartOrchestrator()
+        {
+            if (_serviceProvider != null)
+            {
+                var orchestrator = _serviceProvider.GetRequiredService<IApplicationOrchestrator>();
+                orchestrator.Start();
+            }
+        }
+
+        /// <summary>
+        /// Sets up the main window and its data context.
+        /// </summary>
+        private void SetupMainWindow()
+        {
+            if (_serviceProvider == null) return;
+            var mainWindow = _serviceProvider.GetRequiredService<MainWindow>();
+            mainWindow.DataContext = _serviceProvider.GetRequiredService<MainViewModel>();
+            MainWindow = mainWindow;
+            mainWindow.Show();
+        }
+
+        /// <summary>
+        /// Configures and displays the tray icon and its context menu.
+        /// </summary>
+        private void SetupTaskbarIcon()
+        {
+            _notifyIcon = new TaskbarIcon
+            {
+                ToolTipText = "OLED Sleeper"
+            };
+            _notifyIcon.TrayMouseDoubleClick += (_, _) => ShowMainWindow();
+
+            var contextMenu = new ContextMenu();
+            var showMenuItem = new MenuItem { Header = "Show Settings" };
+            showMenuItem.Click += (_, _) => ShowMainWindow();
+            contextMenu.Items.Add(showMenuItem);
+
+            var exitMenuItem = new MenuItem { Header = "Exit" };
+            exitMenuItem.Click += (_, _) => ExitApplication();
+            contextMenu.Items.Add(exitMenuItem);
+
+            _notifyIcon.ContextMenu = contextMenu;
+
+            try
+            {
+                var iconUri = new Uri("pack://application:,,,/Assets/icon.ico", UriKind.RelativeOrAbsolute);
+                _notifyIcon.Icon = new System.Drawing.Icon(Application.GetResourceStream(iconUri).Stream);
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Failed to load tray icon from resources.");
+            }
+        }
+
+        /// <summary>
+        /// Brings the main window to the foreground and restores it if minimized.
+        /// </summary>
+        private void ShowMainWindow()
+        {
+            if (MainWindow != null)
+            {
+                MainWindow.Show();
+                if (MainWindow.WindowState == WindowState.Minimized)
+                {
+                    MainWindow.WindowState = WindowState.Normal;
+                }
+                MainWindow.Activate();
+            }
+        }
+
+        /// <summary>
+        /// Initiates application shutdown.
+        /// </summary>
+        private void ExitApplication()
+        {
+            ShutdownApp();
+        }
+
+        /// <summary>
+        /// Handles application exit, ensuring resources are disposed and logs are flushed.
+        /// </summary>
+        /// <param name="e">Exit event arguments.</param>
+        protected override void OnExit(ExitEventArgs e)
+        {
+            ShutdownApp();
+            base.OnExit(e);
+        }
+
+        /// <summary>
+        /// Performs shutdown logic, including log flush and tray icon disposal.
+        /// </summary>
+        private void ShutdownApp()
+        {
+            if (_isExiting) return; // Prevent re-entrancy
+            _isExiting = true;
+
+            Log.Information("Shutdown initiated. Restoring all monitors...");
+
+            AppNotifications.TriggerRestoreAllMonitors();
+
+            Log.Information("--- Application Exiting ---");
+            Log.CloseAndFlush();
+            _notifyIcon?.Dispose();
+            Current.Shutdown();
+        }
+
+        /// <summary>
+        /// Configures Serilog logging for the application.
+        /// </summary>
+        private static void SetupLogging()
         {
             var logPath = System.IO.Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
@@ -62,81 +189,11 @@ namespace OLED_Sleeper
             Log.Information("--- Application Starting ---");
         }
 
-        private void ConfigureServices(IServiceCollection services)
+        private void App_SessionEnding(object sender, SessionEndingCancelEventArgs e)
         {
-            services.AddSingleton<IWorkspaceService, WorkspaceService>();
-            services.AddSingleton<ISaveValidationService, SaveValidationService>();
-            services.AddSingleton<IMonitorService, MonitorService>();
-            services.AddSingleton<IMonitorLayoutService, MonitorLayoutService>();
-            services.AddSingleton<ISettingsService, SettingsService>();
-            services.AddSingleton<IIdleActivityService, IdleActivityService>();
-            services.AddSingleton<MainViewModel>();
-            services.AddSingleton<MainWindow>();
-        }
-
-        private void SetupTaskbarIcon()
-        {
-            notifyIcon = new TaskbarIcon();
-            notifyIcon.ToolTipText = "OLED Sleeper";
-            notifyIcon.TrayMouseDoubleClick += (sender, args) => ShowMainWindow();
-
-            notifyIcon.ContextMenu = new ContextMenu();
-            var showMenuItem = new MenuItem { Header = "Show Settings" };
-            showMenuItem.Click += (sender, args) => ShowMainWindow();
-            notifyIcon.ContextMenu.Items.Add(showMenuItem);
-
-            var exitMenuItem = new MenuItem { Header = "Exit" };
-            exitMenuItem.Click += (sender, args) => ExitApplication();
-            notifyIcon.ContextMenu.Items.Add(exitMenuItem);
-
-            try
-            {
-                var iconUri = new Uri("pack://application:,,,/Assets/icon.ico", UriKind.RelativeOrAbsolute);
-                notifyIcon.Icon = new System.Drawing.Icon(Application.GetResourceStream(iconUri).Stream);
-            }
-            catch (Exception ex)
-            {
-                Log.Error(ex, "Failed to load tray icon from resources.");
-                notifyIcon.Icon = System.Drawing.SystemIcons.Application; // Fallback
-            }
-        }
-
-        private void ShowMainWindow()
-        {
-            if (this.MainWindow != null)
-            {
-                if (this.MainWindow.IsVisible)
-                {
-                    if (this.MainWindow.WindowState == WindowState.Minimized)
-                    {
-                        this.MainWindow.WindowState = WindowState.Normal;
-                    }
-                    this.MainWindow.Activate();
-                }
-                else
-                {
-                    this.MainWindow.Show();
-                }
-            }
-        }
-
-        private void ExitApplication()
-        {
+            // This event is raised when the user is logging off or the system is shutting down.
+            // We can perform our cleanup here.
             ShutdownApp();
-        }
-
-        protected override void OnExit(ExitEventArgs e)
-        {
-            ShutdownApp();
-            base.OnExit(e);
-        }
-
-        private void ShutdownApp()
-        {
-            Log.Information("--- Application Exiting ---");
-            Log.CloseAndFlush();
-            notifyIcon?.Dispose();
-            Current.Shutdown();
         }
     }
 }

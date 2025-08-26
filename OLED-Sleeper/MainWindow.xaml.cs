@@ -1,66 +1,78 @@
-﻿// File: MainWindow.xaml.cs
-using OLED_Sleeper.ViewModels;
+﻿using OLED_Sleeper.ViewModels;
 using System.ComponentModel;
 using System.Windows;
 using System.Windows.Input;
 
 namespace OLED_Sleeper
 {
+    /// <summary>
+    /// The main application window for OLED Sleeper.
+    /// Handles window chrome, custom title bar, and delegates closing logic to the ViewModel.
+    /// </summary>
     public partial class MainWindow : Window
     {
+        #region Constructor
+        /// <summary>
+        /// Initializes a new instance of the <see cref="MainWindow"/> class.
+        /// </summary>
         public MainWindow()
         {
             InitializeComponent();
         }
+        #endregion
 
+        #region Window Event Overrides
+        /// <summary>
+        /// Handles the window closing event, delegating logic to the ViewModel.
+        /// Cancels closing if the ViewModel returns false.
+        /// </summary>
+        /// <param name="e">CancelEventArgs for the closing event.</param>
         protected override void OnClosing(CancelEventArgs e)
         {
-            var viewModel = DataContext as MainViewModel;
-            if (viewModel != null && viewModel.IsDirty)
+            if (DataContext is MainViewModel viewModel && !viewModel.OnWindowClosing())
             {
-                var result = MessageBox.Show(
-                    "You have unsaved changes. Would you like to save them before hiding the window?",
-                    "Unsaved Changes",
-                    MessageBoxButton.YesNoCancel,
-                    MessageBoxImage.Warning);
-
-                if (result == MessageBoxResult.Cancel)
-                {
-                    e.Cancel = true; // Prevents the window from closing/hiding.
-                    return;
-                }
-
-                if (result == MessageBoxResult.Yes)
-                {
-                    viewModel.SaveSettingsCommand.Execute(null);
-                }
+                e.Cancel = true;
+                return;
             }
-
-            this.Hide();
-            e.Cancel = true;
+            base.OnClosing(e);
         }
+        #endregion
 
+        #region Title Bar & Window Controls
+        /// <summary>
+        /// Handles dragging the window when the custom title bar is clicked and dragged.
+        /// </summary>
         private void TitleBar_MouseDown(object sender, MouseButtonEventArgs e)
         {
             if (e.ChangedButton == MouseButton.Left)
             {
-                this.DragMove();
+                DragMove();
             }
         }
 
+        /// <summary>
+        /// Minimizes the window when the minimize button is clicked.
+        /// </summary>
         private void MinimizeButton_Click(object sender, RoutedEventArgs e)
         {
-            this.WindowState = WindowState.Minimized;
+            WindowState = WindowState.Minimized;
         }
 
+        /// <summary>
+        /// Toggles between maximized and normal window state when the maximize button is clicked.
+        /// </summary>
         private void MaximizeButton_Click(object sender, RoutedEventArgs e)
         {
-            this.WindowState = (this.WindowState == WindowState.Maximized) ? WindowState.Normal : WindowState.Maximized;
+            WindowState = (WindowState == WindowState.Maximized) ? WindowState.Normal : WindowState.Maximized;
         }
 
+        /// <summary>
+        /// Closes the window when the close button is clicked.
+        /// </summary>
         private void CloseButton_Click(object sender, RoutedEventArgs e)
         {
-            this.Close();
+            Close();
         }
+        #endregion
     }
 }

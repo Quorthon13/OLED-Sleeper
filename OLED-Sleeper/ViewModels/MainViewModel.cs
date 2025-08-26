@@ -1,10 +1,9 @@
-﻿// File: ViewModels/MainViewModel.cs
-using OLED_Sleeper.Commands;
-using OLED_Sleeper.Models;
-using OLED_Sleeper.Services;
+﻿using OLED_Sleeper.Commands;
+using OLED_Sleeper.Events;
+using OLED_Sleeper.Services.Monitor.Interfaces;
+using OLED_Sleeper.Services.Workspace.Interfaces;
 using System.Collections.ObjectModel;
-using System.Linq;
-using System.Threading.Tasks;
+using System.Windows;
 using System.Windows.Input;
 
 namespace OLED_Sleeper.ViewModels
@@ -25,17 +24,22 @@ namespace OLED_Sleeper.ViewModels
         /// <summary>
         /// Service for loading and saving monitor settings.
         /// </summary>
-        private readonly ISettingsService _settingsService;
+        private readonly IMonitorSettingsFileService _settingsService;
 
         /// <summary>
         /// Service for handling idle activity and updating monitor states.
         /// </summary>
-        private readonly IIdleActivityService _idleActivityService;
+        private readonly IMonitorIdleDetectionService _idleActivityService;
 
         /// <summary>
         /// Service for validating monitor settings before saving.
         /// </summary>
-        private readonly ISaveValidationService _saveValidationService;
+        private readonly IMonitorSettingsValidationService _saveValidationService;
+
+        /// <summary>
+        /// Service for managing and refreshing monitor information from the system.
+        /// </summary>
+        private readonly IMonitorInfoManager _monitorInfoManager;
 
         /// <summary>
         /// The width of the container used for monitor layout calculations.
@@ -164,15 +168,18 @@ namespace OLED_Sleeper.ViewModels
         /// </summary>
         /// <param name="workspaceService">Service for monitor workspace management.</param>
         /// <param name="settingsService">Service for settings persistence.</param>
-        /// <param name="idleActivityService">Service for idle activity monitoring.</param>
-        /// <param name="saveValidationService">Service for validating settings before save.</param>
-        public MainViewModel(IWorkspaceService workspaceService, ISettingsService settingsService,
-                             IIdleActivityService idleActivityService, ISaveValidationService saveValidationService)
+        /// <param name="monitorIdleDetectionService">Service for idle activity monitoring.</param>
+        /// <param name="monitorSettingsValidationService">Service for validating settings before save.</param>
+        /// <param name="monitorInfoManager">Service for refreshing monitor information from the system.</param>
+        public MainViewModel(IWorkspaceService workspaceService, IMonitorSettingsFileService settingsService,
+                             IMonitorIdleDetectionService monitorIdleDetectionService, IMonitorSettingsValidationService monitorSettingsValidationService,
+                             IMonitorInfoManager monitorInfoManager)
         {
             _workspaceService = workspaceService;
             _settingsService = settingsService;
-            _idleActivityService = idleActivityService;
-            _saveValidationService = saveValidationService;
+            _idleActivityService = monitorIdleDetectionService;
+            _saveValidationService = monitorSettingsValidationService;
+            _monitorInfoManager = monitorInfoManager;
 
             SelectMonitorCommand = new RelayCommand(ExecuteSelectMonitor);
             ReloadMonitorsCommand = new RelayCommand(RefreshMonitors);
@@ -189,6 +196,7 @@ namespace OLED_Sleeper.ViewModels
         /// </summary>
         public void RefreshMonitors()
         {
+            _monitorInfoManager.RefreshMonitors();
             UpdateMonitorsInternal(_containerWidth, _containerHeight, preserveSelection: false);
         }
 
@@ -200,6 +208,35 @@ namespace OLED_Sleeper.ViewModels
         public void RecalculateLayout(double width, double height)
         {
             UpdateMonitorsInternal(width, height, preserveSelection: true);
+        }
+
+        /// <summary>
+        /// Handles logic for when the main window is closing. Returns true if the window should close, false to cancel.
+        /// </summary>
+        /// <returns>True to allow closing, false to cancel.</returns>
+        public bool OnWindowClosing()
+        {
+            if (IsDirty)
+            {
+                var result = MessageBox.Show(
+                    "You have unsaved changes. Would you like to save them before hiding the window?",
+                    "Unsaved Changes",
+                    MessageBoxButton.YesNoCancel,
+                    MessageBoxImage.Warning);
+
+                if (result == MessageBoxResult.Cancel)
+                {
+                    return false; // Cancel closing
+                }
+
+                if (result == MessageBoxResult.Yes)
+                {
+                    SaveSettingsCommand.Execute(null);
+                }
+            }
+            // Hide the window instead of closing
+            Application.Current.MainWindow?.Hide();
+            return false; // Always cancel closing (hide instead)
         }
 
         #endregion Public Methods (for View Interaction)
@@ -228,6 +265,8 @@ namespace OLED_Sleeper.ViewModels
         /// </summary>
         private async Task ExecuteSaveSettings()
         {
+            AppNotifications.TriggerRestoreAllMonitors();
+
             if (!ValidateSettings())
             {
                 return; // Stop if invalid

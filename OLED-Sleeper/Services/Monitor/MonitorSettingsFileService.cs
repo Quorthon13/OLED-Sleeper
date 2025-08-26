@@ -1,19 +1,19 @@
-﻿// File: Services/SettingsService.cs
-using OLED_Sleeper.Models;
+﻿using OLED_Sleeper.Models;
+using OLED_Sleeper.Services.Monitor.Interfaces;
 using Serilog;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text.Json;
 
-namespace OLED_Sleeper.Services
+namespace OLED_Sleeper.Services.Monitor
 {
     // Refactored: New service to manage loading and saving of monitor settings.
-    public class SettingsService : ISettingsService
+    public class MonitorSettingsFileService : IMonitorSettingsFileService
     {
         private readonly string _settingsFilePath;
 
-        public SettingsService()
+        public MonitorSettingsFileService()
         {
             var appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
             var settingsDir = Path.Combine(appDataPath, "OLED-Sleeper");
