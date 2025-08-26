@@ -70,6 +70,20 @@ namespace OLED_Sleeper.Services.Monitor
             return _monitorInfoProvider.GetAllMonitorsBasicInfo();
         }
 
+        /// <summary>
+        /// Enriches a list of MonitorInfo objects with DDC/CI support and hardware ID.
+        /// </summary>
+        /// <param name="monitors">The list of monitors to enrich.</param>
+        public void EnrichMonitorInfoList(List<MonitorInfo>? monitors)
+        {
+            if (monitors == null) return;
+            foreach (var monitor in monitors)
+            {
+                monitor.IsDdcCiSupported = _monitorInfoProvider.GetDdcCiSupport(monitor);
+                monitor.HardwareId = _monitorInfoProvider.GetHardwareId(monitor);
+            }
+        }
+
         #endregion Public Methods
 
         #region Private Methods
@@ -80,11 +94,7 @@ namespace OLED_Sleeper.Services.Monitor
         private void RefreshMonitorsInternal()
         {
             var monitors = _monitorInfoProvider.GetAllMonitorsBasicInfo();
-            foreach (var monitor in monitors)
-            {
-                monitor.IsDdcCiSupported = _monitorInfoProvider.GetDdcCiSupport(monitor);
-                monitor.HardwareId = _monitorInfoProvider.GetHardwareId(monitor);
-            }
+            EnrichMonitorInfoList(monitors);
             _cachedMonitors = monitors;
         }
 

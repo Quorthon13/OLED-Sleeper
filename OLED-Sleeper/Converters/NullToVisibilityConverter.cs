@@ -26,7 +26,7 @@ namespace OLED_Sleeper.Converters
         /// <param name="parameter">The converter parameter to use.</param>
         /// <param name="culture">The culture to use in the converter.</param>
         /// <returns>Visibility.Visible or Visibility.Collapsed based on the value and IsReversed.</returns>
-        public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+        public object Convert(object? value, Type targetType, object parameter, CultureInfo culture)
         {
             bool isNull = value == null;
             if (IsReversed)

@@ -22,7 +22,7 @@ namespace OLED_Sleeper.Services.Monitor
         /// <param name="containerWidth">The width of the container for layout.</param>
         /// <param name="containerHeight">The height of the container for layout.</param>
         /// <returns>An observable collection of monitor layout view models.</returns>
-        public ObservableCollection<MonitorLayoutViewModel> CreateLayout(List<MonitorInfo> monitorInfos, double containerWidth, double containerHeight)
+        public ObservableCollection<MonitorLayoutViewModel> CreateLayout(List<MonitorInfo>? monitorInfos, double containerWidth, double containerHeight)
         {
             Log.Debug("--- Starting Layout Calculation ---");
             Log.Debug("Container size: {Width}x{Height}", containerWidth, containerHeight);

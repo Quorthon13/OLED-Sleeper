@@ -24,5 +24,11 @@ namespace OLED_Sleeper.Services.Monitor.Interfaces
         /// </summary>
         /// <returns>A list of <see cref="MonitorInfo"/> objects representing the latest monitors.</returns>
         List<MonitorInfo> GetLatestMonitorsBasicInfo();
+
+        /// <summary>
+        /// Enriches a list of MonitorInfo objects with DDC/CI support and hardware ID.
+        /// </summary>
+        /// <param name="monitors">The list of monitors to enrich.</param>
+        void EnrichMonitorInfoList(List<MonitorInfo> monitors);
     }
 }

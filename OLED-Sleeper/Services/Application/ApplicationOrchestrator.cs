@@ -95,7 +95,6 @@ namespace OLED_Sleeper.Services.Application
         /// </summary>
         private void SubscribeToSettingsChangedEvent()
         {
-            _monitorSettingsFileService.SettingsChanged -= OnSettingsChanged; // Prevent double subscription
             _monitorSettingsFileService.SettingsChanged += OnSettingsChanged;
         }
 
@@ -251,9 +250,11 @@ namespace OLED_Sleeper.Services.Application
                 case MonitorBehavior.Blackout:
                     HandleMonitorBlackout(e);
                     break;
+
                 case MonitorBehavior.Dim:
                     HandleMonitorDim(e);
                     break;
+
                 default:
                     break;
             }
@@ -399,7 +400,7 @@ namespace OLED_Sleeper.Services.Application
         /// <param name="settings">The monitor settings to remove.</param>
         private void RemoveMonitorFromIdleDetection(MonitorSettings settings)
         {
-            _lastKnownSettings.Remove(settings);
+            _lastKnownSettings?.Remove(settings);
             _monitorIdleDetectionService.UpdateSettings(_lastKnownSettings);
             Log.Information("Removed monitor {HardwareId} from idle detection.", settings.HardwareId);
         }

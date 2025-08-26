@@ -89,7 +89,7 @@ namespace OLED_Sleeper.Services.Monitor
         /// <param name="a">First monitor list.</param>
         /// <param name="b">Second monitor list.</param>
         /// <returns>True if the lists are equal; otherwise, false.</returns>
-        private static bool AreMonitorListsEqual(IReadOnlyList<MonitorInfo> a, IReadOnlyList<MonitorInfo> b)
+        private static bool AreMonitorListsEqual(IReadOnlyList<MonitorInfo>? a, IReadOnlyList<MonitorInfo>? b)
         {
             if (a == null || b == null) return false;
             if (a.Count != b.Count) return false;
@@ -106,21 +106,7 @@ namespace OLED_Sleeper.Services.Monitor
         /// <param name="monitors">The list of monitors to enrich.</param>
         private void EnrichMonitorInfoList(List<MonitorInfo> monitors)
         {
-            if (monitors == null) return;
-            if (_monitorInfoManager is MonitorInfoManager manager)
-            {
-                var provider = typeof(MonitorInfoManager)
-                    .GetField("_monitorInfoProvider", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
-                    ?.GetValue(manager) as IMonitorInfoProvider;
-                if (provider != null)
-                {
-                    foreach (var monitor in monitors)
-                    {
-                        monitor.IsDdcCiSupported = provider.GetDdcCiSupport(monitor);
-                        monitor.HardwareId = provider.GetHardwareId(monitor);
-                    }
-                }
-            }
+            _monitorInfoManager.EnrichMonitorInfoList(monitors);
         }
 
         /// <summary>
