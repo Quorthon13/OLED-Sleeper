@@ -5,7 +5,7 @@
 OLED Sleeper is a lightweight Windows tool to **black out or dim idle monitors**, helping users **prevent OLED burn-in** and **temporarily sleep secondary monitors** for focus, gaming, or distraction-free work.
 
 <p align="center">
-  <img src="https://files.catbox.moe/w0yq57.webp" alt="OLED Sleeper Demonstration"> 
+  <img src="https://github.com/user-attachments/assets/0f7c9110-094c-4fdb-8109-62fdd11e87cd" alt="OLED Sleeper Demonstration"> 
 </p>
 
 ---
