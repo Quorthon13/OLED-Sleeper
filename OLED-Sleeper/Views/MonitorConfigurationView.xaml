@@ -314,8 +314,11 @@
                         </StackPanel>
                     </StackPanel>
 
-                    <StackPanel Grid.Row="0" Grid.Column="1" Margin="40,0,0,0" IsEnabled="{Binding IsDimSliderEnabled}" VerticalAlignment="Center">
-                        <TextBlock Text="DIM LEVEL" Foreground="{StaticResource SecondaryForegroundColor}" FontSize="12" FontWeight="Light" />
+                    <StackPanel Grid.Row="0" Grid.Column="1" Margin="40,0,0,0" IsEnabled="{Binding IsDimSliderEnabled}" VerticalAlignment="Center" ToolTipService.InitialShowDelay="200">
+                        <StackPanel.ToolTip>
+                            <ToolTip>Set the brightness level to use when this monitor is dimmed.</ToolTip>
+                        </StackPanel.ToolTip>
+                        <TextBlock Text="BRIGHTNESS LEVEL" Foreground="{StaticResource SecondaryForegroundColor}" FontSize="12" FontWeight="Light" />
                         <Grid Margin="0,8,0,0">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*" />
@@ -376,7 +379,7 @@
                                     <Run FontWeight="SemiBold" TextDecorations="Underline">General Condition</Run><LineBreak />
                                     This option is system-wide.<LineBreak /><LineBreak />
                                     • <Run FontWeight="SemiBold">System-wide user input:</Run><LineBreak />
-                                    <Span Foreground="{StaticResource SecondaryForegroundColor}">Standard behavior. Any input on ANY monitor keeps ALL monitors active.</Span>
+                                    <Span Foreground="{StaticResource SecondaryForegroundColor}">Windows' standard behavior. Any input on ANY monitor keeps this monitor active.</Span>
                                 </TextBlock>
                             </ToolTip>
                         </StackPanel.ToolTip>
@@ -387,12 +390,12 @@
                         </StackPanel>
 
                         <StackPanel Margin="0,8,0,0">
-                            <CheckBox Margin="0,0,0,8" Style="{StaticResource ModernCheckBox}" Content="System has user input"
-                                IsChecked="{Binding IsActiveOnInput, UpdateSourceTrigger=PropertyChanged, ValidatesOnDataErrors=True}" />
                             <CheckBox Margin="0,0,0,8" Style="{StaticResource ModernCheckBox}" Content="Mouse cursor is on this monitor"
                                 IsChecked="{Binding IsActiveOnMousePosition, UpdateSourceTrigger=PropertyChanged, ValidatesOnDataErrors=True}" />
-                            <CheckBox Margin="0,0,0,0" Style="{StaticResource ModernCheckBox}" Content="Application is focused on this monitor"
+                            <CheckBox Margin="0,0,0,8" Style="{StaticResource ModernCheckBox}" Content="Application is focused on this monitor"
                                 IsChecked="{Binding IsActiveOnActiveWindow, UpdateSourceTrigger=PropertyChanged, ValidatesOnDataErrors=True}" />
+                            <CheckBox Margin="0,0,0,0" Style="{StaticResource ModernCheckBox}" Content="System has user input"
+                                      IsChecked="{Binding IsActiveOnInput, UpdateSourceTrigger=PropertyChanged, ValidatesOnDataErrors=True}" />
                         </StackPanel>
                     </StackPanel>
                 </Grid>

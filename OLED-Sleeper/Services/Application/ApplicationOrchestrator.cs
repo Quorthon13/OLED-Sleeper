@@ -249,16 +249,57 @@ namespace OLED_Sleeper.Services.Application
             switch (e.Settings.Behavior)
             {
                 case MonitorBehavior.Blackout:
-                    _monitorBlackoutService.ShowBlackoutOverlay(e.HardwareId, e.Bounds);
+                    HandleMonitorBlackout(e);
                     break;
-
                 case MonitorBehavior.Dim:
-                    _monitorDimmingService.DimMonitor(e.HardwareId, (int)e.Settings.DimLevel);
+                    HandleMonitorDim(e);
                     break;
-
                 default:
                     break;
             }
+        }
+
+        /// <summary>
+        /// Handles blackout behavior for a monitor, including overlay and DDC/CI brightness if supported.
+        /// </summary>
+        /// <param name="e">The monitor state event arguments.</param>
+        private void HandleMonitorBlackout(MonitorStateEventArgs e)
+        {
+            _monitorBlackoutService.ShowBlackoutOverlay(e.HardwareId, e.Bounds);
+            var monitorInfo = GetMonitorInfoByHardwareId(e.HardwareId);
+            if (monitorInfo != null && monitorInfo.IsDdcCiSupported)
+            {
+                DimMonitorToZero(e.HardwareId);
+                Log.Information("Monitor {HardwareId} supports DDC/CI. Brightness set to 0 for blackout.", e.HardwareId);
+            }
+        }
+
+        /// <summary>
+        /// Handles dim behavior for a monitor.
+        /// </summary>
+        /// <param name="e">The monitor state event arguments.</param>
+        private void HandleMonitorDim(MonitorStateEventArgs e)
+        {
+            _monitorDimmingService.DimMonitor(e.HardwareId, (int)e.Settings.DimLevel);
+        }
+
+        /// <summary>
+        /// Sets the brightness of the specified monitor to 0 using DDC/CI.
+        /// </summary>
+        /// <param name="hardwareId">The unique hardware ID of the monitor.</param>
+        private void DimMonitorToZero(string hardwareId)
+        {
+            _monitorDimmingService.DimMonitor(hardwareId, 0);
+        }
+
+        /// <summary>
+        /// Gets the MonitorInfo for a given hardware ID from the last known monitors.
+        /// </summary>
+        /// <param name="hardwareId">The unique hardware ID of the monitor.</param>
+        /// <returns>The MonitorInfo if found; otherwise, null.</returns>
+        private MonitorInfo? GetMonitorInfoByHardwareId(string hardwareId)
+        {
+            return _lastKnownMonitors?.FirstOrDefault(m => m.HardwareId == hardwareId);
         }
 
         /// <summary>
