@@ -22,6 +22,7 @@ namespace OLED_Sleeper.Services.Application
     /// <item><description>Handles monitor connect/disconnect, updating settings and overlays as needed.</description></item>
     /// <item><description>Restores brightness for monitors on startup and after dimming.</description></item>
     /// <item><description>Coordinates blackout overlays and dimming based on user preferences.</description></item>
+    /// <item><description>Subscribes to system-wide monitor settings changes and updates idle detection accordingly.</description></item>
     /// </list>
     /// </para>
     /// <para>
@@ -31,6 +32,7 @@ namespace OLED_Sleeper.Services.Application
     /// <item><description><see cref="Stop"/>: Stops monitoring and restores all monitors to their normal state.</description></item>
     /// <item><description><see cref="OnMonitorsChanged"/>: Handles monitor connection/disconnection events.</description></item>
     /// <item><description><see cref="OnMonitorBecameIdle"/> / <see cref="OnMonitorBecameActive"/>: Respond to monitor idle/active transitions.</description></item>
+    /// <item><description><see cref="SubscribeToSettingsChangedEvent"/>: Subscribes to system-wide monitor settings changes and updates idle detection service.</description></item>
     /// </list>
     /// </para>
     /// </summary>
@@ -84,7 +86,17 @@ namespace OLED_Sleeper.Services.Application
             RestoreBrightnessOnStartup();
             SubscribeToIdleDetectionEvents();
             SubscribeToMonitorStateEvents();
+            SubscribeToSettingsChangedEvent();
             InitializeMonitorSettings();
+        }
+
+        /// <summary>
+        /// Subscribes to the settings changed event.
+        /// </summary>
+        private void SubscribeToSettingsChangedEvent()
+        {
+            _monitorSettingsFileService.SettingsChanged -= OnSettingsChanged; // Prevent double subscription
+            _monitorSettingsFileService.SettingsChanged += OnSettingsChanged;
         }
 
         /// <summary>
@@ -154,11 +166,20 @@ namespace OLED_Sleeper.Services.Application
         }
 
         /// <summary>
-        /// Restores all monitors' brightness levels and clears dimmed state.
+        /// Restores all monitors' brightness levels, clears dimmed state, and removes all blackout overlays.
         /// </summary>
         public void RestoreAllMonitors()
         {
-            Log.Information("Restoring all monitors brightness levels...");
+            Log.Information("Restoring all monitors brightness levels and removing overlays...");
+            RestoreAllBrightness();
+            RemoveAllOverlays();
+        }
+
+        /// <summary>
+        /// Restores brightness for all dimmed monitors and clears the dimmed state.
+        /// </summary>
+        private void RestoreAllBrightness()
+        {
             var dimmedMonitors = _monitorDimmingService.GetDimmedMonitors();
             if (dimmedMonitors.Any())
             {
@@ -167,6 +188,20 @@ namespace OLED_Sleeper.Services.Application
                     _monitorDimmingService.RestoreBrightness(entry.Key, entry.Value);
                 }
                 _monitorBrightnessStateService.SaveState(new Dictionary<string, uint>());
+            }
+        }
+
+        /// <summary>
+        /// Removes all blackout overlays from all known monitors.
+        /// </summary>
+        private void RemoveAllOverlays()
+        {
+            if (_lastKnownMonitors != null)
+            {
+                foreach (var monitor in _lastKnownMonitors)
+                {
+                    _monitorBlackoutService.HideOverlay(monitor.HardwareId);
+                }
             }
         }
 
@@ -242,6 +277,16 @@ namespace OLED_Sleeper.Services.Application
             Log.Information("Orchestrator received MonitorBecameActive event for Monitor #{DisplayNumber}. Commanding services to restore state.", e.DisplayNumber);
             _monitorBlackoutService.HideOverlay(e.HardwareId);
             _monitorDimmingService.UndimMonitor(e.HardwareId);
+        }
+
+        /// <summary>
+        /// Called when settings are changed and saved
+        /// </summary>
+        /// <param name="settings">The updated list of monitor settings.</param>
+        private void OnSettingsChanged(List<MonitorSettings> settings)
+        {
+            _lastKnownSettings = settings;
+            _monitorIdleDetectionService.UpdateSettings(settings);
         }
 
         #endregion Event Handlers

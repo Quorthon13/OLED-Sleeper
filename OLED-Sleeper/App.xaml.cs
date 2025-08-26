@@ -36,7 +36,7 @@ namespace OLED_Sleeper
             SetupLogging();
             ConfigureServices();
             StartOrchestrator();
-            SetupTaskbarIcon();
+            SetupTrayIcon();
             SetupMainWindow();
         }
 
@@ -90,7 +90,7 @@ namespace OLED_Sleeper
         /// <summary>
         /// Configures and displays the tray icon and its context menu.
         /// </summary>
-        private void SetupTaskbarIcon()
+        private void SetupTrayIcon()
         {
             _notifyIcon = new TaskbarIcon
             {

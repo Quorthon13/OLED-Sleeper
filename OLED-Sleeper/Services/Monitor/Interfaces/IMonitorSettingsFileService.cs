@@ -1,4 +1,6 @@
 using OLED_Sleeper.Models;
+using System;
+using System.Collections.Generic;
 
 namespace OLED_Sleeper.Services.Monitor.Interfaces
 {
@@ -7,6 +9,11 @@ namespace OLED_Sleeper.Services.Monitor.Interfaces
     /// </summary>
     public interface IMonitorSettingsFileService
     {
+        /// <summary>
+        /// Event raised when monitor settings are changed and saved.
+        /// </summary>
+        event Action<List<MonitorSettings>>? SettingsChanged;
+
         /// <summary>
         /// Loads all monitor settings from persistent storage.
         /// </summary>

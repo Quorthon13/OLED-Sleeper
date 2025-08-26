@@ -299,7 +299,6 @@ namespace OLED_Sleeper.ViewModels
         {
             var allSettings = Monitors.Select(m => m.Configuration.ToSettings()).ToList();
             _settingsService.SaveSettings(allSettings);
-            _idleActivityService.UpdateSettings(allSettings);
 
             foreach (var monitorVM in Monitors)
             {

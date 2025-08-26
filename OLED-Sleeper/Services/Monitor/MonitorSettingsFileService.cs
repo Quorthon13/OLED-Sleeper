@@ -12,6 +12,7 @@ namespace OLED_Sleeper.Services.Monitor
     public class MonitorSettingsFileService : IMonitorSettingsFileService
     {
         private readonly string _settingsFilePath;
+        public event Action<List<MonitorSettings>>? SettingsChanged;
 
         public MonitorSettingsFileService()
         {
@@ -51,6 +52,7 @@ namespace OLED_Sleeper.Services.Monitor
                 var json = JsonSerializer.Serialize(settings, options);
                 File.WriteAllText(_settingsFilePath, json);
                 Log.Information("Successfully saved {Count} monitor settings to {FilePath}.", settings.Count, _settingsFilePath);
+                SettingsChanged?.Invoke(settings);
             }
             catch (Exception ex)
             {
