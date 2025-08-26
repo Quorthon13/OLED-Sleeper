@@ -15,29 +15,12 @@ namespace OLED_Sleeper
 
         protected override void OnClosing(CancelEventArgs e)
         {
-            var viewModel = DataContext as MainViewModel;
-            if (viewModel != null && viewModel.IsDirty)
+            if (DataContext is MainViewModel viewModel && !viewModel.OnWindowClosing())
             {
-                var result = MessageBox.Show(
-                    "You have unsaved changes. Would you like to save them before hiding the window?",
-                    "Unsaved Changes",
-                    MessageBoxButton.YesNoCancel,
-                    MessageBoxImage.Warning);
-
-                if (result == MessageBoxResult.Cancel)
-                {
-                    e.Cancel = true; // Prevents the window from closing/hiding.
-                    return;
-                }
-
-                if (result == MessageBoxResult.Yes)
-                {
-                    viewModel.SaveSettingsCommand.Execute(null);
-                }
+                e.Cancel = true;
+                return;
             }
-
-            this.Hide();
-            e.Cancel = true;
+            base.OnClosing(e);
         }
 
         private void TitleBar_MouseDown(object sender, MouseButtonEventArgs e)

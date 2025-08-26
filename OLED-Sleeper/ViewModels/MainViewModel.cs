@@ -7,6 +7,7 @@ using OLED_Sleeper.Services.Workspace.Interfaces;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Threading.Tasks;
+using System.Windows;
 using System.Windows.Input;
 
 namespace OLED_Sleeper.ViewModels
@@ -211,6 +212,35 @@ namespace OLED_Sleeper.ViewModels
         public void RecalculateLayout(double width, double height)
         {
             UpdateMonitorsInternal(width, height, preserveSelection: true);
+        }
+
+        /// <summary>
+        /// Handles logic for when the main window is closing. Returns true if the window should close, false to cancel.
+        /// </summary>
+        /// <returns>True to allow closing, false to cancel.</returns>
+        public bool OnWindowClosing()
+        {
+            if (IsDirty)
+            {
+                var result = MessageBox.Show(
+                    "You have unsaved changes. Would you like to save them before hiding the window?",
+                    "Unsaved Changes",
+                    MessageBoxButton.YesNoCancel,
+                    MessageBoxImage.Warning);
+
+                if (result == MessageBoxResult.Cancel)
+                {
+                    return false; // Cancel closing
+                }
+
+                if (result == MessageBoxResult.Yes)
+                {
+                    SaveSettingsCommand.Execute(null);
+                }
+            }
+            // Hide the window instead of closing
+            Application.Current.MainWindow?.Hide();
+            return false; // Always cancel closing (hide instead)
         }
 
         #endregion Public Methods (for View Interaction)

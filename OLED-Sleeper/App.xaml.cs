@@ -36,8 +36,8 @@ namespace OLED_Sleeper
             SetupLogging();
             ConfigureServices();
             StartOrchestrator();
-            SetupMainWindow();
             SetupTaskbarIcon();
+            SetupMainWindow();
         }
 
         /// <summary>
@@ -96,15 +96,15 @@ namespace OLED_Sleeper
             {
                 ToolTipText = "OLED Sleeper"
             };
-            _notifyIcon.TrayMouseDoubleClick += (sender, args) => ShowMainWindow();
+            _notifyIcon.TrayMouseDoubleClick += (_, _) => ShowMainWindow();
 
             var contextMenu = new ContextMenu();
             var showMenuItem = new MenuItem { Header = "Show Settings" };
-            showMenuItem.Click += (sender, args) => ShowMainWindow();
+            showMenuItem.Click += (_, _) => ShowMainWindow();
             contextMenu.Items.Add(showMenuItem);
 
             var exitMenuItem = new MenuItem { Header = "Exit" };
-            exitMenuItem.Click += (sender, args) => ExitApplication();
+            exitMenuItem.Click += (_, _) => ExitApplication();
             contextMenu.Items.Add(exitMenuItem);
 
             _notifyIcon.ContextMenu = contextMenu;
