@@ -46,8 +46,7 @@ namespace OLED_Sleeper.Services.Monitor
             {
                 if (!_pollTimer.Enabled)
                 {
-                    var initialMonitors = _monitorInfoManager.GetLatestMonitorsBasicInfo();
-                    EnrichMonitorInfoList(initialMonitors);
+                    var initialMonitors = _monitorInfoManager.GetCurrentMonitors();
                     _lastKnownMonitors = initialMonitors;
                     MonitorsChanged?.Invoke(this, _lastKnownMonitors);
                     _pollTimer.Start();
