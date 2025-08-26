@@ -1,4 +1,5 @@
 ﻿using OLED_Sleeper.Models;
+using System;
 using System.Windows;
 using System.Windows.Media;
 
@@ -10,11 +11,14 @@ namespace OLED_Sleeper.ViewModels
     /// </summary>
     public class MonitorLayoutViewModel : ViewModelBase
     {
+        #region Fields
         /// <summary>
         /// The underlying monitor information model.
         /// </summary>
         private readonly MonitorInfo _monitor;
+        #endregion
 
+        #region Properties
         /// <summary>
         /// Action to notify the MainViewModel that this specific monitor's dirty state has changed.
         /// </summary>
@@ -26,7 +30,6 @@ namespace OLED_Sleeper.ViewModels
         public MonitorConfigurationViewModel Configuration { get; }
 
         private bool _isSelected;
-
         /// <summary>
         /// Gets or sets whether this monitor is currently selected in the UI.
         /// </summary>
@@ -37,7 +40,6 @@ namespace OLED_Sleeper.ViewModels
         }
 
         private bool _isDirty;
-
         /// <summary>
         /// Gets or sets whether this monitor has unsaved changes in its configuration.
         /// </summary>
@@ -55,7 +57,7 @@ namespace OLED_Sleeper.ViewModels
         /// <summary>
         /// The display number for the monitor.
         /// </summary>
-        public int DisplayNumber { get; }
+        public int DisplayNumber => _monitor.DisplayNumber;
 
         /// <summary>
         /// The hardware ID for the monitor.
@@ -91,12 +93,13 @@ namespace OLED_Sleeper.ViewModels
         /// The scaled top position of the monitor for layout display.
         /// </summary>
         public double ScaledTop { get; }
+        #endregion
 
+        #region Constructor
         /// <summary>
         /// Initializes a new instance of the <see cref="MonitorLayoutViewModel"/> class.
         /// </summary>
         /// <param name="monitor">The monitor information model.</param>
-        /// <param name="displayNumber">The display number for the monitor.</param>
         /// <param name="scale">The scale factor for layout display.</param>
         /// <param name="totalBounds">The total bounds of all monitors for layout calculations.</param>
         /// <param name="offsetX">The X offset for layout positioning.</param>
@@ -104,21 +107,27 @@ namespace OLED_Sleeper.ViewModels
         public MonitorLayoutViewModel(MonitorInfo monitor, double scale, Rect totalBounds, double offsetX, double offsetY)
         {
             _monitor = monitor;
-
             Configuration = new MonitorConfigurationViewModel(monitor);
-            // Subscribe to the configuration's dirty state changes.
-            Configuration.OnDirtyStateChanged = () =>
-            {
-                // Update this monitor's dirty state based on its configuration.
-                this.IsDirty = Configuration.IsDirty;
-                // Bubble the notification up to the MainViewModel.
-                OnMonitorDirtyStateChanged?.Invoke();
-            };
-
+            SubscribeToConfigurationDirtyState();
             ScaledWidth = _monitor.Bounds.Width * scale;
             ScaledHeight = _monitor.Bounds.Height * scale;
             ScaledLeft = ((_monitor.Bounds.Left - totalBounds.Left) * scale) + offsetX;
             ScaledTop = ((_monitor.Bounds.Top - totalBounds.Top) * scale) + offsetY;
         }
+        #endregion
+
+        #region Private Methods
+        /// <summary>
+        /// Subscribes to the configuration's dirty state changes and updates this ViewModel accordingly.
+        /// </summary>
+        private void SubscribeToConfigurationDirtyState()
+        {
+            Configuration.OnDirtyStateChanged = () =>
+            {
+                this.IsDirty = Configuration.IsDirty;
+                OnMonitorDirtyStateChanged?.Invoke();
+            };
+        }
+        #endregion
     }
 }

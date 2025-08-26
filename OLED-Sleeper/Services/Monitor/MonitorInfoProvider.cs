@@ -1,9 +1,5 @@
-﻿// File: Services/MonitorInfoProvider.cs
-using OLED_Sleeper.Models;
+﻿using OLED_Sleeper.Models;
 using OLED_Sleeper.Native;
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Runtime.InteropServices;
 using System.Windows;
 using OLED_Sleeper.Helpers;
@@ -13,16 +9,16 @@ using OLED_Sleeper.Services.Monitor.Interfaces;
 namespace OLED_Sleeper.Services.Monitor
 {
     /// <summary>
-    /// Provides monitor enumeration and hardware ID enrichment services.
+    /// Provides monitor enumeration and hardware ID/DDC/CI support services.
     /// Implements <see cref="IMonitorInfoProvider"/> for dependency injection.
     /// </summary>
     public class MonitorInfoProvider : IMonitorInfoProvider
     {
         /// <summary>
-        /// Enumerates all monitors connected to the system and returns their information.
+        /// Enumerates all monitors connected to the system and returns their basic information (no enrichment).
         /// </summary>
-        /// <returns>A list of <see cref="MonitorInfo"/> objects representing each monitor.</returns>
-        public List<MonitorInfo> GetMonitors()
+        /// <returns>A list of <see cref="MonitorInfo"/> objects representing each monitor (basic info only).</returns>
+        public List<MonitorInfo> GetAllMonitorsBasicInfo()
         {
             var monitors = new List<MonitorInfo>();
 
@@ -43,62 +39,23 @@ namespace OLED_Sleeper.Services.Monitor
                             mi.rcMonitor.bottom - mi.rcMonitor.top),
                         IsPrimary = (mi.dwFlags & 1) == 1,
                         Dpi = dpiX,
-                        DisplayNumber = DisplayNumberParser.ParseDisplayNumber(mi.szDevice)
+                        DisplayNumber = MonitorHelper.ParseDisplayNumber(mi.szDevice)
                     });
                 }
                 return true;
             };
 
             NativeMethods.EnumDisplayMonitors(IntPtr.Zero, IntPtr.Zero, callback, IntPtr.Zero);
-
-            EnrichMonitorInfo(monitors);
             return monitors;
         }
 
-        private void EnrichMonitorInfo(List<MonitorInfo> monitors)
-        {
-            EnrichWithDdcCiSupportInfo(monitors);
-
-            EnrichWithHardwareIds(monitors);
-        }
-
-        private void EnrichWithDdcCiSupportInfo(List<MonitorInfo> monitors)
-        {
-            foreach (var monitor in monitors)
-            {
-                monitor.IsDdcCiSupported = CheckDdcCiSupport(monitor.DeviceName);
-                Log.Debug("DDC/CI support for monitor with DeviceName {DeviceName}: {IsSupported}", monitor.DeviceName, monitor.IsDdcCiSupported);
-            }
-        }
-
         /// <summary>
-        /// Enriches the list of monitors with hardware IDs by matching device names.
+        /// Returns whether the given monitor supports DDC/CI.
         /// </summary>
-        /// <param name="monitors">The list of <see cref="MonitorInfo"/> objects to enrich.</param>
-        private static void EnrichWithHardwareIds(List<MonitorInfo> monitors)
-        {
-            var displayDevice = new NativeMethods.DISPLAY_DEVICE { cb = Marshal.SizeOf(typeof(NativeMethods.DISPLAY_DEVICE)) };
-            for (uint adapterIndex = 0; NativeMethods.EnumDisplayDevices(null, adapterIndex, ref displayDevice, 0); adapterIndex++)
-            {
-                // Only consider active display adapters
-                if ((displayDevice.StateFlags & 1) == 0) continue;
-                var monitorDevice = new NativeMethods.DISPLAY_DEVICE { cb = Marshal.SizeOf(typeof(NativeMethods.DISPLAY_DEVICE)) };
-                for (uint monitorIndex = 0; NativeMethods.EnumDisplayDevices(displayDevice.DeviceName, monitorIndex, ref monitorDevice, 0); monitorIndex++)
-                {
-                    var foundMonitor = monitors.FirstOrDefault(m => m.DeviceName == displayDevice.DeviceName);
-                    if (foundMonitor != null)
-                    {
-                        foundMonitor.HardwareId = monitorDevice.DeviceID;
-                    }
-                }
-            }
-        }
-
-        private bool CheckDdcCiSupport(string deviceName)
+        public bool GetDdcCiSupport(MonitorInfo monitor)
         {
             bool isSupported = false;
-            // This is a simplified version of the helper from DimmerService
-            // to get a physical monitor handle for testing.
+            string deviceName = monitor.DeviceName;
             NativeMethods.MonitorEnumProc callback = (IntPtr hMonitor, IntPtr hdc, ref NativeMethods.Rect rect, IntPtr data) =>
             {
                 var mi = new NativeMethods.MonitorInfoEx();
@@ -109,7 +66,6 @@ namespace OLED_Sleeper.Services.Monitor
                     if (NativeMethods.GetPhysicalMonitorsFromHMONITOR(hMonitor, 1, physicalMonitors))
                     {
                         IntPtr hPhysicalMonitor = physicalMonitors[0].hPhysicalMonitor;
-                        // Try the safe, read-only command. If it succeeds, the monitor supports DDC/CI.
                         if (NativeMethods.GetCapabilitiesStringLength(hPhysicalMonitor, out _))
                         {
                             isSupported = true;
@@ -121,7 +77,33 @@ namespace OLED_Sleeper.Services.Monitor
             };
 
             NativeMethods.EnumDisplayMonitors(IntPtr.Zero, IntPtr.Zero, callback, IntPtr.Zero);
+            Log.Debug("DDC/CI support for monitor with DeviceName {DeviceName}: {IsSupported}", deviceName, isSupported);
             return isSupported;
+        }
+
+        /// <summary>
+        /// Returns the hardware ID for the given monitor.
+        /// </summary>
+        public string GetHardwareId(MonitorInfo monitor)
+        {
+            string deviceName = monitor.DeviceName;
+            string hardwareId = null;
+            var displayDevice = new NativeMethods.DISPLAY_DEVICE { cb = Marshal.SizeOf(typeof(NativeMethods.DISPLAY_DEVICE)) };
+            for (uint adapterIndex = 0; NativeMethods.EnumDisplayDevices(null, adapterIndex, ref displayDevice, 0); adapterIndex++)
+            {
+                if ((displayDevice.StateFlags & 1) == 0) continue;
+                var monitorDevice = new NativeMethods.DISPLAY_DEVICE { cb = Marshal.SizeOf(typeof(NativeMethods.DISPLAY_DEVICE)) };
+                for (uint monitorIndex = 0; NativeMethods.EnumDisplayDevices(displayDevice.DeviceName, monitorIndex, ref monitorDevice, 0); monitorIndex++)
+                {
+                    if (deviceName == displayDevice.DeviceName)
+                    {
+                        hardwareId = monitorDevice.DeviceID;
+                        break;
+                    }
+                }
+                if (hardwareId != null) break;
+            }
+            return hardwareId;
         }
     }
 }

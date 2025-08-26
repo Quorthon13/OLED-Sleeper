@@ -40,6 +40,11 @@ namespace OLED_Sleeper.ViewModels
         private readonly IMonitorSettingsValidationService _saveValidationService;
 
         /// <summary>
+        /// Service for managing and refreshing monitor information from the system.
+        /// </summary>
+        private readonly IMonitorInfoManager _monitorInfoManager;
+
+        /// <summary>
         /// The width of the container used for monitor layout calculations.
         /// </summary>
         private double _containerWidth;
@@ -166,15 +171,18 @@ namespace OLED_Sleeper.ViewModels
         /// </summary>
         /// <param name="workspaceService">Service for monitor workspace management.</param>
         /// <param name="settingsService">Service for settings persistence.</param>
-        /// <param name="idleActivityService">Service for idle activity monitoring.</param>
-        /// <param name="saveValidationService">Service for validating settings before save.</param>
+        /// <param name="monitorIdleDetectionService">Service for idle activity monitoring.</param>
+        /// <param name="monitorSettingsValidationService">Service for validating settings before save.</param>
+        /// <param name="monitorInfoManager">Service for refreshing monitor information from the system.</param>
         public MainViewModel(IWorkspaceService workspaceService, IMonitorSettingsFileService settingsService,
-                             IMonitorIdleDetectionService monitorIdleDetectionService, IMonitorSettingsValidationService monitorSettingsValidationService)
+                             IMonitorIdleDetectionService monitorIdleDetectionService, IMonitorSettingsValidationService monitorSettingsValidationService,
+                             IMonitorInfoManager monitorInfoManager)
         {
             _workspaceService = workspaceService;
             _settingsService = settingsService;
             _idleActivityService = monitorIdleDetectionService;
             _saveValidationService = monitorSettingsValidationService;
+            _monitorInfoManager = monitorInfoManager;
 
             SelectMonitorCommand = new RelayCommand(ExecuteSelectMonitor);
             ReloadMonitorsCommand = new RelayCommand(RefreshMonitors);
@@ -191,6 +199,7 @@ namespace OLED_Sleeper.ViewModels
         /// </summary>
         public void RefreshMonitors()
         {
+            _monitorInfoManager.RefreshMonitors();
             UpdateMonitorsInternal(_containerWidth, _containerHeight, preserveSelection: false);
         }
 
