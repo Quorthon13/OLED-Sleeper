@@ -9,6 +9,7 @@ using System.Linq;
 
 namespace OLED_Sleeper.Services.Application
 {
+    // @TODO !!!!!!!!! RESTORE IDLE CHECKER FOR RECONNECTED MONITOR !!!!!!!!!
     /// <summary>
     /// The central orchestrator for monitor management in OLED-Sleeper.
     /// <para>
@@ -158,7 +159,7 @@ namespace OLED_Sleeper.Services.Application
                 Log.Warning("Found {Count} monitors that were left dimmed from a previous session. Attempting to restore.", state.Count);
                 foreach (var entry in state)
                 {
-                    _monitorDimmingService.RestoreBrightness(entry.Key, entry.Value);
+                    _monitorDimmingService.RestoreBrightnessAsync(entry.Key, entry.Value);
                 }
                 _monitorBrightnessStateService.SaveState(new Dictionary<string, uint>());
             }
@@ -184,7 +185,7 @@ namespace OLED_Sleeper.Services.Application
             {
                 foreach (var entry in dimmedMonitors)
                 {
-                    _monitorDimmingService.RestoreBrightness(entry.Key, entry.Value);
+                    _monitorDimmingService.RestoreBrightnessAsync(entry.Key, entry.Value);
                 }
                 _monitorBrightnessStateService.SaveState(new Dictionary<string, uint>());
             }
@@ -281,7 +282,7 @@ namespace OLED_Sleeper.Services.Application
         /// <param name="e">The monitor state event arguments.</param>
         private void HandleMonitorDim(MonitorStateEventArgs e)
         {
-            _monitorDimmingService.DimMonitor(e.HardwareId, (int)e.Settings.DimLevel);
+            _monitorDimmingService.DimMonitorAsync(e.HardwareId, (int)e.Settings.DimLevel);
         }
 
         /// <summary>
@@ -290,7 +291,7 @@ namespace OLED_Sleeper.Services.Application
         /// <param name="hardwareId">The unique hardware ID of the monitor.</param>
         private void DimMonitorToZero(string hardwareId)
         {
-            _monitorDimmingService.DimMonitor(hardwareId, 0);
+            _monitorDimmingService.DimMonitorAsync(hardwareId, 0);
         }
 
         /// <summary>
@@ -318,7 +319,7 @@ namespace OLED_Sleeper.Services.Application
             }
             Log.Information("Orchestrator received MonitorBecameActive event for Monitor #{DisplayNumber}. Commanding services to restore state.", e.DisplayNumber);
             _monitorBlackoutService.HideOverlay(e.HardwareId);
-            _monitorDimmingService.UndimMonitor(e.HardwareId);
+            _monitorDimmingService.UndimMonitorAsync(e.HardwareId);
         }
 
         /// <summary>
@@ -473,7 +474,7 @@ namespace OLED_Sleeper.Services.Application
         {
             if (brightnessState.TryGetValue(monitor.HardwareId, out var savedBrightness))
             {
-                _monitorDimmingService.RestoreBrightness(monitor.HardwareId, savedBrightness);
+                _monitorDimmingService.RestoreBrightnessAsync(monitor.HardwareId, savedBrightness);
                 Log.Information("Restored brightness for {HardwareId} to {Brightness}.", monitor.HardwareId, savedBrightness);
             }
         }

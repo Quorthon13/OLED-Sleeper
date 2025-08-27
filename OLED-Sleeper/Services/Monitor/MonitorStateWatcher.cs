@@ -4,6 +4,8 @@ using System.Timers;
 using OLED_Sleeper.Models;
 using OLED_Sleeper.Services.Monitor.Interfaces;
 using Timer = System.Timers.Timer;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace OLED_Sleeper.Services.Monitor
 {
@@ -46,12 +48,23 @@ namespace OLED_Sleeper.Services.Monitor
             {
                 if (!_pollTimer.Enabled)
                 {
-                    var initialMonitors = _monitorInfoManager.GetCurrentMonitors();
-                    _lastKnownMonitors = initialMonitors;
-                    MonitorsChanged?.Invoke(this, _lastKnownMonitors);
-                    _pollTimer.Start();
+                    GetCurrentMonitorsAsyncAndSetInitial();
                 }
             }
+        }
+
+        private void GetCurrentMonitorsAsyncAndSetInitial()
+        {
+            EventHandler<IReadOnlyList<MonitorInfo>> handler = null;
+            handler = (sender, monitors) =>
+            {
+                _monitorInfoManager.MonitorListReady -= handler;
+                _lastKnownMonitors = monitors;
+                MonitorsChanged?.Invoke(this, _lastKnownMonitors);
+                _pollTimer.Start();
+            };
+            _monitorInfoManager.MonitorListReady += handler;
+            _monitorInfoManager.GetCurrentMonitorsAsync();
         }
 
         /// <summary>
@@ -72,6 +85,7 @@ namespace OLED_Sleeper.Services.Monitor
         {
             lock (_lock)
             {
+                // Use the latest basic info, then enrich and compare
                 var currentMonitors = _monitorInfoManager.GetLatestMonitorsBasicInfo();
                 if (!AreMonitorListsEqual(_lastKnownMonitors, currentMonitors))
                 {

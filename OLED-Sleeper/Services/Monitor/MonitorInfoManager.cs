@@ -1,11 +1,15 @@
 ﻿using OLED_Sleeper.Models;
 using OLED_Sleeper.Services.Monitor.Interfaces;
 using Serilog;
+using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace OLED_Sleeper.Services.Monitor
 {
     /// <summary>
     /// Manages monitor information, including caching and enrichment with DDC/CI support and hardware IDs.
+    /// Publishes an event when the monitor list is ready after async retrieval.
     /// </summary>
     public class MonitorInfoManager : IMonitorInfoManager
     {
@@ -16,6 +20,15 @@ namespace OLED_Sleeper.Services.Monitor
         private readonly object _lock = new object();
 
         #endregion Fields
+
+        #region Events
+
+        /// <summary>
+        /// Raised when the monitor list has been retrieved and enriched.
+        /// </summary>
+        public event EventHandler<IReadOnlyList<MonitorInfo>> MonitorListReady;
+
+        #endregion Events
 
         #region Constructor
 
@@ -33,32 +46,46 @@ namespace OLED_Sleeper.Services.Monitor
         #region Public Methods
 
         /// <summary>
-        /// Gets the current list of monitors, from the cache if available.
+        /// Begins asynchronous retrieval and enrichment of the monitor list.
+        /// Subscribers will be notified via <see cref="MonitorListReady"/> when the list is available.
+        /// If the cache is already populated, the event is raised immediately.
         /// </summary>
-        /// <returns>The current list of enriched <see cref="MonitorInfo"/> objects.</returns>
-        public List<MonitorInfo> GetCurrentMonitors()
+        public void GetCurrentMonitorsAsync()
         {
             lock (_lock)
             {
-                if (_cachedMonitors == null)
+                if (_cachedMonitors != null)
                 {
-                    Log.Information("Monitor cache is empty. Performing initial scan of monitors.");
-                    RefreshMonitorsInternal();
+                    MonitorListReady?.Invoke(this, _cachedMonitors);
+                    return;
                 }
-                return _cachedMonitors;
+                Task.Run(() =>
+                {
+                    RefreshMonitorsInternal();
+                    lock (_lock)
+                    {
+                        MonitorListReady?.Invoke(this, _cachedMonitors);
+                    }
+                });
             }
         }
 
         /// <summary>
-        /// Forces a refresh of the monitor list from the system.
+        /// Forces a refresh of the monitor list from the system asynchronously.
+        /// The refresh is performed on a background thread, and subscribers will be notified via <see cref="MonitorListReady"/> when the list is available.
+        /// This method is event-driven and does not return a Task.
         /// </summary>
-        public void RefreshMonitors()
+        public void RefreshMonitorsAsync()
         {
-            lock (_lock)
+            Task.Run(() =>
             {
-                Log.Information("Manual refresh requested. Re-scanning monitors.");
-                RefreshMonitorsInternal();
-            }
+                lock (_lock)
+                {
+                    Log.Information("Manual refresh requested. Re-scanning monitors.");
+                    RefreshMonitorsInternal();
+                    MonitorListReady?.Invoke(this, _cachedMonitors);
+                }
+            });
         }
 
         /// <summary>

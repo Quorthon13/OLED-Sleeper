@@ -1,29 +1,32 @@
 namespace OLED_Sleeper.Services.Monitor.Interfaces
 {
     /// <summary>
-    /// Defines the contract for monitor dimming and brightness management services.
+    /// Defines the contract for monitor dimming and brightness management services, supporting asynchronous operations.
     /// </summary>
     public interface IMonitorDimmingService
     {
         /// <summary>
-        /// Dims the specified monitor to the given dim level.
+        /// Dims the specified monitor to the given brightness level asynchronously.
         /// </summary>
         /// <param name="hardwareId">The unique hardware ID of the monitor.</param>
-        /// <param name="dimLevel">The dimming level to apply.</param>
-        void DimMonitor(string hardwareId, int dimLevel);
+        /// <param name="dimLevel">The brightness level to set (0-100).</param>
+        /// <returns>A task representing the asynchronous operation.</returns>
+        Task DimMonitorAsync(string hardwareId, int dimLevel);
 
         /// <summary>
-        /// Restores the specified monitor to its original brightness.
+        /// Restores the specified monitor to its original brightness asynchronously.
         /// </summary>
         /// <param name="hardwareId">The unique hardware ID of the monitor.</param>
-        void UndimMonitor(string hardwareId);
+        /// <returns>A task representing the asynchronous operation.</returns>
+        Task UndimMonitorAsync(string hardwareId);
 
         /// <summary>
-        /// Restores the specified monitor to a previously saved brightness value.
+        /// Restores the specified monitor to a previously saved brightness value asynchronously.
         /// </summary>
         /// <param name="hardwareId">The unique hardware ID of the monitor.</param>
         /// <param name="originalBrightness">The brightness value to restore.</param>
-        void RestoreBrightness(string hardwareId, uint originalBrightness);
+        /// <returns>A task representing the asynchronous operation.</returns>
+        Task RestoreBrightnessAsync(string hardwareId, uint originalBrightness);
 
         /// <summary>
         /// Gets a dictionary of all currently dimmed monitors and their original brightness values.

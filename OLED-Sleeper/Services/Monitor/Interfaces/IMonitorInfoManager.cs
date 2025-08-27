@@ -1,5 +1,7 @@
-﻿using System.Collections.Generic;
-using OLED_Sleeper.Models;
+﻿using OLED_Sleeper.Models;
+using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace OLED_Sleeper.Services.Monitor.Interfaces
 {
@@ -9,15 +11,23 @@ namespace OLED_Sleeper.Services.Monitor.Interfaces
     public interface IMonitorInfoManager
     {
         /// <summary>
-        /// Gets the current list of monitors, from the cache if available.
+        /// Begins asynchronous retrieval and enrichment of the monitor list.
+        /// Subscribers will be notified via <see cref="MonitorListReady"/> when the list is available.
+        /// If the cache is already populated, the event is raised immediately.
         /// </summary>
-        /// <returns>A list of <see cref="MonitorInfo"/> objects representing the current monitors.</returns>
-        List<MonitorInfo> GetCurrentMonitors();
+        void GetCurrentMonitorsAsync();
 
         /// <summary>
-        /// Forces a refresh of the monitor list from the system.
+        /// Raised when the monitor list has been retrieved and enriched.
         /// </summary>
-        void RefreshMonitors();
+        event EventHandler<IReadOnlyList<MonitorInfo>> MonitorListReady;
+
+        /// <summary>
+        /// Forces a refresh of the monitor list from the system asynchronously.
+        /// The refresh is performed on a background thread, and subscribers will be notified via <see cref="MonitorListReady"/> when the list is available.
+        /// This method is event-driven and does not return a Task.
+        /// </summary>
+        void RefreshMonitorsAsync();
 
         /// <summary>
         /// Gets the latest, up-to-date list of monitors from the system (basic info only, no enrichment).

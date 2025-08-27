@@ -122,26 +122,33 @@ namespace OLED_Sleeper.Services.Monitor
         public void UpdateSettings(List<MonitorSettings> monitorSettings)
         {
             var activeSettings = monitorSettings.Where(s => s.IsManaged).ToList();
-            var allMonitors = _monitorManager.GetCurrentMonitors();
 
-            lock (_lock)
+            void OnMonitorsReady(object? sender, IReadOnlyList<MonitorInfo> allMonitors)
             {
-                _managedMonitors = (from setting in activeSettings
-                                    join monitorInfo in allMonitors on setting.HardwareId equals monitorInfo.HardwareId
-                                    select new ManagedMonitorState
-                                    {
-                                        Settings = setting,
-                                        Bounds = monitorInfo.Bounds,
-                                        DisplayNumber = monitorInfo.DisplayNumber
-                                    }).ToList();
+                _monitorManager.MonitorListReady -= OnMonitorsReady;
 
-                _monitorStates.Clear();
-                foreach (var monitor in _managedMonitors)
+                lock (_lock)
                 {
-                    _monitorStates[monitor.Settings.HardwareId] = new MonitorTimerState();
+                    _managedMonitors = (from setting in activeSettings
+                                        join monitorInfo in allMonitors on setting.HardwareId equals monitorInfo.HardwareId
+                                        select new ManagedMonitorState
+                                        {
+                                            Settings = setting,
+                                            Bounds = monitorInfo.Bounds,
+                                            DisplayNumber = monitorInfo.DisplayNumber
+                                        }).ToList();
+
+                    _monitorStates.Clear();
+                    foreach (var monitor in _managedMonitors)
+                    {
+                        _monitorStates[monitor.Settings.HardwareId] = new MonitorTimerState();
+                    }
                 }
+                Log.Information("MonitorIdleDetectionService settings updated. Now tracking {Count} monitors.", _managedMonitors.Count);
             }
-            Log.Information("MonitorIdleDetectionService settings updated. Now tracking {Count} monitors.", _managedMonitors.Count);
+
+            _monitorManager.MonitorListReady += OnMonitorsReady;
+            _monitorManager.GetCurrentMonitorsAsync();
         }
 
         #endregion Public Methods
@@ -204,9 +211,11 @@ namespace OLED_Sleeper.Services.Monitor
                 case MonitorStateMachine.Active:
                     HandleActiveState(timerState, hasActivityNow);
                     break;
+
                 case MonitorStateMachine.Counting:
                     HandleCountingState(timerState, monitor, hasActivityNow, eventArgs);
                     break;
+
                 case MonitorStateMachine.Idle:
                     HandleIdleState(timerState, monitor, hasActivityNow, eventArgs);
                     break;

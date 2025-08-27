@@ -2,7 +2,9 @@
 using OLED_Sleeper.Events;
 using OLED_Sleeper.Services.Monitor.Interfaces;
 using OLED_Sleeper.Services.Workspace.Interfaces;
+using System;
 using System.Collections.ObjectModel;
+using System.Linq;
 using System.Windows;
 using System.Windows.Input;
 
@@ -37,11 +39,6 @@ namespace OLED_Sleeper.ViewModels
         private readonly IMonitorSettingsValidationService _saveValidationService;
 
         /// <summary>
-        /// Service for managing and refreshing monitor information from the system.
-        /// </summary>
-        private readonly IMonitorInfoManager _monitorInfoManager;
-
-        /// <summary>
         /// The width of the container used for monitor layout calculations.
         /// </summary>
         private double _containerWidth;
@@ -70,6 +67,21 @@ namespace OLED_Sleeper.ViewModels
         /// The text displayed on the save button.
         /// </summary>
         private string _saveButtonText = "Save Settings";
+
+        /// <summary>
+        /// Indicates whether the workspace is currently loading.
+        /// </summary>
+        private bool _isLoading;
+
+        /// <summary>
+        /// Indicates whether to preserve the current monitor selection during updates.
+        /// </summary>
+        private bool _preserveSelection;
+
+        /// <summary>
+        /// The hardware ID of the monitor to be restored upon workspace update.
+        /// </summary>
+        private string? _selectedMonitorIdToRestore;
 
         #endregion Private Fields
 
@@ -135,6 +147,15 @@ namespace OLED_Sleeper.ViewModels
         /// </summary>
         public ObservableCollection<MonitorLayoutViewModel> Monitors { get; } = new ObservableCollection<MonitorLayoutViewModel>();
 
+        /// <summary>
+        /// Gets or sets a value indicating whether the workspace is currently loading.
+        /// </summary>
+        public bool IsLoading
+        {
+            get => _isLoading;
+            set { _isLoading = value; OnPropertyChanged(); }
+        }
+
         #endregion Public Properties
 
         #region Commands
@@ -172,19 +193,20 @@ namespace OLED_Sleeper.ViewModels
         /// <param name="monitorSettingsValidationService">Service for validating settings before save.</param>
         /// <param name="monitorInfoManager">Service for refreshing monitor information from the system.</param>
         public MainViewModel(IWorkspaceService workspaceService, IMonitorSettingsFileService settingsService,
-                             IMonitorIdleDetectionService monitorIdleDetectionService, IMonitorSettingsValidationService monitorSettingsValidationService,
-                             IMonitorInfoManager monitorInfoManager)
+                             IMonitorIdleDetectionService monitorIdleDetectionService, IMonitorSettingsValidationService monitorSettingsValidationService)
         {
             _workspaceService = workspaceService;
             _settingsService = settingsService;
             _idleActivityService = monitorIdleDetectionService;
             _saveValidationService = monitorSettingsValidationService;
-            _monitorInfoManager = monitorInfoManager;
 
             SelectMonitorCommand = new RelayCommand(ExecuteSelectMonitor);
             ReloadMonitorsCommand = new RelayCommand(RefreshMonitors);
             SaveSettingsCommand = new AsyncRelayCommand(ExecuteSaveSettings, () => IsDirty);
             DiscardChangesCommand = new RelayCommand(ExecuteDiscardChanges, () => IsDirty);
+
+            _workspaceService.WorkspaceReady += OnWorkspaceReady;
+            IsLoading = false;
         }
 
         #endregion Constructor
@@ -196,8 +218,8 @@ namespace OLED_Sleeper.ViewModels
         /// </summary>
         public void RefreshMonitors()
         {
-            _monitorInfoManager.RefreshMonitors();
             UpdateMonitorsInternal(_containerWidth, _containerHeight, preserveSelection: false);
+            _workspaceService.RefreshWorkspaceAsync(_containerWidth, _containerHeight);
         }
 
         /// <summary>
@@ -208,6 +230,7 @@ namespace OLED_Sleeper.ViewModels
         public void RecalculateLayout(double width, double height)
         {
             UpdateMonitorsInternal(width, height, preserveSelection: true);
+            _workspaceService.BuildWorkspaceAsync(width, height);
         }
 
         /// <summary>
@@ -331,13 +354,16 @@ namespace OLED_Sleeper.ViewModels
             _containerWidth = width;
             _containerHeight = height;
 
-            string? selectedMonitorId = preserveSelection ? SelectedMonitor?.HardwareId : null;
-            var newMonitorLayoutViewModels = _workspaceService.BuildWorkspace(width, height);
+            _selectedMonitorIdToRestore = preserveSelection ? SelectedMonitor?.HardwareId : null;
+            IsLoading = true;
+        }
 
+        private void OnWorkspaceReady(object? sender, ObservableCollection<MonitorLayoutViewModel> newMonitorLayoutViewModels)
+        {
             PopulateMonitors(newMonitorLayoutViewModels);
-            RestoreSelection(selectedMonitorId);
-
+            RestoreSelection();
             CheckDirtyState();
+            IsLoading = false;
         }
 
         /// <summary>
@@ -346,6 +372,12 @@ namespace OLED_Sleeper.ViewModels
         /// <param name="newViewModels">The new monitor layout view models.</param>
         private void PopulateMonitors(ObservableCollection<MonitorLayoutViewModel> newViewModels)
         {
+            if (!Application.Current.Dispatcher.CheckAccess())
+            {
+                Application.Current.Dispatcher.Invoke(() => PopulateMonitors(newViewModels));
+                return;
+            }
+
             Monitors.Clear();
             foreach (var viewModel in newViewModels)
             {
@@ -357,11 +389,10 @@ namespace OLED_Sleeper.ViewModels
         /// <summary>
         /// Restores the monitor selection based on a hardware ID, if available.
         /// </summary>
-        /// <param name="selectedMonitorId">The hardware ID of the monitor to select.</param>
-        private void RestoreSelection(string? selectedMonitorId)
+        private void RestoreSelection()
         {
-            SelectedMonitor = selectedMonitorId != null
-                ? Monitors.FirstOrDefault(m => m.HardwareId == selectedMonitorId)
+            SelectedMonitor = _selectedMonitorIdToRestore != null
+                ? Monitors.FirstOrDefault(m => m.HardwareId == _selectedMonitorIdToRestore)
                 : null;
         }
 
