@@ -182,7 +182,7 @@ namespace OLED_Sleeper.Native
         /// <param name="lprcMonitor">Pointer to a <see cref="Rect"/> structure with the display monitor rectangle.</param>
         /// <param name="dwData">Application-defined data.</param>
         /// <returns>True to continue enumeration; false to stop.</returns>
-        public delegate bool MonitorEnumProc(IntPtr hMonitor, IntPtr hdcMonitor, ref Rect lprcMonitor, IntPtr dwData);
+        public delegate bool MonitorEnumProc(IntPtr hMonitor, IntPtr hdcMonitor, ref NativeMethods.Rect lprcMonitor, IntPtr dwData);
 
         /// <summary>
         /// Enumerates display monitors that intersect a region formed by the intersection of a specified clipping rectangle and the visible region of a device context.

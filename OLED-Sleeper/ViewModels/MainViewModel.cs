@@ -1,12 +1,15 @@
 ﻿using OLED_Sleeper.Commands;
-using OLED_Sleeper.Events;
-using OLED_Sleeper.Services.Monitor.Interfaces;
 using OLED_Sleeper.Services.Workspace.Interfaces;
 using System;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Windows;
 using System.Windows.Input;
+using OLED_Sleeper.Commands.UI;
+using OLED_Sleeper.Services.Monitor.IdleDetection.Interfaces;
+using OLED_Sleeper.Services.UI.Interfaces;
+using OLED_Sleeper.Services.Monitor.Settings.Interfaces;
+using OLED_Sleeper.Core;
 
 namespace OLED_Sleeper.ViewModels
 {

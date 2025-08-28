@@ -1,17 +1,32 @@
 ﻿using Hardcodet.Wpf.TaskbarNotification;
-
 using Microsoft.Extensions.DependencyInjection;
-using OLED_Sleeper.Events;
-using OLED_Sleeper.Services.Application.Interfaces;
-using OLED_Sleeper.Services.Monitor.Interfaces;
+using OLED_Sleeper.Core;
+using OLED_Sleeper.Core.Interfaces;
+using OLED_Sleeper.Services.Workspace;
 using OLED_Sleeper.Services.Workspace.Interfaces;
 using OLED_Sleeper.ViewModels;
 using Serilog;
 using System.Windows;
 using System.Windows.Controls;
-using OLED_Sleeper.Services.Application;
-using OLED_Sleeper.Services.Monitor;
-using OLED_Sleeper.Services.Workspace;
+using OLED_Sleeper.Commands.Monitor.Blackout;
+using OLED_Sleeper.Commands.Monitor.Dimming;
+using OLED_Sleeper.Handlers.Monitor.Dim;
+using OLED_Sleeper.Handlers.Monitor.Blackout;
+using OLED_Sleeper.Handlers;
+using OLED_Sleeper.Services.Core;
+using OLED_Sleeper.Services.Core.Interfaces;
+using OLED_Sleeper.Services.Monitor.Blackout;
+using OLED_Sleeper.Services.Monitor.Blackout.Interfaces;
+using OLED_Sleeper.Services.Monitor.Dimming;
+using OLED_Sleeper.Services.Monitor.Dimming.Interfaces;
+using OLED_Sleeper.Services.Monitor.IdleDetection;
+using OLED_Sleeper.Services.Monitor.IdleDetection.Interfaces;
+using OLED_Sleeper.Services.Monitor.Info;
+using OLED_Sleeper.Services.Monitor.Info.Interfaces;
+using OLED_Sleeper.Services.UI;
+using OLED_Sleeper.Services.UI.Interfaces;
+using OLED_Sleeper.Services.Monitor.Settings.Interfaces;
+using OLED_Sleeper.Services.Monitor.Settings;
 
 namespace OLED_Sleeper
 {
@@ -46,6 +61,14 @@ namespace OLED_Sleeper
         private void ConfigureServices()
         {
             var services = new ServiceCollection();
+            services.AddSingleton<IMediator, Mediator>();
+
+            services.AddTransient<ICommandHandler<ApplyBlackoutOverlayCommand>, ApplyBlackoutOverlayCommandHandler>();
+            services.AddTransient<ICommandHandler<HideBlackoutOverlayCommand>, HideBlackoutOverlayCommandHandler>();
+            services.AddTransient<ICommandHandler<ApplyDimCommand>, ApplyDimCommandHandler>();
+            services.AddTransient<ICommandHandler<ApplyUndimCommand>, ApplyUndimCommandHandler>();
+            services.AddTransient<ICommandHandler<RestoreBrightnessOnStartupCommand>, RestoreBrightnessOnStartupCommandHandler>();
+
             services.AddSingleton<IMonitorInfoManager, MonitorInfoManager>();
             services.AddSingleton<IMonitorStateWatcher, MonitorStateWatcher>();
             services.AddSingleton<IMonitorBrightnessStateService, MonitorBrightnessStateService>();
@@ -60,6 +83,7 @@ namespace OLED_Sleeper
             services.AddSingleton<IMonitorIdleDetectionService, MonitorIdleDetectionService>();
             services.AddSingleton<MainViewModel>();
             services.AddSingleton<MainWindow>();
+
             _serviceProvider = services.BuildServiceProvider();
         }
 
