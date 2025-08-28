@@ -18,6 +18,7 @@ namespace OLED_Sleeper.Services.Monitor.Info
         private readonly IMonitorInfoProvider _monitorInfoProvider;
         private List<MonitorInfo> _cachedMonitors;
         private readonly object _lock = new object();
+        private Task? _refreshTask;
 
         #endregion Fields
 
@@ -47,7 +48,7 @@ namespace OLED_Sleeper.Services.Monitor.Info
 
         /// <summary>
         /// Begins asynchronous retrieval and enrichment of the monitor list.
-        /// Subscribers will be notified via <see cref="MonitorListReady"/> when the list is available.
+        /// Ensures only one refresh runs at a time. Subscribers will be notified via <see cref="MonitorListReady"/> when the list is available.
         /// If the cache is already populated, the event is raised immediately.
         /// </summary>
         public void GetCurrentMonitorsAsync()
@@ -59,12 +60,18 @@ namespace OLED_Sleeper.Services.Monitor.Info
                     MonitorListReady?.Invoke(this, _cachedMonitors);
                     return;
                 }
-                Task.Run(() =>
+                if (_refreshTask != null)
+                {
+                    Log.Debug("MonitorInfoManager: Refresh already in progress, skipping duplicate native call.");
+                    return;
+                }
+                _refreshTask = Task.Run(() =>
                 {
                     RefreshMonitorsInternal();
                     lock (_lock)
                     {
                         MonitorListReady?.Invoke(this, _cachedMonitors);
+                        _refreshTask = null; // Allow future refreshes if needed
                     }
                 });
             }
