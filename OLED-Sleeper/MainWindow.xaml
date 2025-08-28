@@ -208,7 +208,7 @@
                     <ProgressBar Style="{StaticResource LoadingProgressBarStyle}"
                                  IsIndeterminate="True"
                                  Width="300" />
-                    <TextBlock Text="Loading, please wait..."
+                    <TextBlock Text="Loading monitors..."
                                Foreground="White"
                                FontSize="16"
                                Margin="0,15,0,0"

@@ -4,12 +4,9 @@ using OLED_Sleeper.Services.Application.Interfaces;
 using OLED_Sleeper.Services.Monitor.Interfaces;
 using OLED_Sleeper.Helpers;
 using Serilog;
-using System.Collections.Generic;
-using System.Linq;
 
 namespace OLED_Sleeper.Services.Application
 {
-    // @TODO !!!!!!!!! RESTORE IDLE CHECKER FOR RECONNECTED MONITOR !!!!!!!!!
     /// <summary>
     /// The central orchestrator for monitor management in OLED-Sleeper.
     /// <para>
@@ -39,13 +36,18 @@ namespace OLED_Sleeper.Services.Application
     /// </summary>
     public class ApplicationOrchestrator : IApplicationOrchestrator
     {
+        // Dependencies
         private readonly IMonitorIdleDetectionService _monitorIdleDetectionService;
+
         private readonly IMonitorBlackoutService _monitorBlackoutService;
         private readonly IMonitorSettingsFileService _monitorSettingsFileService;
         private readonly IMonitorDimmingService _monitorDimmingService;
         private readonly IMonitorBrightnessStateService _monitorBrightnessStateService;
         private readonly IMonitorStateWatcher _monitorStateWatcher;
+
+        // State
         private IReadOnlyList<MonitorInfo>? _lastKnownMonitors;
+
         private List<MonitorSettings>? _lastKnownSettings;
 
         #region Constructor
@@ -80,54 +82,13 @@ namespace OLED_Sleeper.Services.Application
         #region Startup/Shutdown
 
         /// <summary>
-        /// Starts the orchestrator, subscribing to idle events and applying initial settings.
+        /// Starts the orchestrator, subscribing to events and applying initial settings.
         /// </summary>
         public void Start()
         {
             RestoreBrightnessOnStartup();
-            SubscribeToIdleDetectionEvents();
-            SubscribeToMonitorStateEvents();
-            SubscribeToSettingsChangedEvent();
+            SubscribeToEvents();
             InitializeMonitorSettings();
-        }
-
-        /// <summary>
-        /// Subscribes to the settings changed event.
-        /// </summary>
-        private void SubscribeToSettingsChangedEvent()
-        {
-            _monitorSettingsFileService.SettingsChanged += OnSettingsChanged;
-        }
-
-        /// <summary>
-        /// Subscribes to monitor idle detection and application events.
-        /// </summary>
-        private void SubscribeToIdleDetectionEvents()
-        {
-            _monitorIdleDetectionService.MonitorBecameIdle += OnMonitorBecameIdle;
-            _monitorIdleDetectionService.MonitorBecameActive += OnMonitorBecameActive;
-            AppNotifications.RestoreAllMonitorsRequested += RestoreAllMonitors;
-        }
-
-        /// <summary>
-        /// Subscribes to monitor state watcher events.
-        /// </summary>
-        private void SubscribeToMonitorStateEvents()
-        {
-            _monitorStateWatcher.MonitorsChanged += OnMonitorsChanged;
-        }
-
-        /// <summary>
-        /// Initializes monitor settings and starts monitoring.
-        /// </summary>
-        private void InitializeMonitorSettings()
-        {
-            _lastKnownMonitors = null;
-            _lastKnownSettings = _monitorSettingsFileService.LoadSettings();
-            _monitorStateWatcher.Start();
-            var initialSettings = _lastKnownSettings;
-            _monitorIdleDetectionService.UpdateSettings(initialSettings);
-            _monitorIdleDetectionService.Start();
         }
 
         /// <summary>
@@ -137,15 +98,54 @@ namespace OLED_Sleeper.Services.Application
         {
             Log.Information("ApplicationOrchestrator is stopping.");
             RestoreAllMonitors();
-            AppNotifications.RestoreAllMonitorsRequested -= RestoreAllMonitors;
+            UnsubscribeFromEvents();
             _monitorIdleDetectionService.Stop();
-            _monitorStateWatcher.MonitorsChanged -= OnMonitorsChanged;
             _monitorStateWatcher.Stop();
         }
 
         #endregion Startup/Shutdown
 
-        #region Monitor State Management
+        #region Event Subscriptions
+
+        /// <summary>
+        /// Subscribes to all relevant events for monitor and settings changes.
+        /// </summary>
+        private void SubscribeToEvents()
+        {
+            _monitorIdleDetectionService.MonitorBecameIdle += OnMonitorBecameIdle;
+            _monitorIdleDetectionService.MonitorBecameActive += OnMonitorBecameActive;
+            _monitorSettingsFileService.SettingsChanged += OnSettingsChanged;
+            _monitorStateWatcher.MonitorsChanged += OnMonitorsChanged;
+            AppNotifications.RestoreAllMonitorsRequested += RestoreAllMonitors;
+        }
+
+        /// <summary>
+        /// Unsubscribes from all events.
+        /// </summary>
+        private void UnsubscribeFromEvents()
+        {
+            _monitorIdleDetectionService.MonitorBecameIdle -= OnMonitorBecameIdle;
+            _monitorIdleDetectionService.MonitorBecameActive -= OnMonitorBecameActive;
+            _monitorSettingsFileService.SettingsChanged -= OnSettingsChanged;
+            _monitorStateWatcher.MonitorsChanged -= OnMonitorsChanged;
+            AppNotifications.RestoreAllMonitorsRequested -= RestoreAllMonitors;
+        }
+
+        #endregion Event Subscriptions
+
+        #region Monitor State Initialization & Restoration
+
+        /// <summary>
+        /// Loads persisted monitor settings and starts monitoring.
+        /// </summary>
+        private void InitializeMonitorSettings()
+        {
+            _lastKnownMonitors = null;
+            _lastKnownSettings = _monitorSettingsFileService.LoadSettings();
+            _monitorStateWatcher.Start();
+            _monitorIdleDetectionService.UpdateSettings(_lastKnownSettings);
+            _monitorIdleDetectionService.Start();
+        }
 
         /// <summary>
         /// Restores brightness for all monitors that were left dimmed from a previous session.
@@ -166,7 +166,7 @@ namespace OLED_Sleeper.Services.Application
         }
 
         /// <summary>
-        /// Restores all monitors' brightness levels, clears dimmed state, and removes all blackout overlays.
+        /// Restores all monitors' brightness levels and removes all blackout overlays.
         /// </summary>
         public void RestoreAllMonitors()
         {
@@ -205,16 +205,13 @@ namespace OLED_Sleeper.Services.Application
             }
         }
 
-        #endregion Monitor State Management
+        #endregion Monitor State Initialization & Restoration
 
-        #region Event Handlers
+        #region Monitor State Event Handlers
 
         /// <summary>
-        /// Handles the event when the set of connected monitors changes.
-        /// Logs the change and handles disconnect/reconnect events.
+        /// Handles monitor connection/disconnection events and updates state accordingly.
         /// </summary>
-        /// <param name="sender">The event sender.</param>
-        /// <param name="newMonitors">The new list of connected monitors.</param>
         private void OnMonitorsChanged(object? sender, IReadOnlyList<MonitorInfo> newMonitors)
         {
             if (_lastKnownMonitors == null)
@@ -223,10 +220,13 @@ namespace OLED_Sleeper.Services.Application
                 _lastKnownMonitors = newMonitors;
                 return;
             }
+
             var disconnected = MonitorHelper.GetDisconnectedMonitors(_lastKnownMonitors, newMonitors);
             var reconnected = MonitorHelper.GetReconnectedMonitors(_lastKnownMonitors, newMonitors);
+
             HandleDisconnectedMonitors(disconnected);
             HandleReconnectedMonitors(reconnected);
+
             if (disconnected.Count > 0 || reconnected.Count > 0)
             {
                 Log.Information("Monitor configuration changed. Disconnected: {DisconnectedCount}, Reconnected: {ReconnectedCount}", disconnected.Count, reconnected.Count);
@@ -241,8 +241,6 @@ namespace OLED_Sleeper.Services.Application
         /// <summary>
         /// Handles the event when a monitor becomes idle. Applies blackout or dimming as configured.
         /// </summary>
-        /// <param name="sender">The event sender.</param>
-        /// <param name="e">The event arguments.</param>
         private void OnMonitorBecameIdle(object? sender, MonitorStateEventArgs e)
         {
             Log.Information("Orchestrator received MonitorBecameIdle event for Monitor #{DisplayNumber}.", e.DisplayNumber);
@@ -262,53 +260,8 @@ namespace OLED_Sleeper.Services.Application
         }
 
         /// <summary>
-        /// Handles blackout behavior for a monitor, including overlay and DDC/CI brightness if supported.
-        /// </summary>
-        /// <param name="e">The monitor state event arguments.</param>
-        private void HandleMonitorBlackout(MonitorStateEventArgs e)
-        {
-            _monitorBlackoutService.ShowBlackoutOverlay(e.HardwareId, e.Bounds);
-            var monitorInfo = GetMonitorInfoByHardwareId(e.HardwareId);
-            if (monitorInfo != null && monitorInfo.IsDdcCiSupported)
-            {
-                DimMonitorToZero(e.HardwareId);
-                Log.Information("Monitor {HardwareId} supports DDC/CI. Brightness set to 0 for blackout.", e.HardwareId);
-            }
-        }
-
-        /// <summary>
-        /// Handles dim behavior for a monitor.
-        /// </summary>
-        /// <param name="e">The monitor state event arguments.</param>
-        private void HandleMonitorDim(MonitorStateEventArgs e)
-        {
-            _monitorDimmingService.DimMonitorAsync(e.HardwareId, (int)e.Settings.DimLevel);
-        }
-
-        /// <summary>
-        /// Sets the brightness of the specified monitor to 0 using DDC/CI.
-        /// </summary>
-        /// <param name="hardwareId">The unique hardware ID of the monitor.</param>
-        private void DimMonitorToZero(string hardwareId)
-        {
-            _monitorDimmingService.DimMonitorAsync(hardwareId, 0);
-        }
-
-        /// <summary>
-        /// Gets the MonitorInfo for a given hardware ID from the last known monitors.
-        /// </summary>
-        /// <param name="hardwareId">The unique hardware ID of the monitor.</param>
-        /// <returns>The MonitorInfo if found; otherwise, null.</returns>
-        private MonitorInfo? GetMonitorInfoByHardwareId(string hardwareId)
-        {
-            return _lastKnownMonitors?.FirstOrDefault(m => m.HardwareId == hardwareId);
-        }
-
-        /// <summary>
         /// Handles the event when a monitor becomes active. Restores monitor state if not triggered by overlay window.
         /// </summary>
-        /// <param name="sender">The event sender.</param>
-        /// <param name="e">The event arguments.</param>
         private void OnMonitorBecameActive(object? sender, MonitorStateEventArgs e)
         {
             if (e.Reason == ActivityReason.ActiveWindow && _monitorBlackoutService.IsOverlayWindow(e.ForegroundWindowHandle))
@@ -323,43 +276,85 @@ namespace OLED_Sleeper.Services.Application
         }
 
         /// <summary>
-        /// Called when settings are changed and saved
+        /// Handles settings changed event and updates idle detection service.
         /// </summary>
-        /// <param name="settings">The updated list of monitor settings.</param>
         private void OnSettingsChanged(List<MonitorSettings> settings)
         {
             _lastKnownSettings = settings;
             _monitorIdleDetectionService.UpdateSettings(settings);
         }
 
-        #endregion Event Handlers
+        #endregion Monitor State Event Handlers
+
+        #region Monitor Idle/Blackout/Dimming Handlers
+
+        /// <summary>
+        /// Handles blackout behavior for a monitor, including overlay and DDC/CI brightness if supported.
+        /// </summary>
+        private void HandleMonitorBlackout(MonitorStateEventArgs e)
+        {
+            _monitorBlackoutService.ShowBlackoutOverlay(e.HardwareId, e.Bounds);
+            var monitorInfo = GetMonitorInfoByHardwareId(e.HardwareId);
+            if (monitorInfo != null && monitorInfo.IsDdcCiSupported)
+            {
+                DimMonitorToZero(e.HardwareId);
+                Log.Information("Monitor {HardwareId} supports DDC/CI. Brightness set to 0 for blackout.", e.HardwareId);
+            }
+        }
+
+        /// <summary>
+        /// Handles dim behavior for a monitor.
+        /// </summary>
+        private void HandleMonitorDim(MonitorStateEventArgs e)
+        {
+            _monitorDimmingService.DimMonitorAsync(e.HardwareId, (int)e.Settings.DimLevel);
+        }
+
+        /// <summary>
+        /// Sets the brightness of the specified monitor to 0 using DDC/CI.
+        /// </summary>
+        private void DimMonitorToZero(string hardwareId)
+        {
+            _monitorDimmingService.DimMonitorAsync(hardwareId, 0);
+        }
+
+        /// <summary>
+        /// Gets the MonitorInfo for a given hardware ID from the last known monitors.
+        /// </summary>
+        private MonitorInfo? GetMonitorInfoByHardwareId(string hardwareId)
+        {
+            return _lastKnownMonitors?.FirstOrDefault(m => m.HardwareId == hardwareId);
+        }
+
+        #endregion Monitor Idle/Blackout/Dimming Handlers
 
         #region Monitor Change Handling
 
         /// <summary>
-        /// Handles all disconnected monitors.
+        /// Handles all disconnected monitors by removing them from idle detection and hiding overlays.
         /// </summary>
-        /// <param name="disconnected">List of disconnected monitors.</param>
         private void HandleDisconnectedMonitors(List<MonitorInfo> disconnected)
         {
             foreach (var monitor in disconnected)
+            {
                 HandleMonitorDisconnect(monitor);
+            }
         }
 
         /// <summary>
-        /// Handles all reconnected monitors.
+        /// Handles all reconnected monitors by restoring settings and brightness if needed.
         /// </summary>
-        /// <param name="reconnected">List of reconnected monitors.</param>
         private void HandleReconnectedMonitors(List<MonitorInfo> reconnected)
         {
             foreach (var monitor in reconnected)
+            {
                 HandleMonitorReconnect(monitor);
+            }
         }
 
         /// <summary>
-        /// Handles a single monitor disconnect event.
+        /// Handles a single monitor disconnect event: removes from idle detection, hides overlay, and logs.
         /// </summary>
-        /// <param name="monitor">The disconnected monitor.</param>
         private void HandleMonitorDisconnect(MonitorInfo monitor)
         {
             var settings = GetMonitorSettings(monitor.HardwareId);
@@ -376,10 +371,30 @@ namespace OLED_Sleeper.Services.Application
         }
 
         /// <summary>
-        /// Gets the monitor settings for a given hardware ID.
+        /// Handles a single monitor reconnect event: ensures settings are loaded, idle detection is updated, and brightness is restored if needed.
         /// </summary>
-        /// <param name="hardwareId">The hardware ID of the monitor.</param>
-        /// <returns>The monitor settings, or null if not found.</returns>
+        private void HandleMonitorReconnect(MonitorInfo monitor)
+        {
+            var brightnessState = _monitorBrightnessStateService.LoadState();
+            // Always load the latest settings from disk for authoritative user settings
+            var persistedSettings = _monitorSettingsFileService.LoadSettings();
+            var monitorSettings = persistedSettings.FirstOrDefault(s => s.HardwareId == monitor.HardwareId);
+            LogMonitorReconnect(monitor, monitorSettings);
+
+            if (monitorSettings != null && monitorSettings.IsManaged)
+            {
+                AddMonitorToIdleDetectionIfNeeded(monitorSettings);
+                RestoreMonitorBrightnessIfNeeded(monitor, brightnessState);
+            }
+            else
+            {
+                Log.Debug("Monitor {HardwareId} is not managed or has no saved settings.", monitor.HardwareId);
+            }
+        }
+
+        /// <summary>
+        /// Gets the monitor settings for a given hardware ID from the in-memory settings list.
+        /// </summary>
         private MonitorSettings? GetMonitorSettings(string hardwareId)
         {
             return _lastKnownSettings?.FirstOrDefault(s => s.HardwareId == hardwareId);
@@ -388,8 +403,6 @@ namespace OLED_Sleeper.Services.Application
         /// <summary>
         /// Logs information about a monitor disconnect event.
         /// </summary>
-        /// <param name="monitor">The monitor info.</param>
-        /// <param name="settings">The monitor settings.</param>
         private void LogMonitorDisconnect(MonitorInfo monitor, MonitorSettings? settings)
         {
             Log.Information("Monitor disconnected: {HardwareId} ({DeviceName}, #{DisplayNumber}). Managed: {IsManaged}", monitor.HardwareId, monitor.DeviceName, monitor.DisplayNumber, settings?.IsManaged ?? false);
@@ -398,7 +411,6 @@ namespace OLED_Sleeper.Services.Application
         /// <summary>
         /// Removes a monitor from idle detection and updates settings.
         /// </summary>
-        /// <param name="settings">The monitor settings to remove.</param>
         private void RemoveMonitorFromIdleDetection(MonitorSettings settings)
         {
             _lastKnownSettings?.Remove(settings);
@@ -409,7 +421,6 @@ namespace OLED_Sleeper.Services.Application
         /// <summary>
         /// Hides the blackout overlay for a monitor.
         /// </summary>
-        /// <param name="hardwareId">The hardware ID of the monitor.</param>
         private void HideMonitorOverlay(string hardwareId)
         {
             _monitorBlackoutService.HideOverlay(hardwareId);
@@ -417,59 +428,29 @@ namespace OLED_Sleeper.Services.Application
         }
 
         /// <summary>
-        /// Handles a single monitor reconnect event.
-        /// </summary>
-        /// <param name="monitor">The reconnected monitor.</param>
-        private void HandleMonitorReconnect(MonitorInfo monitor)
-        {
-            var brightnessState = _monitorBrightnessStateService.LoadState();
-            var settings = GetMonitorSettings(monitor.HardwareId);
-            LogMonitorReconnect(monitor, settings);
-            if (settings?.IsManaged == true)
-            {
-                AddMonitorToIdleDetectionIfNeeded(monitor);
-                RestoreMonitorBrightnessIfNeeded(monitor, brightnessState);
-            }
-            else
-            {
-                Log.Debug("Monitor {HardwareId} is not managed, no idle/brightness action taken.", monitor.HardwareId);
-            }
-        }
-
-        /// <summary>
         /// Logs information about a monitor reconnect event.
         /// </summary>
-        /// <param name="monitor">The monitor info.</param>
-        /// <param name="settings">The monitor settings.</param>
         private void LogMonitorReconnect(MonitorInfo monitor, MonitorSettings? settings)
         {
             Log.Information("Monitor reconnected: {HardwareId} ({DeviceName}, #{DisplayNumber}). Managed: {IsManaged}", monitor.HardwareId, monitor.DeviceName, monitor.DisplayNumber, settings?.IsManaged ?? false);
         }
 
         /// <summary>
-        /// Adds a monitor to idle detection if it is not already present.
+        /// Adds a monitor's settings to idle detection if not already present in the in-memory settings list.
         /// </summary>
-        /// <param name="monitor">The monitor info.</param>
-        private void AddMonitorToIdleDetectionIfNeeded(MonitorInfo monitor)
+        private void AddMonitorToIdleDetectionIfNeeded(MonitorSettings settings)
         {
-            if (!_lastKnownSettings.Any(s => s.HardwareId == monitor.HardwareId))
+            if (!_lastKnownSettings.Any(s => s.HardwareId == settings.HardwareId))
             {
-                _lastKnownSettings.Add(new MonitorSettings
-                {
-                    HardwareId = monitor.HardwareId,
-                    IsManaged = true
-                    // Optionally set other defaults
-                });
+                _lastKnownSettings.Add(settings);
                 _monitorIdleDetectionService.UpdateSettings(_lastKnownSettings);
-                Log.Information("Added monitor {HardwareId} to idle detection.", monitor.HardwareId);
+                Log.Information("Added monitor {HardwareId} to idle detection.", settings.HardwareId);
             }
         }
 
         /// <summary>
         /// Restores the brightness for a monitor if a saved brightness value exists.
         /// </summary>
-        /// <param name="monitor">The monitor info.</param>
-        /// <param name="brightnessState">The dictionary of saved brightness states.</param>
         private void RestoreMonitorBrightnessIfNeeded(MonitorInfo monitor, Dictionary<string, uint> brightnessState)
         {
             if (brightnessState.TryGetValue(monitor.HardwareId, out var savedBrightness))
