@@ -27,7 +27,7 @@ namespace OLED_Sleeper.Handlers.Monitor.Dim
         /// Exceptions are caught and logged to avoid silent failures.
         /// </summary>
         /// <param name="command">The command containing the details of the monitor to dim and the target brightness level.</param>
-        public async Task Handle(ApplyDimCommand command)
+        public async Task HandleAsync(ApplyDimCommand command)
         {
             try
             {

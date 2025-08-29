@@ -1,25 +1,38 @@
 using System.Timers;
 using OLED_Sleeper.Models;
-using Timer = System.Timers.Timer;
 using OLED_Sleeper.Services.Monitor.Info.Interfaces;
 using OLED_Sleeper.Services.Core.Interfaces;
+using Timer = System.Timers.Timer;
 
 namespace OLED_Sleeper.Services.Core
 {
     /// <summary>
-    /// Periodically polls the current state of connected monitors and raises an event when the set of monitors changes.
+    /// Watches for changes in the set of connected monitors by periodically polling the system.
+    /// Raises an event when the set of monitors changes.
     /// </summary>
     public class MonitorStateWatcher : IMonitorStateWatcher, IDisposable
     {
+        #region Fields
+
         private readonly IMonitorInfoManager _monitorInfoManager;
         private readonly Timer _pollTimer;
-        private IReadOnlyList<MonitorInfo> _lastKnownMonitors;
         private readonly object _lock = new();
+
+        private IReadOnlyList<MonitorInfo> _lastKnownMonitors;
+
+        #endregion Fields
+
+        #region Events
 
         /// <summary>
         /// Occurs when the set of connected monitors changes.
+        /// The event argument contains both the previous and current monitor lists.
         /// </summary>
-        public event EventHandler<IReadOnlyList<MonitorInfo>> MonitorsChanged;
+        public event EventHandler<MonitorsChangedEventArgs> MonitorsChanged;
+
+        #endregion Events
+
+        #region Constructor
 
         /// <summary>
         /// Initializes a new instance of the <see cref="MonitorStateWatcher"/> class.
@@ -36,8 +49,12 @@ namespace OLED_Sleeper.Services.Core
             _pollTimer.Elapsed += PollTimerElapsed;
         }
 
+        #endregion Constructor
+
+        #region Public Methods
+
         /// <summary>
-        /// Starts monitoring for monitor state changes.
+        /// Starts monitoring for monitor state changes. The initial monitor list is retrieved and the timer is started.
         /// </summary>
         public void Start()
         {
@@ -45,23 +62,9 @@ namespace OLED_Sleeper.Services.Core
             {
                 if (!_pollTimer.Enabled)
                 {
-                    GetCurrentMonitorsAsyncAndSetInitial();
+                    RetrieveInitialMonitorList();
                 }
             }
-        }
-
-        private void GetCurrentMonitorsAsyncAndSetInitial()
-        {
-            EventHandler<IReadOnlyList<MonitorInfo>> handler = null;
-            handler = (sender, monitors) =>
-            {
-                _monitorInfoManager.MonitorListReady -= handler;
-                _lastKnownMonitors = monitors;
-                MonitorsChanged?.Invoke(this, _lastKnownMonitors);
-                _pollTimer.Start();
-            };
-            _monitorInfoManager.MonitorListReady += handler;
-            _monitorInfoManager.GetCurrentMonitorsAsync();
         }
 
         /// <summary>
@@ -76,19 +79,48 @@ namespace OLED_Sleeper.Services.Core
         }
 
         /// <summary>
+        /// Disposes the watcher and releases resources.
+        /// </summary>
+        public void Dispose()
+        {
+            _pollTimer?.Dispose();
+        }
+
+        #endregion Public Methods
+
+        #region Private Methods
+
+        /// <summary>
+        /// Retrieves the initial monitor list asynchronously and starts the polling timer.
+        /// </summary>
+        private void RetrieveInitialMonitorList()
+        {
+            EventHandler<IReadOnlyList<MonitorInfo>> handler = null;
+            handler = (sender, monitors) =>
+            {
+                _monitorInfoManager.MonitorListReady -= handler;
+                _lastKnownMonitors = monitors;
+                MonitorsChanged?.Invoke(this, new MonitorsChangedEventArgs([], _lastKnownMonitors));
+                _pollTimer.Start();
+            };
+            _monitorInfoManager.MonitorListReady += handler;
+            _monitorInfoManager.GetCurrentMonitorsAsync();
+        }
+
+        /// <summary>
         /// Handles the timer elapsed event to poll for monitor changes.
         /// </summary>
         private void PollTimerElapsed(object sender, ElapsedEventArgs e)
         {
             lock (_lock)
             {
-                // Use the latest basic info, then enrich and compare
                 var currentMonitors = _monitorInfoManager.GetLatestMonitorsBasicInfo();
                 if (!AreMonitorListsEqual(_lastKnownMonitors, currentMonitors))
                 {
                     EnrichMonitorInfoList(currentMonitors);
+                    var oldMonitors = _lastKnownMonitors;
                     _lastKnownMonitors = currentMonitors;
-                    MonitorsChanged?.Invoke(this, currentMonitors);
+                    MonitorsChanged?.Invoke(this, new MonitorsChangedEventArgs(oldMonitors, currentMonitors));
                 }
             }
         }
@@ -103,10 +135,8 @@ namespace OLED_Sleeper.Services.Core
         {
             if (a == null || b == null) return false;
             if (a.Count != b.Count) return false;
-            var aNames = new HashSet<string>();
-            var bNames = new HashSet<string>();
-            foreach (var m in a) aNames.Add(m.DeviceName);
-            foreach (var m in b) bNames.Add(m.DeviceName);
+            var aNames = new HashSet<string>(a.Select(m => m.DeviceName));
+            var bNames = new HashSet<string>(b.Select(m => m.DeviceName));
             return aNames.SetEquals(bNames);
         }
 
@@ -119,12 +149,6 @@ namespace OLED_Sleeper.Services.Core
             _monitorInfoManager.EnrichMonitorInfoList(monitors);
         }
 
-        /// <summary>
-        /// Disposes the watcher and releases resources.
-        /// </summary>
-        public void Dispose()
-        {
-            _pollTimer?.Dispose();
-        }
+        #endregion Private Methods
     }
 }

@@ -1,8 +1,7 @@
-﻿using OLED_Sleeper.ViewModels;
-using System;
-using System.Collections.ObjectModel;
+﻿using System.Collections.ObjectModel;
+using OLED_Sleeper.ViewModels;
 
-namespace OLED_Sleeper.Services.Workspace.Interfaces
+namespace OLED_Sleeper.Services.UI.Interfaces
 {
     /// <summary>
     /// Provides workspace management functionality, including monitor discovery, settings loading,

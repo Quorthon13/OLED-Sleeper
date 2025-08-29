@@ -27,7 +27,7 @@ namespace OLED_Sleeper.Handlers.Monitor.Dim
         /// Exceptions are caught and logged to avoid silent failures.
         /// </summary>
         /// <param name="command">The command containing the details of the monitor to undim.</param>
-        public async Task Handle(ApplyUndimCommand command)
+        public async Task HandleAsync(ApplyUndimCommand command)
         {
             try
             {

@@ -27,7 +27,7 @@ namespace OLED_Sleeper.Handlers.Monitor.Blackout
         /// Exceptions are caught and logged to avoid silent failures.
         /// </summary>
         /// <param name="command">The command containing the details of the monitor whose overlay should be hidden.</param>
-        public async Task Handle(HideBlackoutOverlayCommand command)
+        public async Task HandleAsync(HideBlackoutOverlayCommand command)
         {
             try
             {

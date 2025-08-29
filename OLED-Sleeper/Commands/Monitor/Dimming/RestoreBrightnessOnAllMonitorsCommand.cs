@@ -5,7 +5,7 @@ namespace OLED_Sleeper.Commands.Monitor.Dimming
     /// <summary>
     /// Command to restore brightness for all monitors that were left dimmed from a previous session.
     /// </summary>
-    public class RestoreBrightnessOnStartupCommand : ICommand
+    public class RestoreBrightnessOnAllMonitorsCommand : ICommand
     {
     }
 }

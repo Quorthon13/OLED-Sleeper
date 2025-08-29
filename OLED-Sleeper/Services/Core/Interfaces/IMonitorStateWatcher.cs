@@ -9,8 +9,9 @@ namespace OLED_Sleeper.Services.Core.Interfaces
     {
         /// <summary>
         /// Occurs when the set of connected monitors changes.
+        /// The event argument contains both the previous and current monitor lists.
         /// </summary>
-        event EventHandler<IReadOnlyList<MonitorInfo>> MonitorsChanged;
+        event EventHandler<MonitorsChangedEventArgs> MonitorsChanged;
 
         /// <summary>
         /// Starts monitoring for monitor state changes.

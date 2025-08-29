@@ -2,17 +2,19 @@
 using Microsoft.Extensions.DependencyInjection;
 using OLED_Sleeper.Core;
 using OLED_Sleeper.Core.Interfaces;
-using OLED_Sleeper.Services.Workspace;
-using OLED_Sleeper.Services.Workspace.Interfaces;
 using OLED_Sleeper.ViewModels;
 using Serilog;
 using System.Windows;
 using System.Windows.Controls;
+using OLED_Sleeper.Commands.Monitor.Behavior;
 using OLED_Sleeper.Commands.Monitor.Blackout;
 using OLED_Sleeper.Commands.Monitor.Dimming;
+using OLED_Sleeper.Commands.Monitor.State;
 using OLED_Sleeper.Handlers.Monitor.Dim;
 using OLED_Sleeper.Handlers.Monitor.Blackout;
 using OLED_Sleeper.Handlers;
+using OLED_Sleeper.Handlers.Monitor.Behavior;
+using OLED_Sleeper.Handlers.Monitor.State;
 using OLED_Sleeper.Services.Core;
 using OLED_Sleeper.Services.Core.Interfaces;
 using OLED_Sleeper.Services.Monitor.Blackout;
@@ -63,11 +65,13 @@ namespace OLED_Sleeper
             var services = new ServiceCollection();
             services.AddSingleton<IMediator, Mediator>();
 
+            services.AddTransient<ICommandHandler<ApplyMonitorActiveBehaviorCommand>, ApplyMonitorActiveBehaviorCommandHandler>();
             services.AddTransient<ICommandHandler<ApplyBlackoutOverlayCommand>, ApplyBlackoutOverlayCommandHandler>();
             services.AddTransient<ICommandHandler<HideBlackoutOverlayCommand>, HideBlackoutOverlayCommandHandler>();
             services.AddTransient<ICommandHandler<ApplyDimCommand>, ApplyDimCommandHandler>();
             services.AddTransient<ICommandHandler<ApplyUndimCommand>, ApplyUndimCommandHandler>();
-            services.AddTransient<ICommandHandler<RestoreBrightnessOnStartupCommand>, RestoreBrightnessOnStartupCommandHandler>();
+            services.AddTransient<ICommandHandler<RestoreBrightnessOnAllMonitorsCommand>, RestoreBrightnessOnAllMonitorsCommandHandler>();
+            services.AddTransient<ICommandHandler<SynchronizeMonitorStateCommand>, SynchronizeMonitorStateCommandHandler>();
 
             services.AddSingleton<IMonitorInfoManager, MonitorInfoManager>();
             services.AddSingleton<IMonitorStateWatcher, MonitorStateWatcher>();

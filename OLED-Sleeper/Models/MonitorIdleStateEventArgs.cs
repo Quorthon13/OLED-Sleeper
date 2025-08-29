@@ -6,7 +6,7 @@ namespace OLED_Sleeper.Models
     /// Provides event data for monitor idle/active state transitions.
     /// Used by services to communicate monitor state changes, including context for the event.
     /// </summary>
-    public class MonitorStateEventArgs : EventArgs
+    public class MonitorIdleStateEventArgs : EventArgs
     {
         /// <summary>
         /// Gets the unique hardware ID of the monitor.
@@ -45,7 +45,7 @@ namespace OLED_Sleeper.Models
         public bool IsIgnored { get; set; } = false;
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="MonitorStateEventArgs"/> class.
+        /// Initializes a new instance of the <see cref="MonitorIdleStateEventArgs"/> class.
         /// </summary>
         /// <param name="hardwareId">The unique hardware ID of the monitor.</param>
         /// <param name="displayNumber">The display number of the monitor.</param>
@@ -53,7 +53,7 @@ namespace OLED_Sleeper.Models
         /// <param name="settings">The user-configured settings for the monitor.</param>
         /// <param name="foregroundWindowHandle">The handle of the foreground window at the time of the event.</param>
         /// <param name="reason">The reason why the monitor is considered active.</param>
-        public MonitorStateEventArgs(
+        public MonitorIdleStateEventArgs(
             string hardwareId,
             int displayNumber,
             Rect bounds,

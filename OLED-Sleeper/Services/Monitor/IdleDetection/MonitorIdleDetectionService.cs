@@ -4,12 +4,7 @@ using OLED_Sleeper.Native;
 using OLED_Sleeper.Services.Monitor.IdleDetection.Interfaces;
 using OLED_Sleeper.Services.Monitor.Info.Interfaces;
 using Serilog;
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Runtime.InteropServices;
-using System.Threading;
-using System.Threading.Tasks;
 using System.Windows;
 
 namespace OLED_Sleeper.Services.Monitor.IdleDetection
@@ -23,10 +18,10 @@ namespace OLED_Sleeper.Services.Monitor.IdleDetection
         #region Events
 
         /// <inheritdoc/>
-        public event EventHandler<MonitorStateEventArgs> MonitorBecameIdle;
+        public event EventHandler<MonitorIdleStateEventArgs> MonitorBecameIdle;
 
         /// <inheritdoc/>
-        public event EventHandler<MonitorStateEventArgs> MonitorBecameActive;
+        public event EventHandler<MonitorIdleStateEventArgs> MonitorBecameActive;
 
         #endregion Events
 
@@ -74,20 +69,12 @@ namespace OLED_Sleeper.Services.Monitor.IdleDetection
         /// <summary>
         /// Snapshot of system state at a point in time.
         /// </summary>
-        private readonly struct SystemState
+        private readonly struct SystemState(uint idleTime, Point cursorPosition, Rect windowRect, nint windowHandle)
         {
-            public readonly uint IdleTimeMilliseconds;
-            public readonly Point CursorPosition;
-            public readonly Rect ForegroundWindowRect;
-            public readonly nint ForegroundWindowHandle;
-
-            public SystemState(uint idleTime, Point cursorPosition, Rect windowRect, nint windowHandle)
-            {
-                IdleTimeMilliseconds = idleTime;
-                CursorPosition = cursorPosition;
-                ForegroundWindowRect = windowRect;
-                ForegroundWindowHandle = windowHandle;
-            }
+            public readonly uint IdleTimeMilliseconds = idleTime;
+            public readonly Point CursorPosition = cursorPosition;
+            public readonly Rect ForegroundWindowRect = windowRect;
+            public readonly nint ForegroundWindowHandle = windowHandle;
         }
 
         #endregion Nested Types
@@ -202,7 +189,7 @@ namespace OLED_Sleeper.Services.Monitor.IdleDetection
             var activityReason = GetActivityReason(monitor, systemState);
             bool hasActivityNow = activityReason != ActivityReason.None;
 
-            var eventArgs = new MonitorStateEventArgs(
+            var eventArgs = new MonitorIdleStateEventArgs(
                 monitor.Settings.HardwareId, monitor.DisplayNumber, monitor.Bounds,
                 monitor.Settings, systemState.ForegroundWindowHandle, activityReason);
 
@@ -237,7 +224,7 @@ namespace OLED_Sleeper.Services.Monitor.IdleDetection
         /// <summary>
         /// Handles the Counting state for a monitor.
         /// </summary>
-        private void HandleCountingState(MonitorTimerState timerState, ManagedMonitorState monitor, bool hasActivityNow, MonitorStateEventArgs eventArgs)
+        private void HandleCountingState(MonitorTimerState timerState, ManagedMonitorState monitor, bool hasActivityNow, MonitorIdleStateEventArgs eventArgs)
         {
             if (hasActivityNow)
             {
@@ -259,7 +246,7 @@ namespace OLED_Sleeper.Services.Monitor.IdleDetection
         /// <summary>
         /// Handles the Idle state for a monitor.
         /// </summary>
-        private void HandleIdleState(MonitorTimerState timerState, ManagedMonitorState monitor, bool hasActivityNow, MonitorStateEventArgs eventArgs)
+        private void HandleIdleState(MonitorTimerState timerState, ManagedMonitorState monitor, bool hasActivityNow, MonitorIdleStateEventArgs eventArgs)
         {
             if (hasActivityNow)
             {
