@@ -388,7 +388,7 @@
                   These options prevent ONLY this monitor from sleeping.<LineBreak /><LineBreak />
                   • <Run FontWeight="SemiBold">Mouse cursor is on this monitor:</Run><LineBreak />
                   <Span Foreground="{StaticResource SecondaryForegroundColor}">Keeps this monitor awake just by leaving your mouse on it.</Span><LineBreak />
-                  • <Run FontWeight="SemiBold">Contains the active window:</Run><LineBreak />
+                  • <Run FontWeight="SemiBold">Application is focused on this monitor:</Run><LineBreak />
                   <Span Foreground="{StaticResource SecondaryForegroundColor}">Keeps the monitor awake if it has the application you're currently using (the window you last clicked).</Span>
                   <LineBreak /><LineBreak />
                   <Run FontWeight="SemiBold" TextDecorations="Underline">General Condition</Run><LineBreak />

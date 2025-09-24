@@ -1,5 +1,4 @@
 ﻿using OLED_Sleeper.Core;
-using OLED_Sleeper.Features.MonitorIdleDetection.Services.Interfaces;
 using OLED_Sleeper.Features.UserSettings.Services.Interfaces;
 using OLED_Sleeper.UI.Commands;
 using OLED_Sleeper.UI.Helpers;
@@ -27,11 +26,6 @@ namespace OLED_Sleeper.UI.ViewModels
         /// Service for loading and saving monitor settings.
         /// </summary>
         private readonly IMonitorSettingsFileService _settingsService;
-
-        /// <summary>
-        /// Service for handling idle activity and updating monitor states.
-        /// </summary>
-        private readonly IMonitorIdleDetectionService _idleActivityService;
 
         /// <summary>
         /// The width of the container used for monitor layout calculations.
@@ -67,11 +61,6 @@ namespace OLED_Sleeper.UI.ViewModels
         /// Indicates whether the workspace is currently loading.
         /// </summary>
         private bool _isLoading;
-
-        /// <summary>
-        /// Indicates whether to preserve the current monitor selection during updates.
-        /// </summary>
-        private bool _preserveSelection;
 
         /// <summary>
         /// The hardware ID of the monitor to be restored upon workspace update.
@@ -184,16 +173,13 @@ namespace OLED_Sleeper.UI.ViewModels
         /// </summary>
         /// <param name="workspaceService">Service for monitor workspace management.</param>
         /// <param name="settingsService">Service for settings persistence.</param>
-        /// <param name="monitorIdleDetectionService">Service for idle activity monitoring.</param>
-        public MainViewModel(IWorkspaceService workspaceService, IMonitorSettingsFileService settingsService,
-                             IMonitorIdleDetectionService monitorIdleDetectionService)
+        public MainViewModel(IWorkspaceService workspaceService, IMonitorSettingsFileService settingsService)
         {
             _workspaceService = workspaceService;
             _settingsService = settingsService;
-            _idleActivityService = monitorIdleDetectionService;
 
             SelectMonitorCommand = new RelayCommand(ExecuteSelectMonitor);
-            ReloadMonitorsCommand = new RelayCommand(RefreshMonitors);
+            ReloadMonitorsCommand = new RelayCommand(() => RefreshMonitors(false));
             SaveSettingsCommand = new AsyncRelayCommand(ExecuteSaveSettings, () => IsDirty);
             DiscardChangesCommand = new RelayCommand(ExecuteDiscardChanges, () => IsDirty);
 
@@ -208,9 +194,9 @@ namespace OLED_Sleeper.UI.ViewModels
         /// <summary>
         /// Initiates a full refresh of the monitor list, clearing any current selection and reloading from the workspace service.
         /// </summary>
-        public void RefreshMonitors()
+        public void RefreshMonitors(bool preserveSelection)
         {
-            UpdateMonitorsInternal(_containerWidth, _containerHeight, preserveSelection: false);
+            UpdateMonitorsInternal(_containerWidth, _containerHeight, preserveSelection);
             _workspaceService.RefreshWorkspaceAsync(_containerWidth, _containerHeight);
         }
 
@@ -272,7 +258,7 @@ namespace OLED_Sleeper.UI.ViewModels
         /// </summary>
         private void ExecuteDiscardChanges()
         {
-            RefreshMonitors();
+            RefreshMonitors(true);
         }
 
         /// <summary>
