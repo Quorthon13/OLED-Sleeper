@@ -55,7 +55,7 @@ namespace OLED_Sleeper.Core
 
             // Cache the MethodInfo for the Handle method of each handler type to avoid repeated reflection.
             var method = _handleMethodCache.GetOrAdd(
-                handlerType, 
+                handlerType,
                 t => t.GetMethod(nameof(ICommandHandler<ICommand>.HandleAsync)) ?? throw new InvalidOperationException()
             );
             await (Task)method.Invoke(handler, new object[] { command });

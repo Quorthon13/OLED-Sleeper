@@ -38,12 +38,12 @@
         /// <summary>
         /// Gets or sets a value indicating whether system input (keyboard/mouse) should reset idle state.
         /// </summary>
-        public bool IsActiveOnInput { get; set; } = true;
+        public bool IsActiveOnInput { get; set; } = false;
 
         /// <summary>
         /// Gets or sets a value indicating whether mouse position should reset idle state.
         /// </summary>
-        public bool IsActiveOnMousePosition { get; set; } = false;
+        public bool IsActiveOnMousePosition { get; set; } = true;
 
         /// <summary>
         /// Gets or sets a value indicating whether the active window should reset idle state.

@@ -10,10 +10,13 @@
              d:DataContext="{d:DesignInstance Type=viewModels:MonitorConfigurationViewModel}"
              FontFamily="Bahnschrift">
 
+    <!-- ========== RESOURCES ========== -->
     <UserControl.Resources>
+        <!-- Converters -->
         <converters:EnumToBooleanConverter x:Key="EnumToBooleanConverter" />
         <converters:StringNullOrEmptyToVisibilityConverter x:Key="ErrorVisibilityConverter" />
 
+        <!-- ToolTip Style -->
         <Style TargetType="ToolTip">
             <Setter Property="OverridesDefaultStyle" Value="true" />
             <Setter Property="Foreground" Value="{StaticResource PrimaryForegroundColor}" />
@@ -22,10 +25,10 @@
                 <Setter.Value>
                     <ControlTemplate TargetType="ToolTip">
                         <Border Background="{StaticResource TertiaryBackgroundColor}"
-                                BorderBrush="{StaticResource SeparatorColorBrush}"
-                                BorderThickness="1"
-                                CornerRadius="4"
-                                Padding="8,5">
+                    BorderBrush="{StaticResource SeparatorColorBrush}"
+                    BorderThickness="1"
+                    CornerRadius="4"
+                    Padding="8,5">
                             <ContentPresenter />
                         </Border>
                     </ControlTemplate>
@@ -33,6 +36,7 @@
             </Setter>
         </Style>
 
+        <!-- ModernCheckBox Style -->
         <Style x:Key="ModernCheckBox" TargetType="CheckBox">
             <Setter Property="Foreground" Value="{StaticResource PrimaryForegroundColor}" />
             <Setter Property="FontSize" Value="14" />
@@ -44,7 +48,7 @@
                     <ControlTemplate TargetType="CheckBox">
                         <StackPanel Orientation="Horizontal">
                             <Border x:Name="Box" Width="18" Height="18" BorderThickness="1" CornerRadius="3"
-                                    BorderBrush="{StaticResource SecondaryForegroundColor}" Background="Transparent">
+                      BorderBrush="{StaticResource SecondaryForegroundColor}" Background="Transparent">
                                 <Viewbox Margin="2">
                                     <Path x:Name="CheckMark" Data="M 0,5 L 4,9 L 10,1" StrokeThickness="2" Stroke="{StaticResource AccentColorBrush}" Visibility="Collapsed" />
                                 </Viewbox>
@@ -64,6 +68,7 @@
             </Setter>
         </Style>
 
+        <!-- ModernRadioButton Style -->
         <Style x:Key="ModernRadioButton" TargetType="RadioButton">
             <Setter Property="Foreground" Value="{StaticResource PrimaryForegroundColor}" />
             <Setter Property="FontSize" Value="14" />
@@ -92,6 +97,7 @@
             </Setter>
         </Style>
 
+        <!-- ModernSlider Style -->
         <Style x:Key="ModernSlider" TargetType="Slider">
             <Setter Property="VerticalAlignment" Value="Center" />
             <Setter Property="Template">
@@ -127,6 +133,7 @@
             </Setter>
         </Style>
 
+        <!-- ModernTextBox Style -->
         <Style x:Key="ModernTextBox" TargetType="TextBox">
             <Setter Property="Background" Value="{StaticResource TertiaryBackgroundColor}" />
             <Setter Property="Foreground" Value="{StaticResource PrimaryForegroundColor}" />
@@ -140,16 +147,15 @@
                 <Setter.Value>
                     <ControlTemplate TargetType="TextBox">
                         <Border x:Name="border" CornerRadius="4"
-                                Background="{TemplateBinding Background}"
-                                BorderBrush="{TemplateBinding BorderBrush}"
-                                BorderThickness="{TemplateBinding BorderThickness}">
+                    Background="{TemplateBinding Background}"
+                    BorderBrush="{TemplateBinding BorderBrush}"
+                    BorderThickness="{TemplateBinding BorderThickness}">
                             <ScrollViewer x:Name="PART_ContentHost" />
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsKeyboardFocused" Value="True">
                                 <Setter TargetName="border" Property="BorderBrush" Value="{StaticResource AccentColorBrush}" />
                             </Trigger>
-
                             <Trigger Property="IsEnabled" Value="False">
                                 <Setter Property="Opacity" Value="0.5" />
                             </Trigger>
@@ -159,6 +165,7 @@
             </Setter>
         </Style>
 
+        <!-- ModernComboBox Style -->
         <Style x:Key="ModernComboBox" TargetType="{x:Type ComboBox}">
             <Setter Property="Foreground" Value="{StaticResource PrimaryForegroundColor}" />
             <Setter Property="Background" Value="{StaticResource TertiaryBackgroundColor}" />
@@ -173,23 +180,23 @@
                     <ControlTemplate TargetType="{x:Type ComboBox}">
                         <Grid>
                             <ToggleButton x:Name="ToggleButton"
-                                          Focusable="false"
-                                          IsChecked="{Binding Path=IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}"
-                                          ClickMode="Press">
+                            Focusable="false"
+                            IsChecked="{Binding Path=IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}"
+                            ClickMode="Press">
                                 <ToggleButton.Template>
                                     <ControlTemplate TargetType="{x:Type ToggleButton}">
                                         <Border x:Name="templateRoot" CornerRadius="4"
-                                                Background="{StaticResource TertiaryBackgroundColor}"
-                                                BorderBrush="{StaticResource SeparatorColorBrush}"
-                                                BorderThickness="{TemplateBinding BorderThickness}">
+                            Background="{StaticResource TertiaryBackgroundColor}"
+                            BorderBrush="{StaticResource SeparatorColorBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}">
                                             <Border x:Name="splitBorder" BorderBrush="Transparent" BorderThickness="1" Margin="0" Width="{TemplateBinding ActualWidth}">
                                                 <Path x:Name="arrow"
-                                                      Data="F1 M 0,0 L 2.5,2.5 L 5,0 Z"
-                                                      HorizontalAlignment="Right"
-                                                      Margin="0,0,8,0"
-                                                      VerticalAlignment="Center"
-                                                      Fill="{StaticResource PrimaryForegroundColor}"
-                                                      Stretch="None" />
+                              Data="F1 M 0,0 L 2.5,2.5 L 5,0 Z"
+                              HorizontalAlignment="Right"
+                              Margin="0,0,8,0"
+                              VerticalAlignment="Center"
+                              Fill="{StaticResource PrimaryForegroundColor}"
+                              Stretch="None" />
                                             </Border>
                                         </Border>
                                         <ControlTemplate.Triggers>
@@ -204,24 +211,24 @@
                                 </ToggleButton.Template>
                             </ToggleButton>
                             <ContentPresenter x:Name="ContentSite"
-                                              IsHitTestVisible="False"
-                                              Content="{TemplateBinding SelectionBoxItem}"
-                                              ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
-                                              ContentTemplateSelector="{TemplateBinding ItemTemplateSelector}"
-                                              Margin="{TemplateBinding Padding}"
-                                              VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
+                                IsHitTestVisible="False"
+                                Content="{TemplateBinding SelectionBoxItem}"
+                                ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
+                                ContentTemplateSelector="{TemplateBinding ItemTemplateSelector}"
+                                Margin="{TemplateBinding Padding}"
+                                VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
                             <Popup x:Name="Popup"
-                                   Placement="Bottom"
-                                   IsOpen="{TemplateBinding IsDropDownOpen}"
-                                   AllowsTransparency="True"
-                                   Focusable="False"
-                                   PopupAnimation="Slide">
+                     Placement="Bottom"
+                     IsOpen="{TemplateBinding IsDropDownOpen}"
+                     AllowsTransparency="True"
+                     Focusable="False"
+                     PopupAnimation="Slide">
                                 <Grid x:Name="DropDown" SnapsToDevicePixels="True" MinWidth="{TemplateBinding ActualWidth}" MaxHeight="{TemplateBinding MaxDropDownHeight}">
                                     <Border x:Name="DropDownBorder"
-                                            Background="{StaticResource SecondaryBackgroundColor}"
-                                            BorderThickness="1"
-                                            BorderBrush="{StaticResource SeparatorColorBrush}"
-                                            CornerRadius="4" />
+                          Background="{StaticResource SecondaryBackgroundColor}"
+                          BorderThickness="1"
+                          BorderBrush="{StaticResource SeparatorColorBrush}"
+                          CornerRadius="4" />
                                     <ScrollViewer Margin="4,6,4,6" SnapsToDevicePixels="True">
                                         <StackPanel IsItemsHost="True" KeyboardNavigation.DirectionalNavigation="Contained" />
                                     </ScrollViewer>
@@ -237,6 +244,8 @@
                 </Trigger>
             </Style.Triggers>
         </Style>
+
+        <!-- ComboBoxItem Style -->
         <Style TargetType="{x:Type ComboBoxItem}">
             <Setter Property="SnapsToDevicePixels" Value="True" />
             <Setter Property="Padding" Value="8,5" />
@@ -250,12 +259,12 @@
                 <Setter.Value>
                     <ControlTemplate TargetType="{x:Type ComboBoxItem}">
                         <Border x:Name="Bd"
-                                Padding="{TemplateBinding Padding}"
-                                SnapsToDevicePixels="true"
-                                Background="{TemplateBinding Background}"
-                                BorderBrush="{TemplateBinding BorderBrush}"
-                                BorderThickness="{TemplateBinding BorderThickness}"
-                                CornerRadius="3">
+                    Padding="{TemplateBinding Padding}"
+                    SnapsToDevicePixels="true"
+                    Background="{TemplateBinding Background}"
+                    BorderBrush="{TemplateBinding BorderBrush}"
+                    BorderThickness="{TemplateBinding BorderThickness}"
+                    CornerRadius="3">
                             <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
                         </Border>
                         <ControlTemplate.Triggers>
@@ -273,20 +282,22 @@
         </Style>
     </UserControl.Resources>
 
+    <!-- ========== LAYOUT ========== -->
     <Grid Margin="25,20">
         <StackPanel>
-            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" ToolTipService.InitialShowDelay="200">
-                <StackPanel.ToolTip>
-                    <ToolTip>Enable or disable management for this monitor.</ToolTip>
-                </StackPanel.ToolTip>
-                <TextBlock Text="{Binding MonitorTitle}" Foreground="{StaticResource PrimaryForegroundColor}" FontSize="18" FontWeight="SemiBold" />
-                <CheckBox IsChecked="{Binding IsManaged, UpdateSourceTrigger=PropertyChanged}"
-                          Style="{StaticResource ModernCheckBox}"
-                          Margin="10,0,0,0" />
-            </StackPanel>
+            <!-- Monitor Management Toggle -->
+            <CheckBox
+        Content="{Binding MonitorTitle}"
+        IsChecked="{Binding IsManaged, UpdateSourceTrigger=PropertyChanged}"
+        Style="{StaticResource ModernCheckBox}"
+        FontSize="18"
+        FontWeight="SemiBold"
+        VerticalAlignment="Center"
+        ToolTip="Enable or disable management for this monitor." />
 
             <Separator Background="{StaticResource SeparatorColorBrush}" Margin="0,12" />
 
+            <!-- Main Configuration Section -->
             <StackPanel Margin="0,15,0,0" IsEnabled="{Binding IsManaged}">
                 <Grid>
                     <Grid.ColumnDefinitions>
@@ -298,6 +309,7 @@
                         <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
 
+                    <!-- Behavior Section -->
                     <StackPanel Grid.Row="0" Grid.Column="0" VerticalAlignment="Center" ToolTipService.InitialShowDelay="200">
                         <StackPanel.ToolTip>
                             <ToolTip Content="{Binding BehaviorSectionTooltip}" />
@@ -305,15 +317,16 @@
                         <TextBlock Text="BEHAVIOR" Foreground="{StaticResource SecondaryForegroundColor}" FontSize="12" FontWeight="Light" Margin="0,0,0,5" />
                         <StackPanel Orientation="Horizontal" Margin="0,5,0,0">
                             <RadioButton Content="Blackout" GroupName="Behavior" Style="{StaticResource ModernRadioButton}"
-                                         IsChecked="{Binding Behavior, Converter={StaticResource EnumToBooleanConverter}, ConverterParameter={x:Static models:MonitorBehavior.Blackout}, UpdateSourceTrigger=PropertyChanged}" />
+                                IsChecked="{Binding Behavior, Converter={StaticResource EnumToBooleanConverter}, ConverterParameter={x:Static models:MonitorBehavior.Blackout}, UpdateSourceTrigger=PropertyChanged}" />
                             <RadioButton Content="Dim" GroupName="Behavior" Style="{StaticResource ModernRadioButton}" Margin="25,0,0,0"
-                                         IsChecked="{Binding Behavior, Converter={StaticResource EnumToBooleanConverter}, ConverterParameter={x:Static models:MonitorBehavior.Dim}, UpdateSourceTrigger=PropertyChanged}"
-                                         IsEnabled="{Binding IsDimBehaviorEnabled}"
-                                         ToolTip="{Binding DimBehaviorTooltip}"
-                                         ToolTipService.InitialShowDelay="200" />
+                                IsChecked="{Binding Behavior, Converter={StaticResource EnumToBooleanConverter}, ConverterParameter={x:Static models:MonitorBehavior.Dim}, UpdateSourceTrigger=PropertyChanged}"
+                                IsEnabled="{Binding IsDimBehaviorEnabled}"
+                                ToolTip="{Binding DimBehaviorTooltip}"
+                                ToolTipService.InitialShowDelay="200" />
                         </StackPanel>
                     </StackPanel>
 
+                    <!-- Brightness Level Section -->
                     <StackPanel Grid.Row="0" Grid.Column="1" Margin="40,0,0,0" IsEnabled="{Binding IsDimSliderEnabled}" VerticalAlignment="Center" ToolTipService.InitialShowDelay="200">
                         <StackPanel.ToolTip>
                             <ToolTip>Set the brightness level to use when this monitor is dimmed.</ToolTip>
@@ -333,6 +346,7 @@
                         </Grid>
                     </StackPanel>
 
+                    <!-- Idle Timer Section -->
                     <StackPanel Grid.Row="1" Grid.Column="0" Margin="0,20,0,0" ToolTipService.InitialShowDelay="200">
                         <StackPanel.ToolTip>
                             <ToolTip Content="Set the duration of user inactivity required before the selected behavior is triggered." />
@@ -348,54 +362,54 @@
                             <StackPanel Grid.Column="0">
                                 <TextBlock Text="Unit" Foreground="{StaticResource SecondaryForegroundColor}" FontSize="11" Margin="4,0,0,3" />
                                 <ComboBox Width="120"
-                                          ItemsSource="{Binding TimeUnits}"
-                                          SelectedItem="{Binding SelectedTimeUnit, UpdateSourceTrigger=PropertyChanged}"
-                                          Style="{StaticResource ModernComboBox}" />
+                          ItemsSource="{Binding TimeUnits}"
+                          SelectedItem="{Binding SelectedTimeUnit, UpdateSourceTrigger=PropertyChanged}"
+                          Style="{StaticResource ModernComboBox}" />
                             </StackPanel>
                             <StackPanel Grid.Column="1" Margin="10,0,0,0">
                                 <StackPanel Orientation="Horizontal">
                                     <TextBlock Text="Value" Foreground="{StaticResource SecondaryForegroundColor}" FontSize="11" Margin="4,0,0,3" />
                                     <TextBlock Text="*" Foreground="{StaticResource DestructiveColorBrush}" FontWeight="Bold" Margin="4,-2,0,0" VerticalAlignment="Top"
-                                               Visibility="{Binding IdleValueError, Converter={StaticResource ErrorVisibilityConverter}}" />
+                             Visibility="{Binding IdleValueError, Converter={StaticResource ErrorVisibilityConverter}}" />
                                 </StackPanel>
                                 <TextBox x:Name="IdleValueTextBox" Width="80"
-                                         Style="{StaticResource ModernTextBox}"
-                                         Text="{Binding IdleValue, UpdateSourceTrigger=PropertyChanged, ValidatesOnDataErrors=True, TargetNullValue=''}" />
+                         Style="{StaticResource ModernTextBox}"
+                         Text="{Binding IdleValue, UpdateSourceTrigger=PropertyChanged, ValidatesOnDataErrors=True, TargetNullValue=''}" />
                             </StackPanel>
                         </Grid>
                     </StackPanel>
 
+                    <!-- Active Conditions Section -->
                     <StackPanel Grid.Row="1" Grid.Column="1" Margin="40,20,0,0" ToolTipService.InitialShowDelay="200">
                         <StackPanel.ToolTip>
                             <ToolTip>
                                 <TextBlock>
-                                    <Run FontWeight="SemiBold" TextDecorations="Underline">Monitor-Specific Conditions</Run><LineBreak />
-                                    These options prevent ONLY this monitor from sleeping.<LineBreak /><LineBreak />
-                                    • <Run FontWeight="SemiBold">Mouse cursor is on this monitor:</Run><LineBreak />
-                                    <Span Foreground="{StaticResource SecondaryForegroundColor}">Keeps this monitor awake just by leaving your mouse on it.</Span><LineBreak />
-                                    • <Run FontWeight="SemiBold">Contains the active window:</Run><LineBreak />
-                                    <Span Foreground="{StaticResource SecondaryForegroundColor}">Keeps the monitor awake if it has the application you're currently using (the window you last clicked).</Span>
-                                    <LineBreak /><LineBreak />
-                                    <Run FontWeight="SemiBold" TextDecorations="Underline">General Condition</Run><LineBreak />
-                                    This option is system-wide.<LineBreak /><LineBreak />
-                                    • <Run FontWeight="SemiBold">System-wide user input:</Run><LineBreak />
-                                    <Span Foreground="{StaticResource SecondaryForegroundColor}">Windows' standard behavior. Any input on ANY monitor keeps this monitor active.</Span>
+                  <Run FontWeight="SemiBold" TextDecorations="Underline">Monitor-Specific Conditions</Run><LineBreak />
+                  These options prevent ONLY this monitor from sleeping.<LineBreak /><LineBreak />
+                  • <Run FontWeight="SemiBold">Mouse cursor is on this monitor:</Run><LineBreak />
+                  <Span Foreground="{StaticResource SecondaryForegroundColor}">Keeps this monitor awake just by leaving your mouse on it.</Span><LineBreak />
+                  • <Run FontWeight="SemiBold">Contains the active window:</Run><LineBreak />
+                  <Span Foreground="{StaticResource SecondaryForegroundColor}">Keeps the monitor awake if it has the application you're currently using (the window you last clicked).</Span>
+                  <LineBreak /><LineBreak />
+                  <Run FontWeight="SemiBold" TextDecorations="Underline">General Condition</Run><LineBreak />
+                  This option is system-wide.<LineBreak /><LineBreak />
+                  • <Run FontWeight="SemiBold">System-wide user input:</Run><LineBreak />
+                  <Span Foreground="{StaticResource SecondaryForegroundColor}">Windows' standard behavior. Any input on ANY monitor keeps this monitor active.</Span>
                                 </TextBlock>
                             </ToolTip>
                         </StackPanel.ToolTip>
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Text="CONSIDER ACTIVE WHEN..." Foreground="{StaticResource SecondaryForegroundColor}" FontSize="12" FontWeight="Light" />
                             <TextBlock Text="*" Foreground="{StaticResource DestructiveColorBrush}" FontWeight="Bold" Margin="4,-2,0,0" VerticalAlignment="Top"
-                                Visibility="{Binding ActiveConditionsError, Converter={StaticResource ErrorVisibilityConverter}}" />
+                         Visibility="{Binding ActiveConditionsError, Converter={StaticResource ErrorVisibilityConverter}}" />
                         </StackPanel>
-
                         <StackPanel Margin="0,8,0,0">
                             <CheckBox Margin="0,0,0,8" Style="{StaticResource ModernCheckBox}" Content="Mouse cursor is on this monitor"
-                                IsChecked="{Binding IsActiveOnMousePosition, UpdateSourceTrigger=PropertyChanged, ValidatesOnDataErrors=True}" />
+                        IsChecked="{Binding IsActiveOnMousePosition, UpdateSourceTrigger=PropertyChanged, ValidatesOnDataErrors=True}" />
                             <CheckBox Margin="0,0,0,8" Style="{StaticResource ModernCheckBox}" Content="Application is focused on this monitor"
-                                IsChecked="{Binding IsActiveOnActiveWindow, UpdateSourceTrigger=PropertyChanged, ValidatesOnDataErrors=True}" />
+                        IsChecked="{Binding IsActiveOnActiveWindow, UpdateSourceTrigger=PropertyChanged, ValidatesOnDataErrors=True}" />
                             <CheckBox Margin="0,0,0,0" Style="{StaticResource ModernCheckBox}" Content="System has user input"
-                                      IsChecked="{Binding IsActiveOnInput, UpdateSourceTrigger=PropertyChanged, ValidatesOnDataErrors=True}" />
+                        IsChecked="{Binding IsActiveOnInput, UpdateSourceTrigger=PropertyChanged, ValidatesOnDataErrors=True}" />
                         </StackPanel>
                     </StackPanel>
                 </Grid>
