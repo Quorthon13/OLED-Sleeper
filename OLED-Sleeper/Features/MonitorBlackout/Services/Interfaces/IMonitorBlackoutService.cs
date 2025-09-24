@@ -1,4 +1,3 @@
-using System.Threading.Tasks;
 using System.Windows;
 
 namespace OLED_Sleeper.Features.MonitorBlackout.Services.Interfaces

@@ -1,8 +1,8 @@
-using System.Timers;
 using OLED_Sleeper.Features.MonitorInformation.Models;
 using OLED_Sleeper.Features.MonitorInformation.Services.Interfaces;
 using OLED_Sleeper.Features.MonitorState.Models;
 using OLED_Sleeper.Features.MonitorState.Services.Interfaces;
+using System.Timers;
 using Timer = System.Timers.Timer;
 
 namespace OLED_Sleeper.Features.MonitorState.Services

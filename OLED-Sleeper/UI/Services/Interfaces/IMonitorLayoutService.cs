@@ -1,6 +1,6 @@
-﻿using System.Collections.ObjectModel;
-using OLED_Sleeper.Features.MonitorInformation.Models;
+﻿using OLED_Sleeper.Features.MonitorInformation.Models;
 using OLED_Sleeper.UI.ViewModels;
+using System.Collections.ObjectModel;
 
 namespace OLED_Sleeper.UI.Services.Interfaces
 {

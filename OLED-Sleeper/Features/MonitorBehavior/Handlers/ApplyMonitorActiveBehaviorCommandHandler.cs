@@ -1,10 +1,10 @@
 using OLED_Sleeper.Core.Interfaces;
-using Serilog;
+using OLED_Sleeper.Features.MonitorBehavior.Commands;
 using OLED_Sleeper.Features.MonitorBlackout.Commands;
 using OLED_Sleeper.Features.MonitorBlackout.Services.Interfaces;
 using OLED_Sleeper.Features.MonitorDimming.Commands;
-using OLED_Sleeper.Features.MonitorBehavior.Commands;
 using OLED_Sleeper.Features.MonitorIdleDetection.Models;
+using Serilog;
 
 namespace OLED_Sleeper.Features.MonitorBehavior.Handlers
 {

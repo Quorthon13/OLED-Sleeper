@@ -1,6 +1,4 @@
-﻿using System;
-
-namespace OLED_Sleeper.Core
+﻿namespace OLED_Sleeper.Core
 {
     /// <summary>
     /// Provides application-wide notifications for global actions, such as restoring all monitors.

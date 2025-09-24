@@ -1,12 +1,12 @@
-﻿using System.Runtime.InteropServices;
-using System.Windows;
-using OLED_Sleeper.Features.MonitorIdleDetection.Models;
+﻿using OLED_Sleeper.Features.MonitorIdleDetection.Models;
 using OLED_Sleeper.Features.MonitorIdleDetection.Services.Interfaces;
 using OLED_Sleeper.Features.MonitorInformation.Models;
 using OLED_Sleeper.Features.MonitorInformation.Services.Interfaces;
 using OLED_Sleeper.Features.UserSettings.Models;
 using OLED_Sleeper.Native;
 using Serilog;
+using System.Runtime.InteropServices;
+using System.Windows;
 
 namespace OLED_Sleeper.Features.MonitorIdleDetection.Services
 {

@@ -1,8 +1,8 @@
-﻿using System.IO;
-using System.Text.Json;
-using OLED_Sleeper.Features.UserSettings.Models;
+﻿using OLED_Sleeper.Features.UserSettings.Models;
 using OLED_Sleeper.Features.UserSettings.Services.Interfaces;
 using Serilog;
+using System.IO;
+using System.Text.Json;
 
 namespace OLED_Sleeper.Features.UserSettings.Services
 {

@@ -1,9 +1,9 @@
-﻿using System.Collections.ObjectModel;
-using System.Windows;
-using OLED_Sleeper.Features.MonitorInformation.Models;
+﻿using OLED_Sleeper.Features.MonitorInformation.Models;
 using OLED_Sleeper.UI.Services.Interfaces;
 using OLED_Sleeper.UI.ViewModels;
 using Serilog;
+using System.Collections.ObjectModel;
+using System.Windows;
 
 namespace OLED_Sleeper.UI.Services
 {

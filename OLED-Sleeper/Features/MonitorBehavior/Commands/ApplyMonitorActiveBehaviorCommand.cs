@@ -1,4 +1,3 @@
-using OLED_Sleeper.Models;
 using OLED_Sleeper.Core.Interfaces;
 using OLED_Sleeper.Features.MonitorIdleDetection.Models;
 

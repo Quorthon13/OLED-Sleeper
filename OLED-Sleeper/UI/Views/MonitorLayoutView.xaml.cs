@@ -1,6 +1,6 @@
-﻿using System.Windows;
+﻿using OLED_Sleeper.UI.ViewModels;
+using System.Windows;
 using System.Windows.Controls;
-using OLED_Sleeper.UI.ViewModels;
 
 namespace OLED_Sleeper.UI.Views
 {

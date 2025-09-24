@@ -1,5 +1,5 @@
-﻿using System.Windows;
-using OLED_Sleeper.Features.UserSettings.Models;
+﻿using OLED_Sleeper.Features.UserSettings.Models;
+using System.Windows;
 
 namespace OLED_Sleeper.Features.MonitorIdleDetection.Models
 {

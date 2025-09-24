@@ -2,9 +2,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using OLED_Sleeper.Core;
 using OLED_Sleeper.Core.Interfaces;
-using Serilog;
-using System.Windows;
-using System.Windows.Controls;
 using OLED_Sleeper.Features.MonitorBehavior.Commands;
 using OLED_Sleeper.Features.MonitorBehavior.Handlers;
 using OLED_Sleeper.Features.MonitorBlackout.Commands;
@@ -15,19 +12,22 @@ using OLED_Sleeper.Features.MonitorDimming.Commands;
 using OLED_Sleeper.Features.MonitorDimming.Handlers;
 using OLED_Sleeper.Features.MonitorDimming.Services;
 using OLED_Sleeper.Features.MonitorDimming.Services.Interfaces;
-using OLED_Sleeper.Features.MonitorState.Commands;
-using OLED_Sleeper.Features.MonitorState.Handlers;
-using OLED_Sleeper.Features.UserSettings.Services.Interfaces;
-using OLED_Sleeper.Features.MonitorState.Services;
 using OLED_Sleeper.Features.MonitorIdleDetection.Services;
+using OLED_Sleeper.Features.MonitorIdleDetection.Services.Interfaces;
 using OLED_Sleeper.Features.MonitorInformation.Services;
 using OLED_Sleeper.Features.MonitorInformation.Services.Interfaces;
-using OLED_Sleeper.Features.UserSettings.Services;
-using OLED_Sleeper.Features.MonitorIdleDetection.Services.Interfaces;
+using OLED_Sleeper.Features.MonitorState.Commands;
+using OLED_Sleeper.Features.MonitorState.Handlers;
+using OLED_Sleeper.Features.MonitorState.Services;
 using OLED_Sleeper.Features.MonitorState.Services.Interfaces;
+using OLED_Sleeper.Features.UserSettings.Services;
+using OLED_Sleeper.Features.UserSettings.Services.Interfaces;
 using OLED_Sleeper.UI.Services;
 using OLED_Sleeper.UI.Services.Interfaces;
 using OLED_Sleeper.UI.ViewModels;
+using Serilog;
+using System.Windows;
+using System.Windows.Controls;
 
 namespace OLED_Sleeper
 {

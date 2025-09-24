@@ -1,5 +1,5 @@
-﻿using System.Collections.ObjectModel;
-using OLED_Sleeper.UI.ViewModels;
+﻿using OLED_Sleeper.UI.ViewModels;
+using System.Collections.ObjectModel;
 
 namespace OLED_Sleeper.UI.Services.Interfaces
 {
