@@ -1,4 +1,4 @@
-﻿using OLED_Sleeper.ViewModels;
+﻿using OLED_Sleeper.UI.ViewModels;
 using System.ComponentModel;
 using System.Windows;
 using System.Windows.Input;

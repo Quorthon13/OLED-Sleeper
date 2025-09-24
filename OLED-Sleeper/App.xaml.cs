@@ -2,33 +2,32 @@
 using Microsoft.Extensions.DependencyInjection;
 using OLED_Sleeper.Core;
 using OLED_Sleeper.Core.Interfaces;
-using OLED_Sleeper.ViewModels;
 using Serilog;
 using System.Windows;
 using System.Windows.Controls;
-using OLED_Sleeper.Commands.Monitor.Behavior;
-using OLED_Sleeper.Commands.Monitor.Blackout;
-using OLED_Sleeper.Commands.Monitor.Dimming;
-using OLED_Sleeper.Commands.Monitor.State;
-using OLED_Sleeper.Handlers.Monitor.Dim;
-using OLED_Sleeper.Handlers.Monitor.Blackout;
-using OLED_Sleeper.Handlers;
-using OLED_Sleeper.Handlers.Monitor.Behavior;
-using OLED_Sleeper.Handlers.Monitor.State;
-using OLED_Sleeper.Services.Core;
-using OLED_Sleeper.Services.Core.Interfaces;
-using OLED_Sleeper.Services.Monitor.Blackout;
-using OLED_Sleeper.Services.Monitor.Blackout.Interfaces;
-using OLED_Sleeper.Services.Monitor.Dimming;
-using OLED_Sleeper.Services.Monitor.Dimming.Interfaces;
-using OLED_Sleeper.Services.Monitor.IdleDetection;
-using OLED_Sleeper.Services.Monitor.IdleDetection.Interfaces;
-using OLED_Sleeper.Services.Monitor.Info;
-using OLED_Sleeper.Services.Monitor.Info.Interfaces;
-using OLED_Sleeper.Services.UI;
-using OLED_Sleeper.Services.UI.Interfaces;
-using OLED_Sleeper.Services.Monitor.Settings.Interfaces;
-using OLED_Sleeper.Services.Monitor.Settings;
+using OLED_Sleeper.Features.MonitorBehavior.Commands;
+using OLED_Sleeper.Features.MonitorBehavior.Handlers;
+using OLED_Sleeper.Features.MonitorBlackout.Commands;
+using OLED_Sleeper.Features.MonitorBlackout.Handlers;
+using OLED_Sleeper.Features.MonitorBlackout.Services;
+using OLED_Sleeper.Features.MonitorBlackout.Services.Interfaces;
+using OLED_Sleeper.Features.MonitorDimming.Commands;
+using OLED_Sleeper.Features.MonitorDimming.Handlers;
+using OLED_Sleeper.Features.MonitorDimming.Services;
+using OLED_Sleeper.Features.MonitorDimming.Services.Interfaces;
+using OLED_Sleeper.Features.MonitorState.Commands;
+using OLED_Sleeper.Features.MonitorState.Handlers;
+using OLED_Sleeper.Features.UserSettings.Services.Interfaces;
+using OLED_Sleeper.Features.MonitorState.Services;
+using OLED_Sleeper.Features.MonitorIdleDetection.Services;
+using OLED_Sleeper.Features.MonitorInformation.Services;
+using OLED_Sleeper.Features.MonitorInformation.Services.Interfaces;
+using OLED_Sleeper.Features.UserSettings.Services;
+using OLED_Sleeper.Features.MonitorIdleDetection.Services.Interfaces;
+using OLED_Sleeper.Features.MonitorState.Services.Interfaces;
+using OLED_Sleeper.UI.Services;
+using OLED_Sleeper.UI.Services.Interfaces;
+using OLED_Sleeper.UI.ViewModels;
 
 namespace OLED_Sleeper
 {
@@ -80,7 +79,6 @@ namespace OLED_Sleeper
             services.AddSingleton<IMonitorBlackoutService, MonitorBlackoutService>();
             services.AddSingleton<IApplicationOrchestrator, ApplicationOrchestrator>();
             services.AddSingleton<IWorkspaceService, WorkspaceService>();
-            services.AddSingleton<IMonitorSettingsValidationService, MonitorSettingsValidationService>();
             services.AddSingleton<IMonitorInfoProvider, MonitorInfoProvider>();
             services.AddSingleton<IMonitorLayoutService, MonitorLayoutService>();
             services.AddSingleton<IMonitorSettingsFileService, MonitorSettingsFileService>();
@@ -192,7 +190,7 @@ namespace OLED_Sleeper
 
             Log.Information("Shutdown initiated. Restoring all monitors...");
 
-            AppNotifications.TriggerRestoreAllMonitors();
+            ApplicationNotifications.TriggerRestoreAllMonitors();
 
             Log.Information("--- Application Exiting ---");
             Log.CloseAndFlush();
