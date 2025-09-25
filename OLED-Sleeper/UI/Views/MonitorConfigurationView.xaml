@@ -314,7 +314,11 @@
                         <StackPanel.ToolTip>
                             <ToolTip Content="{Binding BehaviorSectionTooltip}" />
                         </StackPanel.ToolTip>
-                        <TextBlock Text="BEHAVIOR" Foreground="{StaticResource SecondaryForegroundColor}" FontSize="12" FontWeight="Light" Margin="0,0,0,5" />
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,5">
+                            <TextBlock Text="BEHAVIOR" Foreground="{StaticResource SecondaryForegroundColor}" FontSize="12" FontWeight="Light" />
+                            <TextBlock Text="*" Foreground="{StaticResource DestructiveColorBrush}" FontWeight="Bold" Margin="4,-2,0,0" VerticalAlignment="Top"
+                                       Visibility="{Binding BehaviorError, Converter={StaticResource ErrorVisibilityConverter}}" />
+                        </StackPanel>
                         <StackPanel Orientation="Horizontal" Margin="0,5,0,0">
                             <RadioButton Content="Blackout" GroupName="Behavior" Style="{StaticResource ModernRadioButton}"
                                 IsChecked="{Binding Behavior, Converter={StaticResource EnumToBooleanConverter}, ConverterParameter={x:Static models1:MonitorBehaviorType.Blackout}, UpdateSourceTrigger=PropertyChanged}" />
@@ -359,23 +363,32 @@
                                 <ColumnDefinition Width="Auto" />
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
-                            <StackPanel Grid.Column="0">
-                                <TextBlock Text="Unit" Foreground="{StaticResource SecondaryForegroundColor}" FontSize="11" Margin="4,0,0,3" />
-                                <ComboBox Width="120"
-                          ItemsSource="{Binding TimeUnits}"
-                          SelectedItem="{Binding SelectedTimeUnit, UpdateSourceTrigger=PropertyChanged}"
-                          Style="{StaticResource ModernComboBox}" />
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+
+                            <!-- Unit Label -->
+                            <TextBlock Grid.Row="0" Grid.Column="0" Text="Unit" Foreground="{StaticResource SecondaryForegroundColor}" FontSize="11" Margin="4,0,0,3" />
+                            <!-- Value Label + Error -->
+                            <StackPanel Grid.Row="0" Grid.Column="1" Orientation="Horizontal" Margin="10,0,0,0">
+                                <TextBlock Text="Value" Foreground="{StaticResource SecondaryForegroundColor}" FontSize="11" Margin="4,0,0,3" />
+                                <TextBlock Text="*" Foreground="{StaticResource DestructiveColorBrush}" FontWeight="Bold" Margin="4,-2,0,0" VerticalAlignment="Top"
+                                           Visibility="{Binding IdleValueError, Converter={StaticResource ErrorVisibilityConverter}}" />
                             </StackPanel>
-                            <StackPanel Grid.Column="1" Margin="10,0,0,0">
-                                <StackPanel Orientation="Horizontal">
-                                    <TextBlock Text="Value" Foreground="{StaticResource SecondaryForegroundColor}" FontSize="11" Margin="4,0,0,3" />
-                                    <TextBlock Text="*" Foreground="{StaticResource DestructiveColorBrush}" FontWeight="Bold" Margin="4,-2,0,0" VerticalAlignment="Top"
-                             Visibility="{Binding IdleValueError, Converter={StaticResource ErrorVisibilityConverter}}" />
-                                </StackPanel>
-                                <TextBox x:Name="IdleValueTextBox" Width="80"
-                         Style="{StaticResource ModernTextBox}"
-                         Text="{Binding IdleValue, UpdateSourceTrigger=PropertyChanged, ValidatesOnDataErrors=True, TargetNullValue=''}" />
-                            </StackPanel>
+
+                            <!-- Unit ComboBox -->
+                            <ComboBox Grid.Row="1" Grid.Column="0" Width="120" Height="32"
+                                      FontSize="14" Padding="8,5"
+                                      ItemsSource="{Binding TimeUnits}"
+                                      SelectedItem="{Binding SelectedTimeUnit, UpdateSourceTrigger=PropertyChanged}"
+                                      Style="{StaticResource ModernComboBox}" />
+
+                            <!-- Value TextBox -->
+                            <TextBox Grid.Row="1" Grid.Column="1" x:Name="IdleValueTextBox" Width="80" Height="32" Margin="10,0,0,0"
+                                     FontSize="14" Padding="8,5"
+                                     Style="{StaticResource ModernTextBox}"
+                                     Text="{Binding IdleValue, UpdateSourceTrigger=PropertyChanged, ValidatesOnDataErrors=True, TargetNullValue=''}" />
                         </Grid>
                     </StackPanel>
 

@@ -1,5 +1,6 @@
 ﻿using OLED_Sleeper.Core;
 using OLED_Sleeper.Features.UserSettings.Services.Interfaces;
+using OLED_Sleeper.Native;
 using OLED_Sleeper.UI.Commands;
 using OLED_Sleeper.UI.Helpers;
 using OLED_Sleeper.UI.Services.Interfaces;
@@ -237,6 +238,18 @@ namespace OLED_Sleeper.UI.ViewModels
             }
             // Hide the window instead of closing
             Application.Current.MainWindow?.Hide();
+            try
+            {
+                GC.Collect();
+                GC.WaitForPendingFinalizers();
+                if (Environment.OSVersion.Platform == PlatformID.Win32NT)
+                {
+                    NativeMethods.SetProcessWorkingSetSize(System.Diagnostics.Process.GetCurrentProcess().Handle, -1, -1);
+                }
+            }
+            catch (Exception ex)
+            {
+            }
             return false; // Always cancel closing (hide instead)
         }
 

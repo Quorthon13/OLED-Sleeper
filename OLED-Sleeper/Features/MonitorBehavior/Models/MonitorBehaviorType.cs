@@ -6,6 +6,11 @@
     public enum MonitorBehaviorType
     {
         /// <summary>
+        /// No behavior is set.
+        /// </summary>
+        None,
+
+        /// <summary>
         /// Dim the monitor's brightness.
         /// </summary>
         Dim,

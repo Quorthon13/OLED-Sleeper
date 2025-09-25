@@ -47,13 +47,20 @@ namespace OLED_Sleeper.UI.Helpers
         private static void ShowValidationError(List<MonitorLayoutViewModel> invalidMonitors)
         {
             var errorBuilder = new StringBuilder();
-            errorBuilder.AppendLine("Cannot save due to invalid settings on the following monitors:");
+            errorBuilder.AppendLine("One or more monitors have configuration issues and cannot be saved:");
             foreach (var monitor in invalidMonitors)
             {
-                errorBuilder.AppendLine($" - {monitor.MonitorTitle}");
+                errorBuilder.AppendLine($" - {monitor.MonitorTitle}:");
+                var config = monitor.Configuration;
+                if (!string.IsNullOrWhiteSpace(config.BehaviorError))
+                    errorBuilder.AppendLine($"     • {config.BehaviorError}");
+                if (!string.IsNullOrWhiteSpace(config.IdleValueError))
+                    errorBuilder.AppendLine($"     • {config.IdleValueError}");
+                if (!string.IsNullOrWhiteSpace(config.ActiveConditionsError))
+                    errorBuilder.AppendLine($"     • {config.ActiveConditionsError}");
             }
-            errorBuilder.AppendLine("\nPlease correct the required fields before saving.");
-            MessageBox.Show(errorBuilder.ToString(), "Invalid Settings", MessageBoxButton.OK, MessageBoxImage.Error);
+            errorBuilder.AppendLine("\nTo resolve these issues, either update the highlighted fields or uncheck 'Manage' for the affected monitor(s).");
+            MessageBox.Show(errorBuilder.ToString(), "Monitor Configuration Error", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 }

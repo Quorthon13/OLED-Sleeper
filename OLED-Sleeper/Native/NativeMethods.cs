@@ -341,5 +341,20 @@ namespace OLED_Sleeper.Native
         public static extern bool GetCapabilitiesStringLength(IntPtr hPhysicalMonitor, out uint pdwCapabilitiesStringLengthInCharacters);
 
         #endregion DDC/CI (Monitor Brightness)
+
+        #region Process Memory Management
+
+        /// <summary>
+        /// Sets the minimum and maximum working set sizes for the specified process.
+        /// </summary>
+        /// <param name="process">A handle to the process whose working set size is to be set.</param>
+        /// <param name="minimumWorkingSetSize">The minimum number of bytes to be in the working set of the process.</param>
+        /// <param name="maximumWorkingSetSize">The maximum number of bytes to be in the working set of the process.</param>
+        /// <returns>If the function succeeds, the return value is nonzero; otherwise, it is zero.</returns>
+        /// <seealso href="https://learn.microsoft.com/en-us/windows/win32/api/memoryapi/nf-memoryapi-setprocessworkingsetsize"/>
+        [DllImport("kernel32.dll", EntryPoint = "SetProcessWorkingSetSize", ExactSpelling = true, CharSet = CharSet.Ansi, SetLastError = true)]
+        public static extern int SetProcessWorkingSetSize(IntPtr process, int minimumWorkingSetSize, int maximumWorkingSetSize);
+
+        #endregion Process Memory Management
     }
 }

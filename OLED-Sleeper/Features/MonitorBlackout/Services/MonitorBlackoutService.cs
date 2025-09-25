@@ -65,6 +65,7 @@ namespace OLED_Sleeper.Features.MonitorBlackout.Services
         private static Window CreateOverlayWindow(Rect bounds) =>
             new()
             {
+                Cursor = System.Windows.Input.Cursors.None,
                 WindowStyle = WindowStyle.None,
                 ResizeMode = ResizeMode.NoResize,
                 AllowsTransparency = true,

@@ -1,4 +1,5 @@
-﻿using OLED_Sleeper.UI.Models;
+﻿using OLED_Sleeper.Features.MonitorBehavior.Models;
+using OLED_Sleeper.UI.Models;
 
 namespace OLED_Sleeper.Features.UserSettings.Models
 {
@@ -20,7 +21,7 @@ namespace OLED_Sleeper.Features.UserSettings.Models
         /// <summary>
         /// Gets or sets the behavior to apply when the monitor becomes idle (e.g., dim or blackout).
         /// </summary>
-        public MonitorBehavior.Models.MonitorBehaviorType Behavior { get; set; } = MonitorBehavior.Models.MonitorBehaviorType.Dim;
+        public MonitorBehaviorType Behavior { get; set; } = MonitorBehaviorType.None;
 
         /// <summary>
         /// Gets or sets the dimming level to apply when the monitor is dimmed.

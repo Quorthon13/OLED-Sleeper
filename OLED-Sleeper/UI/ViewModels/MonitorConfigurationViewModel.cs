@@ -1,5 +1,4 @@
-﻿// File: ViewModels/MonitorConfigurationViewModel.cs
-using OLED_Sleeper.Features.MonitorBehavior.Models;
+﻿using OLED_Sleeper.Features.MonitorBehavior.Models;
 using OLED_Sleeper.Features.MonitorInformation.Models;
 using OLED_Sleeper.Features.UserSettings.Models;
 using OLED_Sleeper.UI.Models;
@@ -46,13 +45,13 @@ namespace OLED_Sleeper.UI.ViewModels
         public bool IsManaged
         {
             get => _isManaged;
-            // --- Updated: Notifies error properties when changed ---
             set
             {
                 _isManaged = value;
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(IdleValueError));
                 OnPropertyChanged(nameof(ActiveConditionsError));
+                OnPropertyChanged(nameof(BehaviorError)); // Ensure all errors update
                 UpdateDirtyState();
             }
         }
@@ -99,9 +98,15 @@ namespace OLED_Sleeper.UI.ViewModels
                 if (_behavior == MonitorBehaviorType.Blackout) { DimLevel = 0; }
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(IsDimSliderEnabled));
+                OnPropertyChanged(nameof(BehaviorError));
                 UpdateDirtyState();
             }
         }
+
+        /// <summary>
+        /// Returns an error message if the behavior is invalid.
+        /// </summary>
+        public string BehaviorError => this["Behavior"];
 
         // --- DimLevel ---
         private double _dimLevel;
@@ -326,7 +331,7 @@ namespace OLED_Sleeper.UI.ViewModels
                 if (!IsManaged) return true; // Unmanaged monitors are always "valid"
 
                 // Check all validation rules
-                return ValidateIdleValue() == null && ValidateActiveConditions() == null;
+                return ValidateIdleValue() == null && ValidateActiveConditions() == null && ValidateBehavior() == null;
             }
         }
 
@@ -358,6 +363,10 @@ namespace OLED_Sleeper.UI.ViewModels
                     case nameof(IsActiveOnActiveWindow):
                         result = ValidateActiveConditions();
                         break;
+
+                    case nameof(Behavior):
+                        result = ValidateBehavior();
+                        break;
                 }
                 return result ?? string.Empty;
             }
@@ -382,6 +391,19 @@ namespace OLED_Sleeper.UI.ViewModels
         {
             if (!IsActiveOnInput && !IsActiveOnMousePosition && !IsActiveOnActiveWindow)
                 return "At least one 'Consider Active When' option must be selected.";
+            return null;
+        }
+
+        /// <summary>
+        /// Validates the Behavior property to ensure a monitor behavior is selected when managed.
+        /// </summary>
+        /// <returns>
+        /// An error message if the behavior is not selected (None), otherwise null.
+        /// </returns>
+        private string? ValidateBehavior()
+        {
+            if (Behavior == MonitorBehaviorType.None)
+                return "A monitor behavior must be selected.";
             return null;
         }
 
