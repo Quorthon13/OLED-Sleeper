@@ -185,7 +185,6 @@ namespace OLED_Sleeper.UI.ViewModels
             DiscardChangesCommand = new RelayCommand(ExecuteDiscardChanges, () => IsDirty);
 
             _workspaceService.WorkspaceReady += OnWorkspaceReady;
-            IsLoading = false;
         }
 
         #endregion Constructor
