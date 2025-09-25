@@ -235,20 +235,6 @@ namespace OLED_Sleeper.UI.ViewModels
                     SaveSettingsCommand.Execute(null);
                 }
             }
-            // Hide the window instead of closing
-            Application.Current.MainWindow?.Hide();
-            try
-            {
-                GC.Collect();
-                GC.WaitForPendingFinalizers();
-                if (Environment.OSVersion.Platform == PlatformID.Win32NT)
-                {
-                    NativeMethods.SetProcessWorkingSetSize(System.Diagnostics.Process.GetCurrentProcess().Handle, -1, -1);
-                }
-            }
-            catch (Exception ex)
-            {
-            }
             return false; // Always cancel closing (hide instead)
         }
 

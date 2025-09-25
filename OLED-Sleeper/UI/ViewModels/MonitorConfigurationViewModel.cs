@@ -249,12 +249,14 @@ namespace OLED_Sleeper.UI.ViewModels
 
         /// <summary>
         /// Updates the IsDirty property based on whether any tracked property has changed from its initial value.
+        /// Uses a tolerance for floating point comparison.
         /// </summary>
         private void UpdateDirtyState()
         {
+            const double epsilon = 0.0001;
             IsDirty = IsManaged != _initialIsManaged ||
                        Behavior != _initialBehavior ||
-                       DimLevel != _initialDimLevel ||
+                       Math.Abs(DimLevel - _initialDimLevel) > epsilon ||
                        IdleValue != _initialIdleValue ||
                        SelectedTimeUnit != _initialSelectedTimeUnit ||
                        IsActiveOnInput != _initialIsActiveOnInput ||
