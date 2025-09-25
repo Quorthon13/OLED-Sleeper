@@ -10,6 +10,6 @@
         /// </summary>
         /// <param name="command">The command object.</param>
         /// <returns>A task that represents the asynchronous operation.</returns>
-        Task SendAsync(ICommand command);
+        Task SendAsync<TCommand>(TCommand command) where TCommand : ICommand;
     }
 }
