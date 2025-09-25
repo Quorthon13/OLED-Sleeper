@@ -1,7 +1,4 @@
-﻿using System;
-using System.Threading;
-using System.Threading.Tasks;
-using System.Windows;
+﻿using System.Windows;
 using OLED_Sleeper.Core.Interfaces;
 
 namespace OLED_Sleeper.Core
@@ -13,31 +10,41 @@ namespace OLED_Sleeper.Core
     public class ApplicationInstanceManager : IApplicationInstanceManager
     {
         #region Constants
+
         private const string MutexName = "OLED-Sleeper-Mutex";
         private const string EventName = "OLED-Sleeper-ShowWindow";
-        #endregion
+
+        #endregion Constants
 
         #region Fields
+
         private Mutex? _mutex;
         private EventWaitHandle? _showWindowEvent;
         private Action? _showMainWindowAction;
-        #endregion
+
+        #endregion Fields
 
         #region Properties
+
         /// <summary>
         /// Indicates whether this is the first instance of the application.
         /// </summary>
         public bool IsFirstInstance { get; private set; }
-        #endregion
+
+        #endregion Properties
 
         #region Constructors
+
         /// <summary>
         /// Initializes a new instance of the <see cref="ApplicationInstanceManager"/> class.
         /// </summary>
-        public ApplicationInstanceManager() { }
-        #endregion
+        public ApplicationInstanceManager()
+        { }
+
+        #endregion Constructors
 
         #region Public Methods
+
         /// <summary>
         /// Initializes the single-instance check.
         /// If another instance is running, signals it to show its main window and exits the current process.
@@ -65,9 +72,11 @@ namespace OLED_Sleeper.Core
         {
             _showMainWindowAction = showMainWindowAction ?? throw new ArgumentNullException(nameof(showMainWindowAction));
         }
-        #endregion
+
+        #endregion Public Methods
 
         #region Private Methods
+
         /// <summary>
         /// Signals the first instance to show its main window and exits the current process.
         /// </summary>
@@ -118,28 +127,40 @@ namespace OLED_Sleeper.Core
                 }
             }
         }
-        #endregion
+
+        #endregion Private Methods
 
         #region IDisposable Implementation
+
         /// <summary>
         /// Releases resources and mutex when the application exits.
         /// </summary>
         public void Dispose()
         {
-            _showWindowEvent?.Dispose();
-            if (_mutex != null)
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        protected void Dispose(bool disposing)
+        {
+            if (disposing)
             {
-                try
+                _showWindowEvent?.Dispose();
+                if (_mutex != null)
                 {
-                    _mutex.ReleaseMutex();
+                    try
+                    {
+                        _mutex.ReleaseMutex();
+                    }
+                    catch
+                    {
+                        // Ignore if already released
+                    }
+                    _mutex.Dispose();
                 }
-                catch
-                {
-                    // Ignore if already released
-                }
-                _mutex.Dispose();
             }
         }
-        #endregion
+
+        #endregion IDisposable Implementation
     }
 }

@@ -103,6 +103,7 @@ namespace OLED_Sleeper.Features.MonitorIdleDetection.Services
         public void Stop()
         {
             _cancellationTokenSource?.Cancel();
+            _cancellationTokenSource?.Dispose();
             Log.Information("MonitorIdleDetectionService stopped.");
         }
 

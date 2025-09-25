@@ -79,3 +79,7 @@ _ReSharper*/
 /installer/publish-x64/
 /installer/publish-x86/
 /installer/InstallerOutput/
+
+# SonarQube
+.sonar/
+.sonarqube/
