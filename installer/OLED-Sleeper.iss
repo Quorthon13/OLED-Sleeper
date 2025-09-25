@@ -49,16 +49,16 @@ Source: ".\publish-x64\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs
 
 [Icons]
 ; Creates shortcuts in the Start Menu and (optionally) on the Desktop.
-; IMPORTANT: Change "OLEDSleeper.exe" if your executable has a different name.
+; IMPORTANT: Change "OLED-Sleeper.exe" if your executable has a different name.
 Name: "{group}\OLED Sleeper"; Filename: "{app}\OLED-Sleeper.exe"
 Name: "{autodesktop}\OLED Sleeper"; Filename: "{app}\OLED-Sleeper.exe"; Tasks: desktopicon
 
 [Registry]
 ; Creates a registry entry to run the application at startup if the "startup" task is checked.
-; IMPORTANT: Change "OLEDSleeper.exe" if your executable has a different name.
+; IMPORTANT: Change "OLED-Sleeper.exe" if your executable has a different name.
 Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: string; ValueName: "OLED Sleeper"; ValueData: """{app}\OLEDSleeper.exe"""; Tasks: startup
 
 [Run]
 ; Gives the user an option to run the application immediately after installation finishes.
-; IMPORTANT: Change "OLEDSleeper.exe" if your executable has a different name.
+; IMPORTANT: Change "OLED-Sleeper.exe" if your executable has a different name.
 Filename: "{app}\OLED-Sleeper.exe"; Description: "{cm:LaunchProgram,OLED Sleeper}"; Flags: nowait postinstall skipifsilent
