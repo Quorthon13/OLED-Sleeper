@@ -1,31 +1,48 @@
-﻿using Hardcodet.Wpf.TaskbarNotification;
-
-using Microsoft.Extensions.DependencyInjection;
-using OLED_Sleeper.Events;
-using OLED_Sleeper.Services.Application.Interfaces;
-using OLED_Sleeper.Services.Monitor.Interfaces;
-using OLED_Sleeper.Services.Workspace.Interfaces;
-using OLED_Sleeper.ViewModels;
+﻿using Microsoft.Extensions.DependencyInjection;
+using OLED_Sleeper.Core;
+using OLED_Sleeper.Core.Interfaces;
+using OLED_Sleeper.Features.MonitorBehavior.Commands;
+using OLED_Sleeper.Features.MonitorBehavior.Handlers;
+using OLED_Sleeper.Features.MonitorBlackout.Commands;
+using OLED_Sleeper.Features.MonitorBlackout.Handlers;
+using OLED_Sleeper.Features.MonitorBlackout.Services;
+using OLED_Sleeper.Features.MonitorBlackout.Services.Interfaces;
+using OLED_Sleeper.Features.MonitorDimming.Commands;
+using OLED_Sleeper.Features.MonitorDimming.Handlers;
+using OLED_Sleeper.Features.MonitorDimming.Services;
+using OLED_Sleeper.Features.MonitorDimming.Services.Interfaces;
+using OLED_Sleeper.Features.MonitorIdleDetection.Services;
+using OLED_Sleeper.Features.MonitorIdleDetection.Services.Interfaces;
+using OLED_Sleeper.Features.MonitorInformation.Services;
+using OLED_Sleeper.Features.MonitorInformation.Services.Interfaces;
+using OLED_Sleeper.Features.MonitorState.Commands;
+using OLED_Sleeper.Features.MonitorState.Handlers;
+using OLED_Sleeper.Features.MonitorState.Services;
+using OLED_Sleeper.Features.MonitorState.Services.Interfaces;
+using OLED_Sleeper.Features.UserSettings.Services;
+using OLED_Sleeper.Features.UserSettings.Services.Interfaces;
+using OLED_Sleeper.UI.Services;
+using OLED_Sleeper.UI.Services.Interfaces;
+using OLED_Sleeper.UI.ViewModels;
 using Serilog;
 using System.Windows;
 using System.Windows.Controls;
-using OLED_Sleeper.Services.Application;
-using OLED_Sleeper.Services.Monitor;
-using OLED_Sleeper.Services.Workspace;
 
 namespace OLED_Sleeper
 {
     /// <summary>
-    /// Interaction logic for the application. Handles startup, DI, logging, and tray icon.
+    /// Interaction logic for the application. Handles startup, DI, logging, single-instance enforcement, and tray icon.
     /// </summary>
     public partial class App : Application
     {
-        private TaskbarIcon? _notifyIcon;
         private IServiceProvider? _serviceProvider;
         private bool _isExiting = false;
+        private ITrayIconService? _trayIconService;
+        private IMainWindowService? _mainWindowService;
+        private ApplicationInstanceManager? _instanceManager;
 
         /// <summary>
-        /// Application entry point. Sets up logging, services, and main window.
+        /// Application entry point. Sets up logging, single-instance enforcement, services, and main window.
         /// </summary>
         /// <param name="e">Startup event arguments.</param>
         protected override void OnStartup(StartupEventArgs e)
@@ -34,10 +51,29 @@ namespace OLED_Sleeper
             this.SessionEnding += App_SessionEnding;
 
             SetupLogging();
+            InitializeInstanceManager();
             ConfigureServices();
             StartOrchestrator();
-            SetupTaskbarIcon();
-            SetupMainWindow();
+            SetupMainWindowService();
+            SetupTrayIconService();
+            HookInstanceManagerShowWindow();
+        }
+
+        /// <summary>
+        /// Initializes the single-instance manager before any other services.
+        /// </summary>
+        private void InitializeInstanceManager()
+        {
+            _instanceManager = new ApplicationInstanceManager();
+            _instanceManager.Initialize();
+        }
+
+        /// <summary>
+        /// Hooks up the delegate for showing the main window after DI and services are ready.
+        /// </summary>
+        private void HookInstanceManagerShowWindow()
+        {
+            _instanceManager?.SetShowMainWindowAction(() => _mainWindowService?.ShowMainWindow());
         }
 
         /// <summary>
@@ -46,6 +82,16 @@ namespace OLED_Sleeper
         private void ConfigureServices()
         {
             var services = new ServiceCollection();
+            services.AddSingleton<IMediator, Mediator>();
+
+            services.AddTransient<ICommandHandler<ApplyMonitorActiveBehaviorCommand>, ApplyMonitorActiveBehaviorCommandHandler>();
+            services.AddTransient<ICommandHandler<ApplyBlackoutOverlayCommand>, ApplyBlackoutOverlayCommandHandler>();
+            services.AddTransient<ICommandHandler<HideBlackoutOverlayCommand>, HideBlackoutOverlayCommandHandler>();
+            services.AddTransient<ICommandHandler<ApplyDimCommand>, ApplyDimCommandHandler>();
+            services.AddTransient<ICommandHandler<ApplyUndimCommand>, ApplyUndimCommandHandler>();
+            services.AddTransient<ICommandHandler<RestoreBrightnessOnAllMonitorsCommand>, RestoreBrightnessOnAllMonitorsCommandHandler>();
+            services.AddTransient<ICommandHandler<SynchronizeMonitorStateCommand>, SynchronizeMonitorStateCommandHandler>();
+
             services.AddSingleton<IMonitorInfoManager, MonitorInfoManager>();
             services.AddSingleton<IMonitorStateWatcher, MonitorStateWatcher>();
             services.AddSingleton<IMonitorBrightnessStateService, MonitorBrightnessStateService>();
@@ -53,13 +99,16 @@ namespace OLED_Sleeper
             services.AddSingleton<IMonitorBlackoutService, MonitorBlackoutService>();
             services.AddSingleton<IApplicationOrchestrator, ApplicationOrchestrator>();
             services.AddSingleton<IWorkspaceService, WorkspaceService>();
-            services.AddSingleton<IMonitorSettingsValidationService, MonitorSettingsValidationService>();
             services.AddSingleton<IMonitorInfoProvider, MonitorInfoProvider>();
             services.AddSingleton<IMonitorLayoutService, MonitorLayoutService>();
             services.AddSingleton<IMonitorSettingsFileService, MonitorSettingsFileService>();
             services.AddSingleton<IMonitorIdleDetectionService, MonitorIdleDetectionService>();
             services.AddSingleton<MainViewModel>();
             services.AddSingleton<MainWindow>();
+            services.AddSingleton<ITrayIconService, TrayIconService>();
+            services.AddSingleton<IMainWindowService, MainWindowService>();
+            services.AddSingleton<IApplicationInstanceManager>(_ => _instanceManager!);
+
             _serviceProvider = services.BuildServiceProvider();
         }
 
@@ -76,64 +125,26 @@ namespace OLED_Sleeper
         }
 
         /// <summary>
-        /// Sets up the main window and its data context.
+        /// Sets up the main window service and its data context.
         /// </summary>
-        private void SetupMainWindow()
+        private void SetupMainWindowService()
         {
             if (_serviceProvider == null) return;
-            var mainWindow = _serviceProvider.GetRequiredService<MainWindow>();
-            mainWindow.DataContext = _serviceProvider.GetRequiredService<MainViewModel>();
-            MainWindow = mainWindow;
-            mainWindow.Show();
+            _mainWindowService = _serviceProvider.GetRequiredService<IMainWindowService>();
+            _mainWindowService.SetupMainWindow();
         }
 
         /// <summary>
-        /// Configures and displays the tray icon and its context menu.
+        /// Configures and displays the tray icon using the tray icon service.
         /// </summary>
-        private void SetupTaskbarIcon()
+        private void SetupTrayIconService()
         {
-            _notifyIcon = new TaskbarIcon
-            {
-                ToolTipText = "OLED Sleeper"
-            };
-            _notifyIcon.TrayMouseDoubleClick += (_, _) => ShowMainWindow();
-
-            var contextMenu = new ContextMenu();
-            var showMenuItem = new MenuItem { Header = "Show Settings" };
-            showMenuItem.Click += (_, _) => ShowMainWindow();
-            contextMenu.Items.Add(showMenuItem);
-
-            var exitMenuItem = new MenuItem { Header = "Exit" };
-            exitMenuItem.Click += (_, _) => ExitApplication();
-            contextMenu.Items.Add(exitMenuItem);
-
-            _notifyIcon.ContextMenu = contextMenu;
-
-            try
-            {
-                var iconUri = new Uri("pack://application:,,,/Assets/icon.ico", UriKind.RelativeOrAbsolute);
-                _notifyIcon.Icon = new System.Drawing.Icon(Application.GetResourceStream(iconUri).Stream);
-            }
-            catch (Exception ex)
-            {
-                Log.Error(ex, "Failed to load tray icon from resources.");
-            }
-        }
-
-        /// <summary>
-        /// Brings the main window to the foreground and restores it if minimized.
-        /// </summary>
-        private void ShowMainWindow()
-        {
-            if (MainWindow != null)
-            {
-                MainWindow.Show();
-                if (MainWindow.WindowState == WindowState.Minimized)
-                {
-                    MainWindow.WindowState = WindowState.Normal;
-                }
-                MainWindow.Activate();
-            }
+            if (_serviceProvider == null) return;
+            _trayIconService = _serviceProvider.GetRequiredService<ITrayIconService>();
+            _trayIconService.Initialize(
+                () => _mainWindowService?.ShowMainWindow(),
+                () => ExitApplication()
+            );
         }
 
         /// <summary>
@@ -156,19 +167,25 @@ namespace OLED_Sleeper
 
         /// <summary>
         /// Performs shutdown logic, including log flush and tray icon disposal.
+        /// Only the first instance will restore monitor states.
         /// </summary>
         private void ShutdownApp()
         {
             if (_isExiting) return; // Prevent re-entrancy
             _isExiting = true;
 
-            Log.Information("Shutdown initiated. Restoring all monitors...");
-
-            AppNotifications.TriggerRestoreAllMonitors();
+            if (_instanceManager?.IsFirstInstance == true)
+            {
+                Log.Information("Shutdown initiated. Restoring all monitors...");
+                ApplicationNotifications.TriggerRestoreAllMonitors();
+            }
 
             Log.Information("--- Application Exiting ---");
             Log.CloseAndFlush();
-            _notifyIcon?.Dispose();
+
+            _trayIconService?.Dispose();
+            _instanceManager?.Dispose();
+
             Current.Shutdown();
         }
 
@@ -189,10 +206,11 @@ namespace OLED_Sleeper
             Log.Information("--- Application Starting ---");
         }
 
+        /// <summary>
+        /// Handles session ending events (e.g., user logoff or system shutdown).
+        /// </summary>
         private void App_SessionEnding(object sender, SessionEndingCancelEventArgs e)
         {
-            // This event is raised when the user is logging off or the system is shutting down.
-            // We can perform our cleanup here.
             ShutdownApp();
         }
     }

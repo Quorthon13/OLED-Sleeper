@@ -1,4 +1,4 @@
-﻿using OLED_Sleeper.ViewModels;
+﻿using OLED_Sleeper.UI.ViewModels;
 using System.ComponentModel;
 using System.Windows;
 using System.Windows.Input;
@@ -12,6 +12,7 @@ namespace OLED_Sleeper
     public partial class MainWindow : Window
     {
         #region Constructor
+
         /// <summary>
         /// Initializes a new instance of the <see cref="MainWindow"/> class.
         /// </summary>
@@ -19,9 +20,11 @@ namespace OLED_Sleeper
         {
             InitializeComponent();
         }
-        #endregion
+
+        #endregion Constructor
 
         #region Window Event Overrides
+
         /// <summary>
         /// Handles the window closing event, delegating logic to the ViewModel.
         /// Cancels closing if the ViewModel returns false.
@@ -36,9 +39,11 @@ namespace OLED_Sleeper
             }
             base.OnClosing(e);
         }
-        #endregion
+
+        #endregion Window Event Overrides
 
         #region Title Bar & Window Controls
+
         /// <summary>
         /// Handles dragging the window when the custom title bar is clicked and dragged.
         /// </summary>
@@ -73,6 +78,7 @@ namespace OLED_Sleeper
         {
             Close();
         }
-        #endregion
+
+        #endregion Title Bar & Window Controls
     }
 }

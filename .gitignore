@@ -74,3 +74,8 @@ _ReSharper*/
 # Rider / JetBrains
 .idea/
 *.sln.iml
+
+# Inno Setup output folders
+/installer/publish-x64/
+/installer/publish-x86/
+/installer/InstallerOutput/

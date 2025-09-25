@@ -3,12 +3,12 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:viewModels="clr-namespace:OLED_Sleeper.ViewModels"
-        xmlns:views="clr-namespace:OLED_Sleeper.Views"
-        xmlns:converters="clr-namespace:OLED_Sleeper.Converters"
+        xmlns:converters="clr-namespace:OLED_Sleeper.UI.Converters"
+        xmlns:viewModels1="clr-namespace:OLED_Sleeper.UI.ViewModels"
+        xmlns:views="clr-namespace:OLED_Sleeper.UI.Views"
         mc:Ignorable="d"
         Title="{Binding WindowTitle}"
-        d:DataContext="{d:DesignInstance viewModels:MainViewModel}"
+        d:DataContext="{d:DesignInstance viewModels1:MainViewModel}"
         Height="650" Width="800" MinHeight="500" MinWidth="700"
         FontFamily="Bahnschrift"
         Background="{StaticResource PrimaryBackgroundColor}"
@@ -80,67 +80,143 @@
                 </Setter.Value>
             </Setter>
         </Style>
+
+        <Style x:Key="LoadingProgressBarStyle" TargetType="ProgressBar">
+            <Setter Property="Foreground" Value="{StaticResource AccentColorBrush}" />
+            <Setter Property="Background" Value="{StaticResource TertiaryBackgroundColor}" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Height" Value="8" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ProgressBar">
+                        <Grid x:Name="TemplateRoot">
+                            <Border x:Name="PART_Track"
+                            CornerRadius="4"
+                            Background="{TemplateBinding Background}" />
+
+                            <Border x:Name="PART_Indicator"
+                            CornerRadius="4"
+                            Background="{TemplateBinding Foreground}"
+                            HorizontalAlignment="Left" />
+
+                            <Border x:Name="IndeterminateRoot"
+                            CornerRadius="4"
+                            Background="Transparent"
+                            ClipToBounds="True"
+                            Visibility="Collapsed">
+                                <Rectangle x:Name="IndeterminateIndicator"
+                                   Height="{TemplateBinding Height}"
+                                   Width="100"
+                                   Fill="{TemplateBinding Foreground}">
+                                    <Rectangle.RenderTransform>
+                                        <TranslateTransform X="-100" />
+                                    </Rectangle.RenderTransform>
+                                </Rectangle>
+                            </Border>
+                        </Grid>
+
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsIndeterminate" Value="True">
+                                <Setter TargetName="PART_Indicator" Property="Visibility" Value="Collapsed" />
+                                <Setter TargetName="IndeterminateRoot" Property="Visibility" Value="Visible" />
+
+                                <Trigger.EnterActions>
+                                    <BeginStoryboard>
+                                        <Storyboard RepeatBehavior="Forever">
+                                            <DoubleAnimation
+                                        Storyboard.TargetName="IndeterminateIndicator"
+                                        Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.X)"
+                                        From="-300"
+                                        To="300"
+                                        Duration="0:0:2" />
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </Trigger.EnterActions>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </Window.Resources>
 
     <Border BorderBrush="{StaticResource TertiaryBackgroundColor}" BorderThickness="1">
         <Grid>
-            <Grid.RowDefinitions>
-                <RowDefinition Height="32" />
-                <RowDefinition Height="*" />
-                <RowDefinition Height="Auto" />
-            </Grid.RowDefinitions>
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="32" />
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
 
-            <Grid Grid.Row="0" Background="{StaticResource SecondaryBackgroundColor}" MouseDown="TitleBar_MouseDown">
-                <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Center">
-                    <Image Source="/Assets/icon.ico" Width="18" Height="18" Margin="8,0,0,0" />
-                    <TextBlock Text="{Binding WindowTitle}" Foreground="{StaticResource PrimaryForegroundColor}" Margin="10,0,0,0" VerticalAlignment="Center" />
-                </StackPanel>
-                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                    <Button Style="{StaticResource WindowButtonStyle}" Content="&#xE921;" Click="MinimizeButton_Click" ToolTip="Minimize" />
-                    <Button Style="{StaticResource WindowButtonStyle}" Content="&#xE922;" Click="MaximizeButton_Click" ToolTip="Maximize" />
-                    <Button Style="{StaticResource CloseButtonStyle}" Content="&#xE8BB;" Click="CloseButton_Click" ToolTip="Close" />
-                </StackPanel>
-            </Grid>
-
-            <Grid Margin="15" Grid.Row="1">
-                <views:MonitorLayoutView />
-            </Grid>
-
-            <Border Grid.Row="2" Margin="15,0,15,15"
-                    Background="{StaticResource SecondaryBackgroundColor}" CornerRadius="8"
-                    Visibility="{Binding SelectedMonitor, Converter={StaticResource NotNullToVisibilityConverter}}">
-                <Grid>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="*" />
-                        <RowDefinition Height="Auto" />
-                    </Grid.RowDefinitions>
-
-                    <views:MonitorConfigurationView Grid.Row="0" DataContext="{Binding SelectedMonitor.Configuration}" />
-
-                    <Border Grid.Row="1" BorderBrush="{StaticResource SeparatorColorBrush}" BorderThickness="0,1,0,0" Margin="0,10,0,0" Padding="15">
-                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="20,0">
-                            <Button Content="Discard Changes"
-                                    Command="{Binding DiscardChangesCommand}"
-                                    IsEnabled="{Binding IsDirty}"
-                                    Style="{StaticResource ModernActionButton}"
-                                    Background="Transparent" BorderBrush="{StaticResource SecondaryForegroundColor}" BorderThickness="1" />
-                            <Button Content="{Binding SaveButtonText}"
-                                    Command="{Binding SaveSettingsCommand}"
-                                    IsEnabled="{Binding IsDirty}"
-                                    Style="{StaticResource ModernActionButton}"
-                                    Background="{StaticResource AccentColorBrush}" Margin="15,0,0,0" />
-                        </StackPanel>
-                    </Border>
+                <Grid Grid.Row="0" Background="{StaticResource SecondaryBackgroundColor}" MouseDown="TitleBar_MouseDown">
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Center">
+                        <Image Source="/Assets/icon.ico" Width="18" Height="18" Margin="8,0,0,0" />
+                        <TextBlock Text="{Binding WindowTitle}" Foreground="{StaticResource PrimaryForegroundColor}" Margin="10,0,0,0" VerticalAlignment="Center" />
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                        <Button Style="{StaticResource WindowButtonStyle}" Content="&#xE921;" Click="MinimizeButton_Click" ToolTip="Minimize" />
+                        <Button Style="{StaticResource WindowButtonStyle}" Content="&#xE922;" Click="MaximizeButton_Click" ToolTip="Maximize" />
+                        <Button Style="{StaticResource CloseButtonStyle}" Content="&#xE8BB;" Click="CloseButton_Click" ToolTip="Close" />
+                    </StackPanel>
                 </Grid>
-            </Border>
 
-            <Border Grid.Row="2" MinHeight="220" Margin="15,0,15,15"
-                    Background="{StaticResource SecondaryBackgroundColor}" CornerRadius="8"
-                    Visibility="{Binding SelectedMonitor, Converter={StaticResource NullToVisibilityConverter}}">
-                <TextBlock Text="Click a monitor above to configure its settings."
-                           Foreground="{StaticResource SecondaryForegroundColor}" FontSize="16"
-                           HorizontalAlignment="Center" VerticalAlignment="Center" />
-            </Border>
+                <Grid Margin="15" Grid.Row="1">
+                    <views:MonitorLayoutView />
+                </Grid>
+
+                <Border Grid.Row="2" Margin="15,0,15,15"
+                        Background="{StaticResource SecondaryBackgroundColor}" CornerRadius="8"
+                        Visibility="{Binding SelectedMonitor, Converter={StaticResource NotNullToVisibilityConverter}}">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="*" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+
+                        <views:MonitorConfigurationView Grid.Row="0" DataContext="{Binding SelectedMonitor.Configuration}" />
+
+                        <Border Grid.Row="1" BorderBrush="{StaticResource SeparatorColorBrush}" BorderThickness="0,1,0,0" Margin="0,10,0,0" Padding="15">
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="20,0">
+                                <Button Content="Discard Changes"
+                                        Command="{Binding DiscardChangesCommand}"
+                                        IsEnabled="{Binding IsDirty}"
+                                        Style="{StaticResource ModernActionButton}"
+                                        Background="Transparent" BorderBrush="{StaticResource SecondaryForegroundColor}" BorderThickness="1" />
+                                <Button Content="{Binding SaveButtonText}"
+                                        Command="{Binding SaveSettingsCommand}"
+                                        IsEnabled="{Binding IsDirty}"
+                                        Style="{StaticResource ModernActionButton}"
+                                        Background="{StaticResource AccentColorBrush}" Margin="15,0,0,0" />
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+                </Border>
+
+                <Border Grid.Row="2" MinHeight="220" Margin="15,0,15,15"
+                        Background="{StaticResource SecondaryBackgroundColor}" CornerRadius="8"
+                        Visibility="{Binding SelectedMonitor, Converter={StaticResource NullToVisibilityConverter}}">
+                    <TextBlock Text="Click a monitor above to configure its settings."
+                               Foreground="{StaticResource SecondaryForegroundColor}" FontSize="16"
+                               HorizontalAlignment="Center" VerticalAlignment="Center" />
+                </Border>
+            </Grid>
+
+            <Grid Visibility="{Binding IsLoading, Converter={StaticResource BooleanToVisibilityConverter}}">
+                <Border Height="32" VerticalAlignment="Top" Background="Transparent" IsHitTestVisible="False" />
+                <Border Margin="0,32,0,0" Background="#A0000000" IsHitTestVisible="True">
+                    <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+                        <ProgressBar Style="{StaticResource LoadingProgressBarStyle}"
+                                     IsIndeterminate="True"
+                                     Width="300" />
+                        <TextBlock Text="Loading monitors..."
+                                   Foreground="White"
+                                   FontSize="16"
+                                   Margin="0,15,0,0"
+                                   HorizontalAlignment="Center" />
+                    </StackPanel>
+                </Border>
+            </Grid>
         </Grid>
     </Border>
 </Window>
