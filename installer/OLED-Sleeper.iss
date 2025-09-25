@@ -56,7 +56,7 @@ Name: "{autodesktop}\OLED Sleeper"; Filename: "{app}\OLED-Sleeper.exe"; Tasks: d
 [Registry]
 ; Creates a registry entry to run the application at startup if the "startup" task is checked.
 ; IMPORTANT: Change "OLEDSleeper.exe" if your executable has a different name.
-Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: string; ValueName: "OLED Sleeper"; ValueData: """{app}\OLEDSleeper.exe"""; Tasks: startup
+Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: string; ValueName: "OLED Sleeper"; ValueData: """{app}\OLED-Sleeper.exe"""; Tasks: startup
 
 [Run]
 ; Gives the user an option to run the application immediately after installation finishes.
