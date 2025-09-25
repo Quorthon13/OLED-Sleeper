@@ -18,6 +18,7 @@ namespace OLED_Sleeper.UI.Services
 
         /// <summary>
         /// Initializes and displays the tray icon and its context menu.
+        /// Also wires up left-click and double-click to show the main window.
         /// </summary>
         /// <param name="showMainWindowAction">Action to show the main window.</param>
         /// <param name="exitApplicationAction">Action to exit the application.</param>
@@ -29,9 +30,21 @@ namespace OLED_Sleeper.UI.Services
             {
                 ToolTipText = "OLED Sleeper"
             };
-            _notifyIcon.TrayMouseDoubleClick += (_, _) => _showMainWindowAction?.Invoke();
+            WireTrayIconEvents();
             SetupContextMenu();
             SetTrayIcon();
+        }
+
+        /// <summary>
+        /// Wires up tray icon mouse events for left-click and double-click actions.
+        /// </summary>
+        private void WireTrayIconEvents()
+        {
+            if (_notifyIcon == null) return;
+            // Show main window on double-click
+            _notifyIcon.TrayMouseDoubleClick += (_, _) => _showMainWindowAction?.Invoke();
+            // Show main window on left mouse up (single left click)
+            _notifyIcon.TrayLeftMouseUp += (_, _) => _showMainWindowAction?.Invoke();
         }
 
         /// <summary>
