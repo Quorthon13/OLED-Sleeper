@@ -7,15 +7,20 @@ using System.Windows.Media;
 namespace OLED_Sleeper.Features.MonitorBlackout.Services
 {
     /// <summary>
-    /// Provides asynchronous overlay window management for monitor blackout overlays.
-    /// Implements <see cref="IMonitorBlackoutService"/>.
+    /// Manages blackout overlay windows for monitors asynchronously in a WPF application.
+    /// Provides creation, display, and removal of overlay windows, and tracks overlay window handles.
     /// </summary>
     public class MonitorBlackoutService : IMonitorBlackoutService
     {
         private readonly Dictionary<string, Window> _overlayWindows = new();
         private readonly HashSet<nint> _overlayHandles = new();
 
-        /// <inheritdoc cref="IMonitorBlackoutService.ShowBlackoutOverlayAsync"/>
+        /// <summary>
+        /// Asynchronously shows a blackout overlay on the specified monitor.
+        /// </summary>
+        /// <param name="hardwareId">The unique hardware ID of the monitor.</param>
+        /// <param name="bounds">The bounds of the monitor in screen coordinates.</param>
+        /// <returns>A task representing the asynchronous operation.</returns>
         public async Task ShowBlackoutOverlayAsync(string hardwareId, Rect bounds)
         {
             await Application.Current.Dispatcher.InvokeAsync(() =>
@@ -37,7 +42,11 @@ namespace OLED_Sleeper.Features.MonitorBlackout.Services
             });
         }
 
-        /// <inheritdoc/>
+        /// <summary>
+        /// Asynchronously hides the blackout overlay for the specified monitor.
+        /// </summary>
+        /// <param name="hardwareId">The unique hardware ID of the monitor.</param>
+        /// <returns>A task representing the asynchronous operation.</returns>
         public async Task HideBlackoutOverlayAsync(string hardwareId)
         {
             await Application.Current.Dispatcher.InvokeAsync(() =>
@@ -51,7 +60,11 @@ namespace OLED_Sleeper.Features.MonitorBlackout.Services
             });
         }
 
-        /// <inheritdoc cref="IMonitorBlackoutService.IsOverlayWindow"/>
+        /// <summary>
+        /// Determines whether the specified window handle belongs to an overlay window.
+        /// </summary>
+        /// <param name="windowHandle">The window handle to check.</param>
+        /// <returns>True if the handle is an overlay window; otherwise, false.</returns>
         public bool IsOverlayWindow(nint windowHandle) =>
             windowHandle != nint.Zero && _overlayHandles.Contains(windowHandle);
 

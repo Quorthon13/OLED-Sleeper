@@ -235,7 +235,10 @@ namespace OLED_Sleeper.UI.ViewModels
                     SaveSettingsCommand.Execute(null);
                 }
             }
-            return false; // Always cancel closing (hide instead)
+            // Hide the window instead of closing
+            Application.Current.MainWindow?.Hide();
+
+            return false;
         }
 
         #endregion Public Methods (for View Interaction)
