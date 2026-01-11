@@ -95,26 +95,61 @@ if (-not (Test-Path "Registry::HKEY_CLASSES_ROOT\.ahk")) {
 
 # If the first check passes, we can proceed with more detailed validation.
 try {
-    # Find the program associated with .ahk files
-    $fileType = (Get-ItemProperty -Path "Registry::HKEY_CLASSES_ROOT\.ahk").'(default)'
-    $command = (Get-ItemProperty -Path "Registry::HKEY_CLASSES_ROOT\$fileType\shell\open\command").'(default)'
-    $ahkExePath = ($command -split '"')[1]
+    $ahkExePath = $null
 
-    # Check 2: Does the .exe exist where the registry says it should?
-    if (-not (Test-Path -Path $ahkExePath)) {
-        throw "Your AutoHotkey installation appears to be corrupt. The registry points to a non-existent file at `"$ahkExePath`"."
+    # --- Attempt 1: Resolve from registry association (may be missing on Store installs) ---
+    try {
+        $fileType = (Get-ItemProperty -Path "Registry::HKEY_CLASSES_ROOT\.ahk" -ErrorAction Stop).'(default)'
+
+        if (-not [string]::IsNullOrWhiteSpace($fileType)) {
+            $regCmdPath = "Registry::HKEY_CLASSES_ROOT\$fileType\shell\open\command"
+            if (Test-Path -Path $regCmdPath) {
+                $command = (Get-ItemProperty -Path $regCmdPath -ErrorAction Stop).'(default)'
+
+                # Robustly extract exe path (works with and without quotes)
+                $m = [regex]::Match($command, '([A-Za-z]:\\[^"]+?\.exe)')
+                if ($m.Success) { $ahkExePath = $m.Groups[1].Value }
+            }
+        }
+    } catch {
+        # swallow and fall back to PATH
     }
 
-    # Check 3: Is it the correct version (v2)?
+    # --- Attempt 2: Resolve from PATH (Microsoft Store alias usually lives in WindowsApps) ---
+    if ([string]::IsNullOrWhiteSpace($ahkExePath) -or -not (Test-Path -Path $ahkExePath)) {
+        $cmd = Get-Command AutoHotkeyv2.exe -ErrorAction SilentlyContinue
+        if (-not $cmd) { $cmd = Get-Command AutoHotkey.exe -ErrorAction SilentlyContinue }
+        if ($cmd) { $ahkExePath = $cmd.Source }
+    }
+
+    # --- Final: still nothing found ---
+    if ([string]::IsNullOrWhiteSpace($ahkExePath) -or -not (Test-Path -Path $ahkExePath)) {
+        throw "AutoHotkey executable not found. Install AutoHotkey v2 (recommended: classic installer) or ensure AutoHotkeyv2.exe is available in PATH."
+    }
+
+    # Check: Is it the correct version (v2)?
     $versionInfo = (Get-Item $ahkExePath).VersionInfo
+
+    # Microsoft Store alias (WindowsApps) often has empty VersionInfo -> accept based on filename
+    $exeName = [System.IO.Path]::GetFileName($ahkExePath)
+
+    $looksLikeV2Alias =
+        $ahkExePath -like "*\Microsoft\WindowsApps\*" -and
+        ($exeName -ieq "AutoHotkeyV2.exe" -or $exeName -like "*v2*")
+
     if ($versionInfo.ProductMajorPart -ne 2) {
-        throw "OLED-Sleeper requires AutoHotkey v2, but version $($versionInfo.ProductVersion) was found. Please install or update to AutoHotkey v2."
+        if ($looksLikeV2Alias -or [string]::IsNullOrWhiteSpace($versionInfo.ProductVersion)) {
+            # Accept - we can't read version from the Store shim, but it is clearly the v2 launcher
+        } else {
+            throw "OLED-Sleeper requires AutoHotkey v2, but version $($versionInfo.ProductVersion) was found at `"$ahkExePath`"."
+        }
     }
 
-    # If all checks pass, silently apply the High DPI compatibility fix.
+
+    # Apply the High DPI compatibility fix.
     $regPath = "HKCU:\Software\Microsoft\Windows NT\CurrentVersion\AppCompatFlags\Layers"
     $currentValue = Get-ItemProperty -Path $regPath -Name $ahkExePath -ErrorAction SilentlyContinue
-    $requiredValue = "~ HIGHDPIAWARE" # Registry value for High DPI override -> "Application"
+    $requiredValue = "~ HIGHDPIAWARE"
 
     if ($currentValue.$ahkExePath -ne $requiredValue) {
         Set-ItemProperty -Path $regPath -Name $ahkExePath -Value $requiredValue -Force
