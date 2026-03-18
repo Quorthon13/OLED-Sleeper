@@ -1,4 +1,4 @@
-; -- Inno Setup Script for OLED Sleeper (x64 Version) --
+; -- Inno Setup Script for OLED Sleeper (Unified x64/x86 Version) --
 ; This script should be placed in a subfolder, e.g., "/installer".
 
 [Setup]
@@ -13,14 +13,19 @@ AppSupportURL=https://github.com/Quorthon13/OLED-Sleeper/issues
 PrivilegesRequired=lowest
 
 ; --- Paths and Filenames ---
-; This is the name of the final installer file.
-OutputBaseFilename=OLED-Sleeper-Setup-2.0.0-BETA-x64
-; Assumes a "publish-x64" folder next to this script.
+; This is the name of the final installer file. Removed "-x64" as it is now unified.
+OutputBaseFilename=OLED-Sleeper-Setup-2.0.0-BETA
+; Assumes publish-x64 and publish-x86 folders next to this script.
 SourceDir=.
 ; Puts the final installer into an "InstallerOutput" folder next to this script.
 OutputDir=.\InstallerOutput
-; Installs to the 64-bit Program Files directory.
-DefaultDirName={autopf64}\OLED Sleeper
+; {autopf} automatically resolves to "Program Files" on 64-bit systems 
+; and "Program Files (x86)" on 32-bit systems.
+DefaultDirName={autopf}\OLED Sleeper
+
+; --- Architecture Settings ---
+; Tells the installer to run in 64-bit mode on x64 systems.
+ArchitecturesInstallIn64BitMode=x64
 
 ; --- Icon Settings ---
 ; Sets the icon for the installer .exe itself. Path is relative to the script's location.
@@ -44,8 +49,10 @@ Name: "startup"; Description: "Launch OLED Sleeper when Windows starts"; GroupDe
 Name: "desktopicon"; Description: "Create a desktop icon"; GroupDescription: "Additional shortcuts:";
 
 [Files]
-; Copies all files from your publish directory into the installation directory.
-Source: ".\publish-x64\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+; Copies x64 files if installing on a 64-bit system.
+Source: ".\publish-x64\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs; Check: Is64BitInstallMode
+; Copies x86 files if installing on a 32-bit system.
+Source: ".\publish-x86\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs; Check: not Is64BitInstallMode
 
 [Icons]
 ; Creates shortcuts in the Start Menu and (optionally) on the Desktop.

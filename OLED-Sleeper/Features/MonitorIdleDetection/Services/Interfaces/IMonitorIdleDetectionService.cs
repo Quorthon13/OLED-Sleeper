@@ -1,4 +1,3 @@
-using OLED_Sleeper.Features.MonitorIdleDetection.Models;
 using OLED_Sleeper.Features.UserSettings.Models;
 
 namespace OLED_Sleeper.Features.MonitorIdleDetection.Services.Interfaces

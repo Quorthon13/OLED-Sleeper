@@ -4,7 +4,6 @@ using OLED_Sleeper.Features.MonitorBehavior.Models;
 using OLED_Sleeper.Features.MonitorBlackout.Commands;
 using OLED_Sleeper.Features.MonitorDimming.Commands;
 using Serilog;
-using System.Threading.Tasks;
 
 namespace OLED_Sleeper.Features.MonitorBehavior.Handlers
 {

@@ -1,5 +1,3 @@
-using OLED_Sleeper.Features.MonitorState.Models;
-
 namespace OLED_Sleeper.Features.MonitorState.Services.Interfaces
 {
     /// <summary>

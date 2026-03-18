@@ -24,7 +24,6 @@ using OLED_Sleeper.Features.UserSettings.Services.Interfaces;
 using OLED_Sleeper.UI.Services;
 using OLED_Sleeper.UI.Services.Interfaces;
 using OLED_Sleeper.UI.ViewModels;
-using System;
 
 namespace OLED_Sleeper.Infrastructure
 {
