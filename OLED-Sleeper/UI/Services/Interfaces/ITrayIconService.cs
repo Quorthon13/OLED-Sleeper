@@ -1,5 +1,3 @@
-using System;
-
 namespace OLED_Sleeper.UI.Services.Interfaces
 {
     /// <summary>

@@ -1,6 +1,6 @@
-using System.Windows;
 using OLED_Sleeper.UI.Services.Interfaces;
 using OLED_Sleeper.UI.ViewModels;
+using System.Windows;
 
 namespace OLED_Sleeper.UI.Services
 {

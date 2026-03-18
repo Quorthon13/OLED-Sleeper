@@ -1,5 +1,5 @@
-﻿using System.Windows;
-using OLED_Sleeper.Core.Interfaces;
+﻿using OLED_Sleeper.Core.Interfaces;
+using System.Windows;
 
 namespace OLED_Sleeper.Core
 {

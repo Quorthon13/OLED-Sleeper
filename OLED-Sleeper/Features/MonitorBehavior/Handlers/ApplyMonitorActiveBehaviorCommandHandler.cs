@@ -1,8 +1,6 @@
 using OLED_Sleeper.Core.Interfaces;
 using OLED_Sleeper.Features.MonitorBehavior.Commands;
-using OLED_Sleeper.Features.MonitorBlackout.Commands;
 using OLED_Sleeper.Features.MonitorBlackout.Services.Interfaces;
-using OLED_Sleeper.Features.MonitorDimming.Commands;
 using OLED_Sleeper.Features.MonitorIdleDetection.Models;
 using Serilog;
 
@@ -43,9 +41,8 @@ namespace OLED_Sleeper.Features.MonitorBehavior.Handlers
                 e.IsIgnored = true;
                 return Task.CompletedTask;
             }
-            Log.Information("Monitor became active. Restoring state for monitor #{DisplayNumber}.", e.DisplayNumber);
-            _mediator.SendAsync(new HideBlackoutOverlayCommand { HardwareId = e.HardwareId });
-            _mediator.SendAsync(new ApplyUndimCommand { HardwareId = e.HardwareId });
+            Log.Information("Monitor became active. Initiating state restore for monitor #{DisplayNumber}.", e.DisplayNumber);
+            _mediator.SendAsync(new RestoreMonitorStateCommand { HardwareId = e.HardwareId });
             return Task.CompletedTask;
         }
     }

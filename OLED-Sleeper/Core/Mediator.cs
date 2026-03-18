@@ -3,21 +3,16 @@ using OLED_Sleeper.Core.Interfaces;
 
 namespace OLED_Sleeper.Core
 {
-    public class Mediator : IMediator
+    public class Mediator(IServiceProvider serviceProvider) : IMediator
     {
-        private readonly IServiceProvider _serviceProvider;
+        private readonly IServiceProvider _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
 
-        public Mediator(IServiceProvider serviceProvider)
-        {
-            _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
-        }
-
+        /// <inheritdoc />
         public async Task SendAsync<TCommand>(TCommand command) where TCommand : ICommand
         {
             if (command == null)
                 throw new ArgumentNullException(nameof(command));
 
-            // Resolve the strongly-typed handler
             var handler = _serviceProvider.GetService<ICommandHandler<TCommand>>();
             if (handler == null)
             {

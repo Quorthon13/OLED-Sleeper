@@ -10,16 +10,6 @@ namespace OLED_Sleeper.Features.MonitorIdleDetection.Services.Interfaces
     public interface IMonitorIdleDetectionService
     {
         /// <summary>
-        /// Raised when a managed monitor transitions from active to idle.
-        /// </summary>
-        event EventHandler<MonitorIdleStateEventArgs> MonitorBecameIdle;
-
-        /// <summary>
-        /// Raised when a managed monitor transitions from idle to active.
-        /// </summary>
-        event EventHandler<MonitorIdleStateEventArgs> MonitorBecameActive;
-
-        /// <summary>
         /// Starts the idle detection service and begins monitoring.
         /// </summary>
         void Start();

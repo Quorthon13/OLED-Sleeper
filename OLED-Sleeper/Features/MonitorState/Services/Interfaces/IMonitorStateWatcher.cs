@@ -3,18 +3,12 @@ using OLED_Sleeper.Features.MonitorState.Models;
 namespace OLED_Sleeper.Features.MonitorState.Services.Interfaces
 {
     /// <summary>
-    /// Provides an interface for a service that watches for changes in the set of connected monitors.
+    /// Defines a service that monitors the set of connected displays and dispatches synchronization commands when changes are detected.
     /// </summary>
     public interface IMonitorStateWatcher : IDisposable
     {
         /// <summary>
-        /// Occurs when the set of connected monitors changes.
-        /// The event argument contains both the previous and current monitor lists.
-        /// </summary>
-        event EventHandler<MonitorsChangedEventArgs> MonitorsChanged;
-
-        /// <summary>
-        /// Starts monitoring for monitor state changes.
+        /// Starts monitoring for monitor state changes. The initial monitor list is retrieved and the timer is started.
         /// </summary>
         void Start();
 
