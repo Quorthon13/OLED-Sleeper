@@ -1,11 +1,14 @@
 ; -- Inno Setup Script for OLED Sleeper (Unified x64/x86 Version) --
 ; This script should be placed in a subfolder, e.g., "/installer".
 
+#include "CodeDependencies.iss"
+
 [Setup]
 ; NOTE: The value of AppId uniquely identifies this application.
 ; You can generate a new one via Tools -> "Generate GUID" in Inno Setup.
 AppId={{782DD1AF-DB60-48D7-8787-0838B581E16F}}
 AppName=OLED Sleeper
+UninstallDisplayName=OLED Sleeper
 AppVersion=2.0.0
 AppPublisher=Quorthon13
 AppPublisherURL=https://github.com/Quorthon13/OLED-Sleeper
@@ -62,10 +65,23 @@ Name: "{autodesktop}\OLED Sleeper"; Filename: "{app}\OLED-Sleeper.exe"; Tasks: d
 
 [Registry]
 ; Creates a registry entry to run the application at startup if the "startup" task is checked.
-; IMPORTANT: Change "OLED-Sleeper.exe" if your executable has a different name.
-Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: string; ValueName: "OLED Sleeper"; ValueData: """{app}\OLED-Sleeper.exe"""; Tasks: startup
+; The uninsdeletevalue flag ensures it is completely removed when the user uninstalls the app.
+Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: string; ValueName: "OLED Sleeper"; ValueData: """{app}\OLED-Sleeper.exe"""; Flags: uninsdeletevalue; Tasks: startup
 
 [Run]
 ; Gives the user an option to run the application immediately after installation finishes.
 ; IMPORTANT: Change "OLED-Sleeper.exe" if your executable has a different name.
 Filename: "{app}\OLED-Sleeper.exe"; Description: "{cm:LaunchProgram,OLED Sleeper}"; Flags: nowait postinstall skipifsilent
+
+[UninstallRun]
+; Forcefully closes the application before the uninstaller attempts to delete its files.
+Filename: "{cmd}"; Parameters: "/C ""taskkill /im OLED-Sleeper.exe /f /t"""; RunOnceId: "CloseOLEDSleeper"; Flags: runhidden
+
+[Code]
+function InitializeSetup(): Boolean;
+begin
+  // This automatically downloads + installs .NET 8.0 Desktop Runtime if missing
+  Dependency_AddDotNet80Desktop;
+
+  Result := True;
+end;

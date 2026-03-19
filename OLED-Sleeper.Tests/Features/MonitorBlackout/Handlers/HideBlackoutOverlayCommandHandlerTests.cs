@@ -1,11 +1,7 @@
-using System;
-using System.Threading.Tasks;
 using Moq;
 using OLED_Sleeper.Features.MonitorBlackout.Commands;
 using OLED_Sleeper.Features.MonitorBlackout.Handlers;
 using OLED_Sleeper.Features.MonitorBlackout.Services.Interfaces;
-using Serilog;
-using Xunit;
 
 namespace OLED_Sleeper.Tests.Features.MonitorBlackout.Handlers
 {
