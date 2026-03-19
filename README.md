@@ -2,7 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-OLED Sleeper is a lightweight Windows tool to **black out or dim idle monitors**, helping users **prevent OLED burn-in** and **temporarily sleep secondary monitors** for focus, gaming, or distraction-free work.
+OLED Sleeper is a lightweight Windows tool to blackout or dim idle monitors, helping users prevent OLED burn-in and temporarily sleep secondary monitors for focus, gaming, or distraction-free work.
 
 <p align="center">
   <img src="https://files.catbox.moe/w0yq57.webp" alt="OLED Sleeper Demonstration"> 
@@ -12,64 +12,48 @@ OLED Sleeper is a lightweight Windows tool to **black out or dim idle monitors**
 
 ## The Problem
 
-Many users have multi-monitor setups but want to **turn off or dim secondary monitors temporarily** without putting the entire computer to sleep.  
-OLED and other displays can also suffer from **burn-in or image retention** if static images stay on screen too long.  
-Windows’ built-in power settings are all-or-nothing — there’s no per-monitor control.
+Many users have multi-monitor setups but want to turn off or dim secondary monitors temporarily without putting the entire computer to sleep. OLED and other displays can also suffer from burn-in or image retention if static images stay on screen too long. Windows’ built-in power settings are all-or-nothing — there’s no per-monitor control.
 
 ## The Solution
 
-OLED Sleeper monitors each screen for activity (mouse or active window).  
-When a monitor is idle for a set time, it will either **black it out** or **dim its brightness**, depending on your preference.  
+OLED Sleeper monitors each screen for activity. When a monitor is idle for a set time, it will either black it out or dim its brightness based on your preference. 
 
-Benefits include:  
-- Protecting OLEDs from burn-in  
-- Creating a **distraction-free workspace**  
-- Temporarily **sleeping secondary monitors** while gaming or working  
+Benefits include: 
+- Protecting OLEDs from burn-in 
+- Creating a distraction-free workspace 
+- Temporarily sleeping secondary monitors while gaming or working 
 - Saving energy on idle screens
 
 ---
 
 ## Features
 
+* **Native WPF Application:** Built from the ground up using native Win32 calls. Requires no external dependencies or third-party tools.
+* **Three Idle Detection Modes:** Customize how the application determines if a monitor is idle:
+    * **Mouse:** Tracks cursor movement specifically on the target monitor.
+    * **Focused Application:** Tracks activity within the active window currently displayed on that monitor.
+    * **System-Wide Input:** Tracks overall keyboard and mouse input across the entire system (similar to standard Windows idle detection).
 * **Per-Monitor Control:** Blackout or dim any monitor independently.
-* **Idle Timer:** Customize how long a monitor should be idle before action.
-* **Two Modes:** Full blackout or dimming (DDC/CI supported).
-* **Automatic Startup:** Runs at login without manual intervention.
+* **Two Action Modes:** Full blackout or dimming (DDC/CI supported).
 * **Focus Mode:** Temporarily hide secondary screens to reduce distractions.
-* **Lightweight:** Minimal CPU/memory usage.
-* **Instant Wake-Up:** Restore monitor immediately when activity is detected.
+* **Instant Wake-Up:** Restore the monitor immediately when activity is detected.
 
 ---
 
 ## Requirements
 
 * **Operating System:** Windows 10 or 11
-* **Dependency:** [AutoHotkey v2](https://www.autohotkey.com/) must be installed
-* **DDC/CI Support (for Dimming Mode):** Dimming requires a monitor that supports DDC/CI brightness control via VCP codes. Most modern OLED monitors support this, but it is not guaranteed on all displays.
+* **DDC/CI Support (for Dimming Mode):** Dimming requires a monitor that supports DDC/CI brightness control via VCP codes. Most modern monitors support this, but it is not guaranteed on all displays.
 
 ---
 
 ## How to Use
 
-1.  Download the latest release from the [Releases page](https://github.com/Quorthon13/OLED-Sleeper/releases) or clone this repository.
-2.  Unzip the folder to a permanent location on your computer (e.g., `C:\Program Files\OLED-Sleeper`).
-3.  Double-click **`setup.bat`**.
-4.  A menu will appear:
-    * **To set up for the first time or to change your settings**, choose option `1`. The wizard will guide you through selecting monitors, modes, and an idle time. When prompted, allow it to create the startup task.
-    * **To remove the startup task and settings**, choose option `2`. This will delete the automatic startup shortcut and all saved configurations. Note that this action does not stop any scripts that are currently running.
-
-That's it. Once configured, the script will run silently in the background and launch automatically every time you log in.
-
----
-
-## Credits
-
-This project relies on the excellent utilities developed by **NirSoft**:
-
--   [`MultiMonitorTool`](https://www.nirsoft.net/utils/multi_monitor_tool.html)
--   [`ControlMyMonitor`](https://www.nirsoft.net/utils/control_my_monitor.html)
-
-You can find more of their work at [www.nirsoft.net](https://www.nirsoft.net)
+1. Download the latest installer from the [Releases page](https://github.com/Quorthon13/OLED-Sleeper/releases).
+2. Run the installer and follow the on-screen prompts. During installation, you will be prompted to configure automatic startup and create shortcuts.
+3. Open OLED Sleeper from your Start Menu or desktop shortcut.
+4. Use the interface to select your target monitors, choose your preferred idle detection mode, and set your idle timers.
+5. Apply your settings. The application will minimize to the system tray and run in the background.
 
 ---
 
