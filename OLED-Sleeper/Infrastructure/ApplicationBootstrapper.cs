@@ -113,6 +113,7 @@ namespace OLED_Sleeper.Infrastructure
 
             _trayIconService?.Dispose();
             _instanceManager?.Dispose();
+            Application.Current.Shutdown();
         }
 
         /// <summary>
