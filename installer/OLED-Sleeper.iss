@@ -18,7 +18,7 @@ PrivilegesRequired=lowest
 ; --- Paths and Filenames ---
 ; This is the name of the final installer file. Removed "-x64" as it is now unified.
 OutputBaseFilename=OLED-Sleeper-Setup-2.0.0-BETA
-; Assumes publish-x64 and publish-x86 folders next to this script.
+; Assumes publish-x64 and publish-x86 folders next to this script.a
 SourceDir=.
 ; Puts the final installer into an "InstallerOutput" folder next to this script.
 OutputDir=.\InstallerOutput
@@ -76,6 +76,14 @@ Filename: "{app}\OLED-Sleeper.exe"; Description: "{cm:LaunchProgram,OLED Sleeper
 [UninstallRun]
 ; Forcefully closes the application before the uninstaller attempts to delete its files.
 Filename: "{cmd}"; Parameters: "/C ""taskkill /im OLED-Sleeper.exe /f /t"""; RunOnceId: "CloseOLEDSleeper"; Flags: runhidden
+
+[InstallDelete]
+; Deletes the settings folder and its contents before installing new files
+Type: filesandordirs; Name: "{userappdata}\OLED-Sleeper"
+
+[UninstallDelete]
+; Deletes the settings folder and its contents during uninstallation
+Type: filesandordirs; Name: "{userappdata}\OLED-Sleeper"
 
 [Code]
 function InitializeSetup(): Boolean;
