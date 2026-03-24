@@ -1,6 +1,6 @@
 ﻿using CommandLine;
 
-namespace OLED_Sleeper.Infrastructure
+namespace OLED_Sleeper.Infrastructure.Helpers
 {
     /// <summary>
     /// Provides helper functionality for parsing command-line arguments

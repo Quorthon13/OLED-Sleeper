@@ -1,42 +1,41 @@
-; -- Inno Setup Script for OLED Sleeper (Unified x64/x86 Version) --
-; This script should be placed in a subfolder, e.g., "/installer".
+; Inno Setup installer script for OLED Sleeper
+; Builds a single installer supporting both x64 and x86 deployments.
 
 #include "CodeDependencies.iss"
 
+#define AppVersion "2.0.0"
+
 [Setup]
-; NOTE: The value of AppId uniquely identifies this application.
-; You can generate a new one via Tools -> "Generate GUID" in Inno Setup.
+; Unique application identifier used by Windows for installation tracking.
 AppId={{782DD1AF-DB60-48D7-8787-0838B581E16F}}
+
+; Application metadata shown in the installer and system UI.
 AppName=OLED Sleeper
 UninstallDisplayName=OLED Sleeper
-AppVersion=2.0.0
+AppVersion={#AppVersion}
 AppPublisher=Quorthon13
 AppPublisherURL=https://github.com/Quorthon13/OLED-Sleeper
 AppSupportURL=https://github.com/Quorthon13/OLED-Sleeper/issues
+
+; Installation runs without elevation.
 PrivilegesRequired=lowest
 
-; --- Paths and Filenames ---
-; This is the name of the final installer file. Removed "-x64" as it is now unified.
-OutputBaseFilename=OLED-Sleeper-Setup-2.0.0-BETA
-; Assumes publish-x64 and publish-x86 folders next to this script.
+; Output installer configuration.
+OutputBaseFilename=OLED-Sleeper-{#AppVersion}-Setup
 SourceDir=.
-; Puts the final installer into an "InstallerOutput" folder next to this script.
 OutputDir=.\InstallerOutput
-; {autopf} automatically resolves to "Program Files" on 64-bit systems 
-; and "Program Files (x86)" on 32-bit systems.
+
+; Default installation directory.
 DefaultDirName={autopf}\OLED Sleeper
 
-; --- Architecture Settings ---
-; Tells the installer to run in 64-bit mode on x64 systems.
+; Enables 64-bit installation mode when running on x64 systems.
 ArchitecturesInstallIn64BitMode=x64
 
-; --- Icon Settings ---
-; Sets the icon for the installer .exe itself. Path is relative to the script's location.
+; Installer and uninstall entry icons.
 SetupIconFile=..\OLED-Sleeper\Assets\icon.ico
-; Sets the icon for the Add/Remove Programs entry.
 UninstallDisplayIcon={app}\OLED-Sleeper.exe
 
-; --- General Settings ---
+; General installer UI and compression settings.
 DefaultGroupName=OLED Sleeper
 AllowNoIcons=yes
 Compression=lzma
@@ -44,44 +43,69 @@ SolidCompression=yes
 WizardStyle=modern
 
 [Languages]
+; Default language configuration.
 Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Tasks]
-; Creates checkboxes on the "Select Additional Tasks" page of the installer.
+; Optional installation tasks presented to the user.
 Name: "startup"; Description: "Launch OLED Sleeper when Windows starts"; GroupDescription: "Additional options:";
 Name: "desktopicon"; Description: "Create a desktop icon"; GroupDescription: "Additional shortcuts:";
 
 [Files]
-; Copies x64 files if installing on a 64-bit system.
+; Install platform-specific binaries based on system architecture.
 Source: ".\publish-x64\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs; Check: Is64BitInstallMode
-; Copies x86 files if installing on a 32-bit system.
 Source: ".\publish-x86\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs; Check: not Is64BitInstallMode
 
 [Icons]
-; Creates shortcuts in the Start Menu and (optionally) on the Desktop.
-; IMPORTANT: Change "OLED-Sleeper.exe" if your executable has a different name.
+; Start Menu and optional Desktop shortcuts.
 Name: "{group}\OLED Sleeper"; Filename: "{app}\OLED-Sleeper.exe"
 Name: "{autodesktop}\OLED Sleeper"; Filename: "{app}\OLED-Sleeper.exe"; Tasks: desktopicon
 
 [Registry]
-; Creates a registry entry to run the application at startup if the "startup" task is checked.
-; The uninsdeletevalue flag ensures it is completely removed when the user uninstalls the app.
+; Optional autostart entry created when the startup task is selected.
 Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: string; ValueName: "OLED Sleeper"; ValueData: """{app}\OLED-Sleeper.exe"" -h"; Flags: uninsdeletevalue; Tasks: startup
 
 [Run]
-; Gives the user an option to run the application immediately after installation finishes.
-; IMPORTANT: Change "OLED-Sleeper.exe" if your executable has a different name.
+; Optionally launch the application after installation completes.
 Filename: "{app}\OLED-Sleeper.exe"; Description: "{cm:LaunchProgram,OLED Sleeper}"; Flags: nowait postinstall skipifsilent
 
 [UninstallRun]
-; Forcefully closes the application before the uninstaller attempts to delete its files.
+; Ensure the application process is terminated before file removal.
 Filename: "{cmd}"; Parameters: "/C ""taskkill /im OLED-Sleeper.exe /f /t"""; RunOnceId: "CloseOLEDSleeper"; Flags: runhidden
 
 [Code]
+
+// Removes the application's autostart registry entry if present.
+procedure RemoveStartupKey();
+begin
+  if RegValueExists(HKEY_CURRENT_USER, 'Software\Microsoft\Windows\CurrentVersion\Run', 'OLED Sleeper') then
+  begin
+    Log('Removing startup registry key.');
+    RegDeleteValue(HKEY_CURRENT_USER, 'Software\Microsoft\Windows\CurrentVersion\Run', 'OLED Sleeper');
+  end;
+end;
+
+// Runs during installation to clear any existing autostart entry.
+procedure CurStepChanged(CurStep: TSetupStep);
+begin
+  if CurStep = ssInstall then
+  begin
+    RemoveStartupKey();
+  end;
+end;
+
+// Runs during uninstallation to ensure the autostart entry is removed.
+procedure CurUninstallStepChanged(UninstallStep: TUninstallStep);
+begin
+  if UninstallStep = usUninstall then
+  begin
+    RemoveStartupKey();
+  end;
+end;
+
+// Requests download of required runtime dependencies before installation begins.
 function InitializeSetup(): Boolean;
 begin
-  // This automatically downloads + installs .NET 8.0 Desktop Runtime if missing
   Dependency_AddDotNet80Desktop;
-
   Result := True;
 end;
