@@ -6,11 +6,10 @@ namespace OLED_Sleeper.UI.Services.Interfaces
     public interface IMainWindowService
     {
         /// <summary>
-        /// Sets up the main window as the application's main window, assigns its data context,
-        /// and optionally shows it.
+        /// Sets up the main window as the application's main window, assigns its data context, 
+        /// and determines its initial visibility based on the configured application options.
         /// </summary>
-        /// <param name="startHidden">If true, the main window will not be shown on startup (useful for tray-first startup).</param>
-        void SetupMainWindow(bool startHidden);
+        void SetupMainWindow();
 
         /// <summary>
         /// Brings the main window to the foreground and restores it if minimized.
