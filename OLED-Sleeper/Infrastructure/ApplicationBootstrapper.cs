@@ -3,6 +3,8 @@ using OLED_Sleeper.Core;
 using OLED_Sleeper.Core.Interfaces;
 using OLED_Sleeper.UI.Services.Interfaces;
 using Serilog;
+using System;
+using System.Linq;
 using System.Windows;
 
 namespace OLED_Sleeper.Infrastructure
@@ -28,9 +30,34 @@ namespace OLED_Sleeper.Infrastructure
             InitializeInstanceManager();
             ConfigureServices();
             StartOrchestrator();
-            SetupMainWindowService();
+
+            // Determine whether to start hidden in tray based on command-line args
+            var startInTray = IsStartInTrayArgumentPresent();
+
+            SetupMainWindowService(startInTray);
             SetupTrayIconService();
             HookInstanceManagerShowWindow();
+        }
+
+        /// <summary>
+        /// Returns true when a recognized "start in tray" command-line switch is present.
+        /// Recognized switches: -h, --hide
+        /// </summary>
+        private bool IsStartInTrayArgumentPresent()
+        {
+            try
+            {
+                var args = Environment.GetCommandLineArgs()
+                    .Select(a => a?.Trim().ToLowerInvariant())
+                    .Where(a => !string.IsNullOrEmpty(a))
+                    .ToArray();
+
+                return args.Contains("-h") || args.Contains("--hide");
+            }
+            catch
+            {
+                return false;
+            }
         }
 
         /// <summary>
@@ -65,11 +92,11 @@ namespace OLED_Sleeper.Infrastructure
         /// <summary>
         /// Sets up the main window service and its data context.
         /// </summary>
-        private void SetupMainWindowService()
+        private void SetupMainWindowService(bool startHidden)
         {
             if (_serviceProvider == null) return;
             _mainWindowService = _serviceProvider.GetRequiredService<IMainWindowService>();
-            _mainWindowService.SetupMainWindow();
+            _mainWindowService.SetupMainWindow(startHidden);
         }
 
         /// <summary>

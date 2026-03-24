@@ -24,13 +24,22 @@ namespace OLED_Sleeper.UI.Services
         }
 
         /// <summary>
-        /// Sets up the main window as the application's main window, assigns its data context, and shows it.
+        /// Sets up the main window as the application's main window, assigns its data context, and shows it unless startHidden is true.
         /// </summary>
-        public void SetupMainWindow()
+        public void SetupMainWindow(bool startHidden)
         {
             Application.Current.MainWindow = _mainWindow;
             _mainWindow.DataContext = _mainViewModel;
-            ShowMainWindow();
+
+            if (!startHidden)
+            {
+                ShowMainWindow();
+            }
+            else
+            {
+                // Ensure the window is not visible at startup; tray icon will be used to show it.
+                _mainWindow.Hide();
+            }
         }
 
         /// <summary>
