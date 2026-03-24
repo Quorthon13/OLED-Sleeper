@@ -1,6 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using OLED_Sleeper.Core;
 using OLED_Sleeper.Core.Interfaces;
+using OLED_Sleeper.Infrastructure.Helpers;
 using OLED_Sleeper.UI.Services.Interfaces;
 using Serilog;
 using System;
@@ -13,8 +14,10 @@ namespace OLED_Sleeper.Infrastructure
     /// Handles application startup, dependency injection, single-instance enforcement, orchestrator startup, and shutdown logic.
     /// Keeps <see cref="Application"/> subclasses lightweight and focused on WPF lifecycle events.
     /// </summary>
-    public class ApplicationBootstrapper : IDisposable
+    public class ApplicationBootstrapper(string[] args) : IDisposable
     {
+        private readonly ApplicationOptions _applicationOptions = CommandLineHelper.ParseArguments(args);
+
         private IServiceProvider? _serviceProvider;
         private ITrayIconService? _trayIconService;
         private IMainWindowService? _mainWindowService;
@@ -31,33 +34,9 @@ namespace OLED_Sleeper.Infrastructure
             ConfigureServices();
             StartOrchestrator();
 
-            // Determine whether to start hidden in tray based on command-line args
-            var startInTray = IsStartInTrayArgumentPresent();
-
-            SetupMainWindowService(startInTray);
+            SetupMainWindowService();
             SetupTrayIconService();
             HookInstanceManagerShowWindow();
-        }
-
-        /// <summary>
-        /// Returns true when a recognized "start in tray" command-line switch is present.
-        /// Recognized switches: -h, --hide
-        /// </summary>
-        private bool IsStartInTrayArgumentPresent()
-        {
-            try
-            {
-                var args = Environment.GetCommandLineArgs()
-                    .Select(a => a?.Trim().ToLowerInvariant())
-                    .Where(a => !string.IsNullOrEmpty(a))
-                    .ToArray();
-
-                return args.Contains("-h") || args.Contains("--hide");
-            }
-            catch
-            {
-                return false;
-            }
         }
 
         /// <summary>
@@ -74,7 +53,7 @@ namespace OLED_Sleeper.Infrastructure
         /// </summary>
         private void ConfigureServices()
         {
-            _serviceProvider = ServiceConfigurator.ConfigureServices(_instanceManager!);
+            _serviceProvider = ServiceConfigurator.ConfigureServices(_instanceManager!, _applicationOptions);
         }
 
         /// <summary>
@@ -92,11 +71,11 @@ namespace OLED_Sleeper.Infrastructure
         /// <summary>
         /// Sets up the main window service and its data context.
         /// </summary>
-        private void SetupMainWindowService(bool startHidden)
+        private void SetupMainWindowService()
         {
             if (_serviceProvider == null) return;
             _mainWindowService = _serviceProvider.GetRequiredService<IMainWindowService>();
-            _mainWindowService.SetupMainWindow(startHidden);
+            _mainWindowService.SetupMainWindow();
         }
 
         /// <summary>
