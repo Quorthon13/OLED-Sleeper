@@ -66,7 +66,7 @@ Name: "{autodesktop}\OLED Sleeper"; Filename: "{app}\OLED-Sleeper.exe"; Tasks: d
 [Registry]
 ; Creates a registry entry to run the application at startup if the "startup" task is checked.
 ; The uninsdeletevalue flag ensures it is completely removed when the user uninstalls the app.
-Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: string; ValueName: "OLED Sleeper"; ValueData: """{app}\OLED-Sleeper.exe"""; Flags: uninsdeletevalue; Tasks: startup
+Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: string; ValueName: "OLED Sleeper"; ValueData: """{app}\OLED-Sleeper.exe"" -h"; Flags: uninsdeletevalue; Tasks: startup
 
 [Run]
 ; Gives the user an option to run the application immediately after installation finishes.
