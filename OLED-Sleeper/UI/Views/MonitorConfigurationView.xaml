@@ -324,9 +324,7 @@
                                 IsChecked="{Binding Behavior, Converter={StaticResource EnumToBooleanConverter}, ConverterParameter={x:Static models1:MonitorBehaviorType.Blackout}, UpdateSourceTrigger=PropertyChanged}" />
                             <RadioButton Content="Dim" GroupName="Behavior" Style="{StaticResource ModernRadioButton}" Margin="25,0,0,0"
                                 IsChecked="{Binding Behavior, Converter={StaticResource EnumToBooleanConverter}, ConverterParameter={x:Static models1:MonitorBehaviorType.Dim}, UpdateSourceTrigger=PropertyChanged}"
-                                IsEnabled="{Binding IsDimBehaviorEnabled}"
-                                ToolTip="{Binding DimBehaviorTooltip}"
-                                ToolTipService.InitialShowDelay="200" />
+                                IsEnabled="{Binding IsDimBehaviorEnabled}" />
                         </StackPanel>
                     </StackPanel>
 
