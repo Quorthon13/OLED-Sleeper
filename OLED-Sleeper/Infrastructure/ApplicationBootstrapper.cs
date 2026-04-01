@@ -1,8 +1,11 @@
 using Microsoft.Extensions.DependencyInjection;
 using OLED_Sleeper.Core;
 using OLED_Sleeper.Core.Interfaces;
+using OLED_Sleeper.Infrastructure.Helpers;
 using OLED_Sleeper.UI.Services.Interfaces;
 using Serilog;
+using System;
+using System.Linq;
 using System.Windows;
 
 namespace OLED_Sleeper.Infrastructure
@@ -11,8 +14,10 @@ namespace OLED_Sleeper.Infrastructure
     /// Handles application startup, dependency injection, single-instance enforcement, orchestrator startup, and shutdown logic.
     /// Keeps <see cref="Application"/> subclasses lightweight and focused on WPF lifecycle events.
     /// </summary>
-    public class ApplicationBootstrapper : IDisposable
+    public class ApplicationBootstrapper(string[] args) : IDisposable
     {
+        private readonly ApplicationOptions _applicationOptions = CommandLineHelper.ParseArguments(args);
+
         private IServiceProvider? _serviceProvider;
         private ITrayIconService? _trayIconService;
         private IMainWindowService? _mainWindowService;
@@ -28,6 +33,7 @@ namespace OLED_Sleeper.Infrastructure
             InitializeInstanceManager();
             ConfigureServices();
             StartOrchestrator();
+
             SetupMainWindowService();
             SetupTrayIconService();
             HookInstanceManagerShowWindow();
@@ -47,7 +53,7 @@ namespace OLED_Sleeper.Infrastructure
         /// </summary>
         private void ConfigureServices()
         {
-            _serviceProvider = ServiceConfigurator.ConfigureServices(_instanceManager!);
+            _serviceProvider = ServiceConfigurator.ConfigureServices(_instanceManager!, _applicationOptions);
         }
 
         /// <summary>

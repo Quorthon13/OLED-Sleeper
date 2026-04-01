@@ -1,0 +1,7 @@
+{
+  "profiles": {
+    "OLED-Sleeper": {
+      "commandName": "Project"
+    }
+  }
+}

@@ -1,3 +1,5 @@
+using Microsoft.Extensions.Options;
+using OLED_Sleeper.Infrastructure;
 using OLED_Sleeper.UI.Services.Interfaces;
 using OLED_Sleeper.UI.ViewModels;
 using System.Windows;
@@ -7,30 +9,30 @@ namespace OLED_Sleeper.UI.Services
     /// <summary>
     /// Provides methods to set up, show, and activate the main window.
     /// </summary>
-    public class MainWindowService : IMainWindowService
+    /// <param name="mainWindow">The main application window.</param>
+    /// <param name="mainViewModel">The main view model for the window.</param>
+    /// <param name="options">The application configuration options.</param>
+    public class MainWindowService(MainWindow mainWindow, MainViewModel mainViewModel, IOptions<ApplicationOptions> options) : IMainWindowService
     {
-        private readonly MainWindow _mainWindow;
-        private readonly MainViewModel _mainViewModel;
+        private readonly ApplicationOptions _options = options.Value;
 
         /// <summary>
-        /// Initializes a new instance of <see cref="MainWindowService"/>.
-        /// </summary>
-        /// <param name="mainWindow">The main application window.</param>
-        /// <param name="mainViewModel">The main view model for the window.</param>
-        public MainWindowService(MainWindow mainWindow, MainViewModel mainViewModel)
-        {
-            _mainWindow = mainWindow;
-            _mainViewModel = mainViewModel;
-        }
-
-        /// <summary>
-        /// Sets up the main window as the application's main window, assigns its data context, and shows it.
+        /// Sets up the main window as the application's main window, assigns its data context, 
+        /// and determines its initial visibility based on the configured application options.
         /// </summary>
         public void SetupMainWindow()
         {
-            Application.Current.MainWindow = _mainWindow;
-            _mainWindow.DataContext = _mainViewModel;
-            ShowMainWindow();
+            Application.Current.MainWindow = mainWindow;
+            mainWindow.DataContext = mainViewModel;
+
+            if (_options.StartHidden)
+            {
+                mainWindow.Hide();
+            }
+            else
+            {
+                ShowMainWindow();
+            }
         }
 
         /// <summary>
@@ -38,12 +40,12 @@ namespace OLED_Sleeper.UI.Services
         /// </summary>
         public void ShowMainWindow()
         {
-            _mainWindow.Show();
-            if (_mainWindow.WindowState == WindowState.Minimized)
+            mainWindow.Show();
+            if (mainWindow.WindowState == WindowState.Minimized)
             {
-                _mainWindow.WindowState = WindowState.Normal;
+                mainWindow.WindowState = WindowState.Normal;
             }
-            _mainWindow.Activate();
+            mainWindow.Activate();
         }
     }
 }
