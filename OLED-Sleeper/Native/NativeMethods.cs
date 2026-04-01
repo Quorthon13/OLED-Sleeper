@@ -253,6 +253,17 @@ namespace OLED_Sleeper.Native
         public static extern int DwmGetWindowAttribute(IntPtr hwnd, int dwAttribute, out Rect pvAttribute, int cbAttribute);
 
         /// <summary>
+        /// Retrieves a handle to the display monitor that has the largest area of intersection with a specified rectangle.
+        /// Used to get the correct DPI for a monitor bounds (even when X is negative).
+        /// </summary>
+        /// <param name="lprc">Pointer to a <see cref="Rect"/> structure that defines the rectangle.</param>
+        /// <param name="dwFlags">Determines the function's return value if the rectangle does not intersect any display monitor.</param>
+        /// <returns>A handle to the display monitor.</returns>
+        /// <seealso href="https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-monitorfromrect"/>
+        [DllImport("user32.dll")]
+        public static extern IntPtr MonitorFromRect(ref Rect lprc, uint dwFlags);
+
+        /// <summary>
         /// Use with <see cref="DwmGetWindowAttribute"/> to get the extended frame bounds rectangle.
         /// </summary>
         public const int DWMWA_EXTENDED_FRAME_BOUNDS = 9;

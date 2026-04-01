@@ -37,7 +37,6 @@ namespace OLED_Sleeper.Features.MonitorBlackout.Services
                     _overlayHandles.Add(hwnd);
                 }
 
-                ApplyDpiScaling(overlay, bounds);
                 _overlayWindows[hardwareId] = overlay;
             });
         }
@@ -71,12 +70,15 @@ namespace OLED_Sleeper.Features.MonitorBlackout.Services
         #region Private Helpers
 
         /// <summary>
-        /// Creates a new overlay window with the specified bounds.
+        /// Creates a new overlay window positioned and sized for the target monitor.
         /// </summary>
-        /// <param name="bounds">The virtual screen coordinates for the overlay.</param>
+        /// <param name="bounds">The monitor bounds in physical screen coordinates.</param>
         /// <returns>A configured <see cref="Window"/> instance.</returns>
-        private static Window CreateOverlayWindow(Rect bounds) =>
-            new()
+        private static Window CreateOverlayWindow(Rect bounds)
+        {
+            var (scaleX, scaleY) = GetMonitorDpiScale(bounds);
+
+            return new Window
             {
                 Cursor = System.Windows.Input.Cursors.None,
                 WindowStyle = WindowStyle.None,
@@ -86,9 +88,40 @@ namespace OLED_Sleeper.Features.MonitorBlackout.Services
                 ShowInTaskbar = false,
                 Topmost = true,
                 WindowStartupLocation = WindowStartupLocation.Manual,
-                Left = bounds.Left,
-                Top = bounds.Top
+
+                Left = bounds.Left / scaleX,
+                Top = bounds.Top / scaleY,
+                Width = bounds.Width / scaleX,
+                Height = bounds.Height / scaleY
             };
+        }
+
+        /// <summary>
+        /// Retrieves the DPI scale factor for the monitor that contains the specified bounds.
+        /// </summary>
+        /// <param name="physicalBounds">The monitor bounds in physical screen coordinates.</param>
+        /// <returns>The scale factors for the X and Y axes.</returns>
+        private static (double scaleX, double scaleY) GetMonitorDpiScale(Rect physicalBounds)
+        {
+            NativeMethods.Rect rect = new NativeMethods.Rect
+            {
+                left = (int)Math.Floor(physicalBounds.Left),
+                top = (int)Math.Floor(physicalBounds.Top),
+                right = (int)Math.Ceiling(physicalBounds.Right),
+                bottom = (int)Math.Ceiling(physicalBounds.Bottom)
+            };
+
+            IntPtr hMonitor = NativeMethods.MonitorFromRect(ref rect, NativeMethods.MONITOR_DEFAULTTONEAREST);
+            if (hMonitor == IntPtr.Zero)
+                return (1.0, 1.0);
+
+            uint dpiX = 96, dpiY = 96;
+            int hr = NativeMethods.GetDpiForMonitor(hMonitor, NativeMethods.MonitorDpiType.MDT_EFFECTIVE_DPI, out dpiX, out dpiY);
+
+            return hr == 0
+                ? (dpiX / 96.0, dpiY / 96.0)
+                : (1.0, 1.0);
+        }
 
         /// <summary>
         /// Applies the WS_EX_NOACTIVATE style to prevent the overlay from stealing focus.
@@ -99,25 +132,6 @@ namespace OLED_Sleeper.Features.MonitorBlackout.Services
             nint extendedStyle = NativeMethods.GetWindowLongPtr(hwnd, NativeMethods.GWL_EXSTYLE);
             NativeMethods.SetWindowLongPtr(hwnd, NativeMethods.GWL_EXSTYLE,
                 new nint(extendedStyle.ToInt64() | NativeMethods.WS_EX_NOACTIVATE));
-        }
-
-        /// <summary>
-        /// Applies DPI scaling to the overlay window to ensure correct size and position.
-        /// </summary>
-        /// <param name="overlay">The overlay window.</param>
-        /// <param name="bounds">The virtual screen coordinates.</param>
-        private static void ApplyDpiScaling(Window overlay, Rect bounds)
-        {
-            var source = PresentationSource.FromVisual(overlay);
-            if (source != null)
-            {
-                double dpiX = source.CompositionTarget.TransformToDevice.M11;
-                double dpiY = source.CompositionTarget.TransformToDevice.M22;
-                overlay.Left = bounds.Left / dpiX;
-                overlay.Top = bounds.Top / dpiY;
-                overlay.Width = bounds.Width / dpiX;
-                overlay.Height = bounds.Height / dpiY;
-            }
         }
 
         /// <summary>
