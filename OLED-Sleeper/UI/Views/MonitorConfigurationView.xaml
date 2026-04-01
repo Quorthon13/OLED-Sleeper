@@ -310,16 +310,16 @@
                     </Grid.RowDefinitions>
 
                     <!-- Behavior Section -->
-                    <StackPanel Grid.Row="0" Grid.Column="0" VerticalAlignment="Center" ToolTipService.InitialShowDelay="200">
+                    <StackPanel Grid.Row="0" Grid.Column="0" ToolTipService.InitialShowDelay="200" Height="61">
                         <StackPanel.ToolTip>
                             <ToolTip Content="{Binding BehaviorSectionTooltip}" />
                         </StackPanel.ToolTip>
                         <StackPanel Orientation="Horizontal" Margin="0,0,0,5">
-                            <TextBlock Text="BEHAVIOR" Foreground="{StaticResource SecondaryForegroundColor}" FontSize="12" FontWeight="Light" />
+                            <TextBlock Text="BEHAVIOR" Foreground="{StaticResource SecondaryForegroundColor}" FontSize="16" FontWeight="Light" />
                             <TextBlock Text="*" Foreground="{StaticResource DestructiveColorBrush}" FontWeight="Bold" Margin="4,-2,0,0" VerticalAlignment="Top"
                                        Visibility="{Binding BehaviorError, Converter={StaticResource ErrorVisibilityConverter}}" />
                         </StackPanel>
-                        <StackPanel Orientation="Horizontal" Margin="0,5,0,0">
+                        <StackPanel Orientation="Horizontal" Margin="0,14,0,0" VerticalAlignment="Bottom">
                             <RadioButton Content="Blackout" GroupName="Behavior" Style="{StaticResource ModernRadioButton}"
                                 IsChecked="{Binding Behavior, Converter={StaticResource EnumToBooleanConverter}, ConverterParameter={x:Static models1:MonitorBehaviorType.Blackout}, UpdateSourceTrigger=PropertyChanged}" />
                             <RadioButton Content="Dim" GroupName="Behavior" Style="{StaticResource ModernRadioButton}" Margin="25,0,0,0"
@@ -331,22 +331,54 @@
                     </StackPanel>
 
                     <!-- Brightness Level Section -->
-                    <StackPanel Grid.Row="0" Grid.Column="1" Margin="40,0,0,0" IsEnabled="{Binding IsDimSliderEnabled}" VerticalAlignment="Center" ToolTipService.InitialShowDelay="200">
+                    <StackPanel Grid.Row="0" Grid.Column="1" Margin="40,0,0,0" VerticalAlignment="Center" ToolTipService.InitialShowDelay="200">
                         <StackPanel.ToolTip>
-                            <ToolTip>Set the brightness level to use when this monitor is dimmed.</ToolTip>
+                            <ToolTip>
+                                <StackPanel>
+                                    <TextBlock Text="Set the brightness levels for this monitor." />
+                                    <TextBlock Text="• Active Brightness: Used when the monitor is awake." Margin="0,4,0,0" />
+                                    <TextBlock Text="• Idle Brightness: Used when the monitor is dimmed." />
+                                </StackPanel>
+                            </ToolTip>
                         </StackPanel.ToolTip>
-                        <TextBlock Text="BRIGHTNESS LEVEL" Foreground="{StaticResource SecondaryForegroundColor}" FontSize="12" FontWeight="Light" />
-                        <Grid Margin="0,8,0,0">
+                        <TextBlock Text="BRIGHTNESS LEVELS" Foreground="{StaticResource SecondaryForegroundColor}" FontSize="16" FontWeight="Light" />
+                        <Grid Margin="0,8,0,0" VerticalAlignment="Bottom">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
                             </Grid.ColumnDefinitions>
-                            <Slider Grid.Column="0" Minimum="0" Maximum="100" Value="{Binding DimLevel, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource ModernSlider}" TickFrequency="1" />
-                            <TextBlock Grid.Column="1" Foreground="{StaticResource PrimaryForegroundColor}" Margin="15,0,0,0" VerticalAlignment="Center">
-                                <TextBlock.Text>
-                                    <Binding Path="DimLevel" StringFormat="{}{0:F0}%" />
-                                </TextBlock.Text>
-                            </TextBlock>
+                            <!-- Active Brightness Slider -->
+                            <StackPanel Grid.Column="0" Margin="0,0,10,0">
+                                <TextBlock Text="Active Brightness" FontSize="13" Foreground="{StaticResource SecondaryForegroundColor}" Margin="0,0,0,2" ToolTip="Brightness when monitor is active (awake)." />
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <Slider Grid.Column="0" Minimum="0" Maximum="100" Value="{Binding ActiveBrightness, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource ModernSlider}" TickFrequency="1" ToolTip="Adjust the brightness level when the monitor is active." />
+                                    <TextBlock Grid.Column="1" Foreground="{StaticResource PrimaryForegroundColor}" Margin="10,0,0,0" VerticalAlignment="Center">
+                                        <TextBlock.Text>
+                                            <Binding Path="ActiveBrightness" StringFormat="{}{0:F0}%" />
+                                        </TextBlock.Text>
+                                    </TextBlock>
+                                </Grid>
+                            </StackPanel>
+                            <!-- Idle Brightness Slider -->
+                            <StackPanel Grid.Column="1" Margin="10,0,0,0" IsEnabled="{Binding IsDimSliderEnabled}">
+                                <TextBlock Text="Idle Brightness" FontSize="13" Foreground="{StaticResource SecondaryForegroundColor}" Margin="0,0,0,2" ToolTip="Brightness when monitor is idle (dimmed)." />
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <Slider Grid.Column="0" Minimum="0" Maximum="100" Value="{Binding IdleBrightness, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource ModernSlider}" TickFrequency="1" ToolTip="Adjust the brightness level when the monitor is idle (dimmed)." />
+                                    <TextBlock Grid.Column="1" Foreground="{StaticResource PrimaryForegroundColor}" Margin="10,0,0,0" VerticalAlignment="Center">
+                                        <TextBlock.Text>
+                                            <Binding Path="IdleBrightness" StringFormat="{}{0:F0}%" />
+                                        </TextBlock.Text>
+                                    </TextBlock>
+                                </Grid>
+                            </StackPanel>
                         </Grid>
                     </StackPanel>
 
@@ -356,9 +388,9 @@
                             <ToolTip Content="Set the duration of user inactivity required before the selected behavior is triggered." />
                         </StackPanel.ToolTip>
                         <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="IDLE TIMER" Foreground="{StaticResource SecondaryForegroundColor}" FontSize="12" FontWeight="Light" />
+                            <TextBlock Text="IDLE TIMER" Foreground="{StaticResource SecondaryForegroundColor}" FontSize="16" FontWeight="Light" />
                         </StackPanel>
-                        <Grid Margin="0,8,0,0">
+                        <Grid Margin="0,8,0,0" VerticalAlignment="Bottom">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto" />
                                 <ColumnDefinition Width="Auto" />
@@ -369,10 +401,10 @@
                             </Grid.RowDefinitions>
 
                             <!-- Unit Label -->
-                            <TextBlock Grid.Row="0" Grid.Column="0" Text="Unit" Foreground="{StaticResource SecondaryForegroundColor}" FontSize="11" Margin="4,0,0,3" />
+                            <TextBlock Grid.Row="0" Grid.Column="0" Text="Unit" Foreground="{StaticResource SecondaryForegroundColor}" FontSize="13" Margin="4,0,0,3" />
                             <!-- Value Label + Error -->
                             <StackPanel Grid.Row="0" Grid.Column="1" Orientation="Horizontal" Margin="10,0,0,0">
-                                <TextBlock Text="Value" Foreground="{StaticResource SecondaryForegroundColor}" FontSize="11" Margin="4,0,0,3" />
+                                <TextBlock Text="Value" Foreground="{StaticResource SecondaryForegroundColor}" FontSize="13" Margin="4,0,0,3" />
                                 <TextBlock Text="*" Foreground="{StaticResource DestructiveColorBrush}" FontWeight="Bold" Margin="4,-2,0,0" VerticalAlignment="Top"
                                            Visibility="{Binding IdleValueError, Converter={StaticResource ErrorVisibilityConverter}}" />
                             </StackPanel>
@@ -412,11 +444,11 @@
                             </ToolTip>
                         </StackPanel.ToolTip>
                         <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="CONSIDER ACTIVE WHEN..." Foreground="{StaticResource SecondaryForegroundColor}" FontSize="12" FontWeight="Light" />
+                            <TextBlock Text="CONSIDER ACTIVE WHEN..." Foreground="{StaticResource SecondaryForegroundColor}" FontSize="16" FontWeight="Light" />
                             <TextBlock Text="*" Foreground="{StaticResource DestructiveColorBrush}" FontWeight="Bold" Margin="4,-2,0,0" VerticalAlignment="Top"
                          Visibility="{Binding ActiveConditionsError, Converter={StaticResource ErrorVisibilityConverter}}" />
                         </StackPanel>
-                        <StackPanel Margin="0,8,0,0">
+                        <StackPanel Margin="0,8,0,0" VerticalAlignment="Bottom">
                             <CheckBox Margin="0,0,0,8" Style="{StaticResource ModernCheckBox}" Content="Mouse cursor is on this monitor"
                         IsChecked="{Binding IsActiveOnMousePosition, UpdateSourceTrigger=PropertyChanged, ValidatesOnDataErrors=True}" />
                             <CheckBox Margin="0,0,0,8" Style="{StaticResource ModernCheckBox}" Content="Application is focused on this monitor"

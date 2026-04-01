@@ -24,9 +24,14 @@ namespace OLED_Sleeper.Features.UserSettings.Models
         public MonitorBehaviorType Behavior { get; set; } = MonitorBehaviorType.None;
 
         /// <summary>
-        /// Gets or sets the dimming level to apply when the monitor is dimmed.
+        /// Gets or sets the brightness level to apply when the monitor is active.
         /// </summary>
-        public double DimLevel { get; set; } = 15;
+        public double ActiveBrightness { get; set; } = 100;
+
+        /// <summary>
+        /// Gets or sets the brightness level to apply when the monitor is idle.
+        /// </summary>
+        public double IdleBrightness { get; set; } = 0;
 
         /// <summary>
         /// Gets or sets the idle timeout value (unit specified by <see cref="IdleUnit"/>).
