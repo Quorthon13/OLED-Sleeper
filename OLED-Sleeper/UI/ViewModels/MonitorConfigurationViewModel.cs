@@ -95,7 +95,7 @@ namespace OLED_Sleeper.UI.ViewModels
             set
             {
                 _behavior = value;
-                if (_behavior == MonitorBehaviorType.Blackout) { DimLevel = 0; }
+                if (_behavior == MonitorBehaviorType.Blackout) { IdleBrightness = 0; }
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(IsDimSliderEnabled));
                 OnPropertyChanged(nameof(BehaviorError));
@@ -108,18 +108,31 @@ namespace OLED_Sleeper.UI.ViewModels
         /// </summary>
         public string BehaviorError => this["Behavior"];
 
-        // --- DimLevel ---
-        private double _dimLevel;
 
-        private double _initialDimLevel;
+        // --- ActiveBrightness ---
+        private double _activeBrightness;
+        private double _initialActiveBrightness;
 
         /// <summary>
-        /// Gets or sets the dimming level for the monitor (0-100).
+        /// Gets or sets the brightness level to apply when the monitor is active (0-100).
         /// </summary>
-        public double DimLevel
+        public double ActiveBrightness
         {
-            get => _dimLevel;
-            set { _dimLevel = value; OnPropertyChanged(); UpdateDirtyState(); }
+            get => _activeBrightness;
+            set { _activeBrightness = value; OnPropertyChanged(); UpdateDirtyState(); }
+        }
+
+        // --- IdleBrightness ---
+        private double _idleBrightness;
+        private double _initialIdleBrightness;
+
+        /// <summary>
+        /// Gets or sets the brightness level to apply when the monitor is idle (dimmed, 0-100).
+        /// </summary>
+        public double IdleBrightness
+        {
+            get => _idleBrightness;
+            set { _idleBrightness = value; OnPropertyChanged(); UpdateDirtyState(); }
         }
 
         /// <summary>
@@ -256,7 +269,8 @@ namespace OLED_Sleeper.UI.ViewModels
             const double epsilon = 0.0001;
             IsDirty = IsManaged != _initialIsManaged ||
                        Behavior != _initialBehavior ||
-                       Math.Abs(DimLevel - _initialDimLevel) > epsilon ||
+                       Math.Abs(ActiveBrightness - _initialActiveBrightness) > epsilon ||
+                       Math.Abs(IdleBrightness - _initialIdleBrightness) > epsilon ||
                        IdleValue != _initialIdleValue ||
                        SelectedTimeUnit != _initialSelectedTimeUnit ||
                        IsActiveOnInput != _initialIsActiveOnInput ||
@@ -274,7 +288,8 @@ namespace OLED_Sleeper.UI.ViewModels
         {
             _initialIsManaged = IsManaged;
             _initialBehavior = Behavior;
-            _initialDimLevel = DimLevel;
+            _initialActiveBrightness = ActiveBrightness;
+            _initialIdleBrightness = IdleBrightness;
             _initialIdleValue = IdleValue;
             _initialSelectedTimeUnit = SelectedTimeUnit;
             _initialIsActiveOnInput = IsActiveOnInput;
@@ -291,7 +306,8 @@ namespace OLED_Sleeper.UI.ViewModels
         {
             IsManaged = settings.IsManaged;
             Behavior = settings.Behavior;
-            DimLevel = settings.DimLevel;
+            ActiveBrightness = settings.ActiveBrightness;
+            IdleBrightness = settings.IdleBrightness;
             IdleValue = settings.IdleValue;
             SelectedTimeUnit = settings.IdleUnit;
             IsActiveOnInput = settings.IsActiveOnInput;
@@ -307,10 +323,11 @@ namespace OLED_Sleeper.UI.ViewModels
         {
             return new MonitorSettings
             {
-                HardwareId = _monitorInfo.HardwareId,
+                HardwareId = _monitorInfo.HardwareId!,
                 IsManaged = IsManaged,
                 Behavior = Behavior,
-                DimLevel = DimLevel,
+                ActiveBrightness = ActiveBrightness,
+                IdleBrightness = IdleBrightness,
                 IdleValue = IdleValue,
                 IdleUnit = SelectedTimeUnit,
                 IsActiveOnInput = IsActiveOnInput,
