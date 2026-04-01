@@ -6,7 +6,8 @@ namespace OLED_Sleeper.UI.Services.Interfaces
     public interface IMainWindowService
     {
         /// <summary>
-        /// Sets up the main window as the application's main window, assigns its data context, and shows it.
+        /// Sets up the main window as the application's main window, assigns its data context, 
+        /// and determines its initial visibility based on the configured application options.
         /// </summary>
         void SetupMainWindow();
 

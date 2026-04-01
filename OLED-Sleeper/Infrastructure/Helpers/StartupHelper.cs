@@ -1,6 +1,6 @@
 ﻿using Microsoft.Win32;
 
-namespace OLED_Sleeper.UI.Helpers
+namespace OLED_Sleeper.Infrastructure.Helpers
 {
     /// <summary>
     /// Provides static helper methods to manage the application's startup behavior via the Windows registry.
@@ -32,7 +32,7 @@ namespace OLED_Sleeper.UI.Helpers
                 string? exePath = Environment.ProcessPath;
                 if (!string.IsNullOrEmpty(exePath))
                 {
-                    key.SetValue(AppName, $"\"{exePath}\"");
+                    key.SetValue(AppName, $"\"{exePath}\" -h");
                 }
             }
             else
