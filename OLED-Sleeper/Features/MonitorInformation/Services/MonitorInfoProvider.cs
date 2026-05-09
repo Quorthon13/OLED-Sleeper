@@ -54,6 +54,9 @@ namespace OLED_Sleeper.Features.MonitorInformation.Services
         /// </summary>
         public bool GetDdcCiSupport(MonitorInfo monitor)
         {
+            if (string.IsNullOrEmpty(monitor.DeviceName))
+                return false;
+
             bool isSupported = false;
             string deviceName = monitor.DeviceName;
             NativeMethods.MonitorEnumProc callback = (IntPtr hMonitor, IntPtr hdcMonitor, ref NativeMethods.Rect lprcMonitor, IntPtr dwData) =>
@@ -86,8 +89,11 @@ namespace OLED_Sleeper.Features.MonitorInformation.Services
         /// </summary>
         public string GetHardwareId(MonitorInfo monitor)
         {
+            if (string.IsNullOrEmpty(monitor.DeviceName))
+                return string.Empty;
+
             string deviceName = monitor.DeviceName;
-            string hardwareId = null;
+            string? hardwareId = null;
             var displayDevice = new NativeMethods.DISPLAY_DEVICE { cb = Marshal.SizeOf(typeof(NativeMethods.DISPLAY_DEVICE)) };
             for (uint adapterIndex = 0; NativeMethods.EnumDisplayDevices(null, adapterIndex, ref displayDevice, 0); adapterIndex++)
             {
@@ -104,7 +110,7 @@ namespace OLED_Sleeper.Features.MonitorInformation.Services
                 }
                 if (hardwareId != null) break;
             }
-            return hardwareId;
+            return hardwareId ?? string.Empty;
         }
 
         /// <summary>

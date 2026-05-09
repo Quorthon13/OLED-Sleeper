@@ -49,16 +49,28 @@ namespace OLED_Sleeper.Features.MonitorBlackout.Handlers
                 Log.Information("Executing ApplyBlackoutCommand for monitor {HardwareId}.", command.HardwareId);
 
                 var monitorInfo = await GetMonitorInfoAsync(command.HardwareId);
+                if (monitorInfo == null)
+                {
+                    Log.Warning("ApplyBlackoutOverlayCommand: no monitor found for HardwareId {HardwareId}.", command.HardwareId);
+                    return;
+                }
+
+                var hardwareId = monitorInfo.HardwareId ?? command.HardwareId;
+                if (string.IsNullOrEmpty(hardwareId))
+                {
+                    Log.Warning("ApplyBlackoutOverlayCommand: could not resolve hardware id for monitor.");
+                    return;
+                }
 
                 // Task 1: Show the software blackout overlay.
                 // We start this task but don't await it immediately.
-                var showOverlayTask = _monitorBlackoutService.ShowBlackoutOverlayAsync(monitorInfo.HardwareId, monitorInfo.Bounds);
+                var showOverlayTask = _monitorBlackoutService.ShowBlackoutOverlayAsync(hardwareId, monitorInfo.Bounds);
 
                 // Task 2: If supported, also set the hardware brightness to 0 via DDC/CI.
                 if (monitorInfo.IsDdcCiSupported)
                 {
-                    Log.Information("Monitor {HardwareId} supports DDC/CI. Setting brightness to 0 for blackout.", monitorInfo.HardwareId);
-                    var dimTask = _monitorDimmingService.DimMonitorAsync(monitorInfo.HardwareId, 0);
+                    Log.Information("Monitor {HardwareId} supports DDC/CI. Setting brightness to 0 for blackout.", hardwareId);
+                    var dimTask = _monitorDimmingService.DimMonitorAsync(hardwareId, 0);
 
                     // Await both the overlay and dimming tasks to complete concurrently.
                     await Task.WhenAll(showOverlayTask, dimTask);

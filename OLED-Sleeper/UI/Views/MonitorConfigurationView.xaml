@@ -404,6 +404,9 @@
                   • <Run FontWeight="SemiBold">Application is focused on this monitor:</Run><LineBreak />
                   <Span Foreground="{StaticResource SecondaryForegroundColor}">Keeps the monitor awake if it has the application you're currently using (the window you last clicked).</Span>
                   <LineBreak /><LineBreak />
+                  • <Run FontWeight="SemiBold">A visible window is on this monitor (not necessarily focused):</Run><LineBreak />
+                  <Span Foreground="{StaticResource SecondaryForegroundColor}">Useful when video or another app stays on this display while you work on a different monitor.</Span>
+                  <LineBreak /><LineBreak />
                   <Run FontWeight="SemiBold" TextDecorations="Underline">General Condition</Run><LineBreak />
                   This option is system-wide.<LineBreak /><LineBreak />
                   • <Run FontWeight="SemiBold">System-wide user input:</Run><LineBreak />
@@ -421,6 +424,8 @@
                         IsChecked="{Binding IsActiveOnMousePosition, UpdateSourceTrigger=PropertyChanged, ValidatesOnDataErrors=True}" />
                             <CheckBox Margin="0,0,0,8" Style="{StaticResource ModernCheckBox}" Content="Application is focused on this monitor"
                         IsChecked="{Binding IsActiveOnActiveWindow, UpdateSourceTrigger=PropertyChanged, ValidatesOnDataErrors=True}" />
+                            <CheckBox Margin="0,0,0,8" Style="{StaticResource ModernCheckBox}" Content="A visible window is on this monitor (not necessarily focused)"
+                        IsChecked="{Binding IsActiveOnVisibleWindows, UpdateSourceTrigger=PropertyChanged, ValidatesOnDataErrors=True}" />
                             <CheckBox Margin="0,0,0,0" Style="{StaticResource ModernCheckBox}" Content="System has user input"
                         IsChecked="{Binding IsActiveOnInput, UpdateSourceTrigger=PropertyChanged, ValidatesOnDataErrors=True}" />
                         </StackPanel>

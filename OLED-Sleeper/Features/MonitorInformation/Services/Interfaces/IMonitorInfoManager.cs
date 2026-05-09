@@ -17,7 +17,7 @@ namespace OLED_Sleeper.Features.MonitorInformation.Services.Interfaces
         /// <summary>
         /// Raised when the monitor list has been retrieved and enriched.
         /// </summary>
-        event EventHandler<IReadOnlyList<MonitorInfo>> MonitorListReady;
+        event EventHandler<IReadOnlyList<MonitorInfo>>? MonitorListReady;
 
         /// <summary>
         /// Forces a refresh of the monitor list from the system asynchronously.
@@ -37,5 +37,11 @@ namespace OLED_Sleeper.Features.MonitorInformation.Services.Interfaces
         /// </summary>
         /// <param name="monitors">The list of monitors to enrich.</param>
         void EnrichMonitorInfoList(List<MonitorInfo> monitors);
+
+        /// <summary>
+        /// Replaces the cached monitor list with a snapshot (typically after a topology sync). Does not raise <see cref="MonitorListReady"/>.
+        /// </summary>
+        /// <param name="monitors">Enriched monitors to store; values are copied defensively.</param>
+        void UpdateCachedMonitorsFromSnapshot(IReadOnlyList<MonitorInfo> monitors);
     }
 }

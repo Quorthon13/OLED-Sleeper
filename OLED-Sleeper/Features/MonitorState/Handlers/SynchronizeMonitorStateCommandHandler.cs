@@ -3,6 +3,7 @@ using OLED_Sleeper.Features.MonitorBlackout.Services.Interfaces;
 using OLED_Sleeper.Features.MonitorDimming.Services.Interfaces;
 using OLED_Sleeper.Features.MonitorIdleDetection.Services.Interfaces;
 using OLED_Sleeper.Features.MonitorInformation.Models;
+using OLED_Sleeper.Features.MonitorInformation.Services.Interfaces;
 using OLED_Sleeper.Features.MonitorState.Commands;
 using OLED_Sleeper.Features.UserSettings.Models;
 using OLED_Sleeper.Features.UserSettings.Services.Interfaces;
@@ -15,10 +16,10 @@ namespace OLED_Sleeper.Features.MonitorState.Handlers;
 /// <para>
 /// This handler is responsible for:
 /// <list type="bullet">
-/// <item><description>Stopping idle detection to reset state.</description></item>
 /// <item><description>Removing overlays and resetting brightness for all old and newly connected monitors.</description></item>
 /// <item><description>Updating managed monitor settings based on the new set of active monitors.</description></item>
-/// <item><description>Restarting idle detection with the updated settings.</description></item>
+/// <item><description>Aligning the monitor info cache and idle detection with the new topology without stopping the idle loop.</description></item>
+/// <item><description>Ensuring the idle detection loop is running.</description></item>
 /// </list>
 /// </para>
 /// </summary>
@@ -26,25 +27,25 @@ public class SynchronizeMonitorStateCommandHandler(
     IMonitorIdleDetectionService idleDetectionService,
     IMonitorSettingsFileService settingsFileService,
     IMonitorDimmingService dimmingService,
-    IMonitorBlackoutService blackoutService)
+    IMonitorBlackoutService blackoutService,
+    IMonitorInfoManager monitorInfoManager)
     : ICommandHandler<SynchronizeMonitorStateCommand>
 {
     /// <summary>
-    /// Handles the synchronization of monitor state by stopping idle detection, clearing overlays and brightness,
-    /// updating managed monitor settings, and restarting idle detection.
+    /// Handles the synchronization of monitor state by clearing overlays and brightness where needed,
+    /// updating managed monitor settings, refreshing the monitor cache, and applying topology to idle detection.
     /// </summary>
     /// <param name="command">The command containing the old and new monitor lists.</param>
     public Task HandleAsync(SynchronizeMonitorStateCommand command)
     {
-        idleDetectionService.Stop();
-
         RemoveOverlaysAndResetBrightness(command.OldMonitors);
         RemoveOverlaysAndResetBrightness(GetNewlyConnectedMonitors(command.NewMonitors, command.OldMonitors));
 
         var savedSettings = settingsFileService.LoadSettings();
         UpdateManagedSettings(savedSettings, command.NewMonitors);
 
-        idleDetectionService.UpdateSettings(savedSettings);
+        monitorInfoManager.UpdateCachedMonitorsFromSnapshot(command.NewMonitors);
+        idleDetectionService.ApplyTopologyAndSettings(savedSettings, command.NewMonitors);
         idleDetectionService.Start();
 
         Log.Information("Monitor state synchronized. Active monitors: {Count}", command.NewMonitors.Count);
@@ -59,6 +60,8 @@ public class SynchronizeMonitorStateCommandHandler(
     {
         foreach (var monitor in monitors)
         {
+            if (string.IsNullOrEmpty(monitor.HardwareId))
+                continue;
             blackoutService.HideBlackoutOverlayAsync(monitor.HardwareId);
             dimmingService.UndimMonitorAsync(monitor.HardwareId);
         }

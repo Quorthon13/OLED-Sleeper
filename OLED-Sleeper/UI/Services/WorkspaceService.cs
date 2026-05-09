@@ -18,7 +18,7 @@ namespace OLED_Sleeper.UI.Services
         private readonly IMonitorSettingsFileService _settingsService;
         private readonly IMonitorLayoutService _monitorLayoutService;
 
-        public event EventHandler<ObservableCollection<MonitorLayoutViewModel>> WorkspaceReady;
+        public event EventHandler<ObservableCollection<MonitorLayoutViewModel>>? WorkspaceReady;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="WorkspaceService"/> class.
@@ -43,7 +43,7 @@ namespace OLED_Sleeper.UI.Services
         /// <param name="containerHeight">The height of the container.</param>
         public void BuildWorkspaceAsync(double containerWidth, double containerHeight)
         {
-            void Handler(object sender, System.Collections.Generic.IReadOnlyList<MonitorInfo> monitorInfos)
+            void Handler(object? sender, System.Collections.Generic.IReadOnlyList<MonitorInfo> monitorInfos)
             {
                 _monitorManager.MonitorListReady -= Handler;
                 var savedSettings = _settingsService.LoadSettings();
@@ -62,7 +62,7 @@ namespace OLED_Sleeper.UI.Services
         /// <param name="containerHeight">The height of the container for layout scaling.</param>
         public void RefreshWorkspaceAsync(double containerWidth, double containerHeight)
         {
-            void Handler(object sender, System.Collections.Generic.IReadOnlyList<MonitorInfo> monitorInfos)
+            void Handler(object? sender, System.Collections.Generic.IReadOnlyList<MonitorInfo> monitorInfos)
             {
                 _monitorManager.MonitorListReady -= Handler;
                 BuildWorkspaceAsync(containerWidth, containerHeight);

@@ -72,7 +72,7 @@ namespace OLED_Sleeper.Features.MonitorDimming.Services
         {
             var tcs = new TaskCompletionSource<IReadOnlyList<MonitorInfo>>();
 
-            EventHandler<IReadOnlyList<MonitorInfo>> handler = null;
+            EventHandler<IReadOnlyList<MonitorInfo>>? handler = null;
             handler = (sender, monitors) =>
             {
                 // Unsubscribe to prevent memory leaks.
