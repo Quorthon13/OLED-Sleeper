@@ -130,7 +130,7 @@
                                 <Ellipse Width="10" Height="10" Fill="#F5A623"
                                          HorizontalAlignment="Right" VerticalAlignment="Top"
                                          Margin="0,5,5,0"
-                                         ToolTip="This monitor has unsaved changes."
+                                         ToolTip="此显示器有未保存的更改。"
                                          Visibility="{Binding IsDirty, Converter={StaticResource BooleanToVisibilityConverter}}"
                                          ToolTipService.InitialShowDelay="200" />
                                 <!-- Monitor title and resolution -->
@@ -150,7 +150,7 @@
         </Border>
 
         <!-- Layout Title -->
-        <TextBlock Text="Display Layout" IsHitTestVisible="False"
+        <TextBlock Text="显示器布局" IsHitTestVisible="False"
                    Foreground="{StaticResource SecondaryForegroundColor}" FontSize="14" FontWeight="Light"
                    HorizontalAlignment="Left" VerticalAlignment="Top"
                    Margin="15,10,0,0" />
@@ -160,6 +160,6 @@
                 Style="{StaticResource RefreshButtonStyle}"
                 HorizontalAlignment="Right" VerticalAlignment="Top"
                 Margin="0,8,8,0" Width="30" Height="30"
-                ToolTip="Reload Monitors" />
+                ToolTip="重新加载显示器" />
     </Grid>
 </UserControl>

@@ -50,12 +50,12 @@ namespace OLED_Sleeper.UI.ViewModels
         /// <summary>
         /// The text displayed in the main window's title bar.
         /// </summary>
-        private string _windowTitle = "OLED Sleeper Settings";
+        private string _windowTitle = "OLED Sleeper 设置";
 
         /// <summary>
         /// The text displayed on the save button.
         /// </summary>
-        private string _saveButtonText = "Save Settings";
+        private string _saveButtonText = "保存设置";
 
         /// <summary>
         /// Indicates whether the workspace is currently loading.
@@ -104,7 +104,7 @@ namespace OLED_Sleeper.UI.ViewModels
                 if (_isDirty == value) return;
                 _isDirty = value;
                 OnPropertyChanged();
-                WindowTitle = "OLED Sleeper Settings" + (_isDirty ? "*" : "");
+                WindowTitle = "OLED Sleeper 设置" + (_isDirty ? "*" : "");
             }
         }
 
@@ -219,8 +219,8 @@ namespace OLED_Sleeper.UI.ViewModels
             if (IsDirty)
             {
                 var result = MessageBox.Show(
-                    "You have unsaved changes. Would you like to save them before hiding the window?",
-                    "Unsaved Changes",
+                    "您有未保存的更改。是否在隐藏窗口前保存？",
+                    "未保存的更改",
                     MessageBoxButton.YesNoCancel,
                     MessageBoxImage.Warning);
 
@@ -313,9 +313,9 @@ namespace OLED_Sleeper.UI.ViewModels
         /// </summary>
         private async Task ProvideSaveFeedbackAsync()
         {
-            SaveButtonText = "Saved!";
+            SaveButtonText = "已保存！";
             await Task.Delay(2000);
-            SaveButtonText = "Save Settings";
+            SaveButtonText = "保存设置";
         }
 
         // --- Monitor Update Helpers ---

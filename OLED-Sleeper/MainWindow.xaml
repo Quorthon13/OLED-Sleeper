@@ -155,9 +155,9 @@
                         <TextBlock Text="{Binding WindowTitle}" Foreground="{StaticResource PrimaryForegroundColor}" Margin="10,0,0,0" VerticalAlignment="Center" />
                     </StackPanel>
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                        <Button Style="{StaticResource WindowButtonStyle}" Content="&#xE921;" Click="MinimizeButton_Click" ToolTip="Minimize" />
-                        <Button Style="{StaticResource WindowButtonStyle}" Content="&#xE922;" Click="MaximizeButton_Click" ToolTip="Maximize" />
-                        <Button Style="{StaticResource CloseButtonStyle}" Content="&#xE8BB;" Click="CloseButton_Click" ToolTip="Close" />
+                        <Button Style="{StaticResource WindowButtonStyle}" Content="&#xE921;" Click="MinimizeButton_Click" ToolTip="最小化" />
+                        <Button Style="{StaticResource WindowButtonStyle}" Content="&#xE922;" Click="MaximizeButton_Click" ToolTip="最大化" />
+                        <Button Style="{StaticResource CloseButtonStyle}" Content="&#xE8BB;" Click="CloseButton_Click" ToolTip="关闭" />
                     </StackPanel>
                 </Grid>
 
@@ -178,7 +178,7 @@
 
                         <Border Grid.Row="1" BorderBrush="{StaticResource SeparatorColorBrush}" BorderThickness="0,1,0,0" Margin="0,10,0,0" Padding="15">
                             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="20,0">
-                                <Button Content="Discard Changes"
+                                <Button Content="放弃更改"
                                         Command="{Binding DiscardChangesCommand}"
                                         IsEnabled="{Binding IsDirty}"
                                         Style="{StaticResource ModernActionButton}"
@@ -196,7 +196,7 @@
                 <Border Grid.Row="2" MinHeight="220" Margin="15,0,15,15"
                         Background="{StaticResource SecondaryBackgroundColor}" CornerRadius="8"
                         Visibility="{Binding SelectedMonitor, Converter={StaticResource NullToVisibilityConverter}}">
-                    <TextBlock Text="Click a monitor above to configure its settings."
+                    <TextBlock Text="点击上方显示器以配置其设置。"
                                Foreground="{StaticResource SecondaryForegroundColor}" FontSize="16"
                                HorizontalAlignment="Center" VerticalAlignment="Center" />
                 </Border>
@@ -208,7 +208,7 @@
                     <ProgressBar Style="{StaticResource LoadingProgressBarStyle}"
                                  IsIndeterminate="True"
                                  Width="300" />
-                    <TextBlock Text="Loading monitors..."
+                    <TextBlock Text="正在加载显示器..."
                                Foreground="White"
                                FontSize="16"
                                Margin="0,15,0,0"

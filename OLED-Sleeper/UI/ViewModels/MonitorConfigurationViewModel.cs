@@ -27,7 +27,7 @@ namespace OLED_Sleeper.UI.ViewModels
         /// <summary>
         /// The display title for the monitor, including primary indicator if applicable.
         /// </summary>
-        public string MonitorTitle => _monitorInfo.IsPrimary ? $"Monitor {_monitorInfo.DisplayNumber} (Primary)" : $"Monitor {_monitorInfo.DisplayNumber}";
+        public string MonitorTitle => _monitorInfo.IsPrimary ? $"显示器 {_monitorInfo.DisplayNumber} (主显示器)" : $"显示器 {_monitorInfo.DisplayNumber}";
 
         // --- Updated: Added explicit error properties for robust UI binding ---
         public string IdleValueError => this["IdleValue"];
@@ -68,13 +68,13 @@ namespace OLED_Sleeper.UI.ViewModels
         {
             get
             {
-                string baseTooltip = "Choose how the monitor reacts after the idle timer expires.\n\n" +
-                                    "• Blackout: Turns the monitor completely black.\n" +
-                                     "• Dim: Reduces the monitor's brightness using DDC/CI.";
+                string baseTooltip = "选择空闲计时器到期后显示器的反应方式。\n\n" +
+                                    "• 黑屏：将显示器完全变黑。\n" +
+                                     "• 调暗：使用 DDC/CI 降低显示器亮度。";
 
                 if (!_monitorInfo.IsDdcCiSupported)
                 {
-                    baseTooltip = "THE SELECTED MONITOR DOES NOT SUPPORT DIMMING.\n\n" + baseTooltip;
+                    baseTooltip = "所选显示器不支持调暗功能。\n\n" + baseTooltip;
                 }
 
                 return baseTooltip;
@@ -381,7 +381,7 @@ namespace OLED_Sleeper.UI.ViewModels
         private string? ValidateIdleValue()
         {
             if (IdleValue == null || IdleValue <= 0)
-                return "Idle time value must be a number greater than zero.";
+                return "空闲时间值必须是大于零的数字。";
             return null;
         }
 
@@ -392,7 +392,7 @@ namespace OLED_Sleeper.UI.ViewModels
         private string? ValidateActiveConditions()
         {
             if (!IsActiveOnInput && !IsActiveOnMousePosition && !IsActiveOnActiveWindow)
-                return "At least one 'Consider Active When' option must be selected.";
+                return "至少选择一个\"在以下情况视为活动\"选项。";
             return null;
         }
 
@@ -405,7 +405,7 @@ namespace OLED_Sleeper.UI.ViewModels
         private string? ValidateBehavior()
         {
             if (Behavior == MonitorBehaviorType.None)
-                return "A monitor behavior must be selected.";
+                return "必须选择显示器行为。";
             return null;
         }
 
