@@ -18,12 +18,6 @@ Many users have multi-monitor setups but want to turn off or dim secondary monit
 
 OLED Sleeper monitors each screen for activity. When a monitor is idle for a set time, it will either black it out or dim its brightness based on your preference. 
 
-Benefits include: 
-- Protecting OLEDs from burn-in 
-- Creating a distraction-free workspace 
-- Temporarily sleeping secondary monitors while gaming or working 
-- Saving energy on idle screens
-
 <p align="center">
   <img width="500" height="410" alt="oled-sleeper-002" src="https://github.com/user-attachments/assets/20022234-fe5f-4573-a4e4-ff5ef07b622b" />
 </p>
