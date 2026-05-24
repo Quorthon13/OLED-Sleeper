@@ -1,4 +1,5 @@
 ﻿using System.Runtime.InteropServices;
+using System.Text;
 
 namespace OLED_Sleeper.Native
 {
@@ -64,6 +65,11 @@ namespace OLED_Sleeper.Native
         /// <seealso href="https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-monitorfromwindow"/>
         [DllImport("user32.dll")]
         public static extern IntPtr MonitorFromWindow(IntPtr hwnd, uint dwFlags);
+
+        /// <summary>
+        /// Returns <c>NULL</c> if the window does not intersect any display monitor.
+        /// </summary>
+        public const uint MONITOR_DEFAULTTONULL = 0;
 
         /// <summary>
         /// Determines the function's return value if the window does not intersect any display monitor.
@@ -190,6 +196,59 @@ namespace OLED_Sleeper.Native
         public const int DWMWA_EXTENDED_FRAME_BOUNDS = 9;
 
         /// <summary>
+        /// Use with <see cref="DwmGetWindowAttribute"/> to determine whether the window is cloaked (hidden by DWM).
+        /// </summary>
+        public const int DWMWA_CLOAKED = 14;
+
+        /// <summary>
+        /// Delegate for <see cref="EnumWindows"/>.
+        /// </summary>
+        /// <param name="hWnd">A handle to a top-level window.</param>
+        /// <param name="lParam">Application-defined value.</param>
+        /// <returns>Nonzero to continue enumeration; zero to stop.</returns>
+        public delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
+
+        /// <summary>
+        /// Enumerates all top-level windows on the screen.
+        /// </summary>
+        [DllImport("user32.dll")]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        public static extern bool EnumWindows(EnumWindowsProc lpEnumFunc, IntPtr lParam);
+
+        /// <summary>
+        /// Determines whether the specified window handle identifies an existing window.
+        /// </summary>
+        [DllImport("user32.dll")]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        public static extern bool IsWindow(IntPtr hWnd);
+
+        /// <summary>
+        /// Determines the visibility state of the specified window.
+        /// </summary>
+        [DllImport("user32.dll")]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        public static extern bool IsWindowVisible(IntPtr hWnd);
+
+        /// <summary>
+        /// Determines whether the specified window is minimized.
+        /// </summary>
+        [DllImport("user32.dll")]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        public static extern bool IsIconic(IntPtr hWnd);
+
+        /// <summary>
+        /// Retrieves a handle to the Shell's desktop window.
+        /// </summary>
+        [DllImport("user32.dll")]
+        public static extern IntPtr GetShellWindow();
+
+        /// <summary>
+        /// Retrieves the name of the class to which the specified window belongs.
+        /// </summary>
+        [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+        public static extern int GetClassName(IntPtr hWnd, StringBuilder lpClassName, int nMaxCount);
+
+        /// <summary>
         /// Delegate for monitor enumeration callback used by <see cref="EnumDisplayMonitors"/>.
         /// </summary>
         /// <param name="hMonitor">Handle to the display monitor.</param>
@@ -266,6 +325,12 @@ namespace OLED_Sleeper.Native
         /// <seealso href="https://learn.microsoft.com/en-us/windows/win32/api/dwmapi/nf-dwmapi-dwmgetwindowattribute"/>
         [DllImport("dwmapi.dll")]
         public static extern int DwmGetWindowAttribute(IntPtr hwnd, int dwAttribute, out Rect pvAttribute, int cbAttribute);
+
+        /// <summary>
+        /// Retrieves an integer Desktop Window Manager attribute (e.g. <see cref="DWMWA_CLOAKED"/>).
+        /// </summary>
+        [DllImport("dwmapi.dll", EntryPoint = "DwmGetWindowAttribute")]
+        public static extern int DwmGetWindowAttributeInt(IntPtr hwnd, int dwAttribute, out int pvAttribute, int cbAttribute);
 
         /// <summary>
         /// Retrieves a handle to the display monitor that has the largest area of intersection with a specified rectangle.

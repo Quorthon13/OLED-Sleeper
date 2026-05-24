@@ -13,7 +13,7 @@ namespace OLED_Sleeper.Features.MonitorInformation.Services
         #region Fields
 
         private readonly IMonitorInfoProvider _monitorInfoProvider;
-        private List<MonitorInfo> _cachedMonitors;
+        private List<MonitorInfo>? _cachedMonitors;
         private readonly object _lock = new object();
         private Task? _refreshTask;
 
@@ -24,7 +24,7 @@ namespace OLED_Sleeper.Features.MonitorInformation.Services
         /// <summary>
         /// Raised when the monitor list has been retrieved and enriched.
         /// </summary>
-        public event EventHandler<IReadOnlyList<MonitorInfo>> MonitorListReady;
+        public event EventHandler<IReadOnlyList<MonitorInfo>>? MonitorListReady;
 
         #endregion Events
 
@@ -67,7 +67,7 @@ namespace OLED_Sleeper.Features.MonitorInformation.Services
                     RefreshMonitorsInternal();
                     lock (_lock)
                     {
-                        MonitorListReady?.Invoke(this, _cachedMonitors);
+                        MonitorListReady?.Invoke(this, _cachedMonitors!);
                         _refreshTask = null; // Allow future refreshes if needed
                     }
                 });
@@ -87,7 +87,7 @@ namespace OLED_Sleeper.Features.MonitorInformation.Services
                 {
                     Log.Information("Manual refresh requested. Re-scanning monitors.");
                     RefreshMonitorsInternal();
-                    MonitorListReady?.Invoke(this, _cachedMonitors);
+                    MonitorListReady?.Invoke(this, _cachedMonitors!);
                 }
             });
         }
@@ -105,13 +105,33 @@ namespace OLED_Sleeper.Features.MonitorInformation.Services
         /// Enriches a list of MonitorInfo objects with DDC/CI support and hardware ID.
         /// </summary>
         /// <param name="monitors">The list of monitors to enrich.</param>
-        public void EnrichMonitorInfoList(List<MonitorInfo>? monitors)
+        public void EnrichMonitorInfoList(List<MonitorInfo> monitors)
         {
             if (monitors == null) return;
             foreach (var monitor in monitors)
             {
                 monitor.IsDdcCiSupported = _monitorInfoProvider.GetDdcCiSupport(monitor);
                 monitor.HardwareId = _monitorInfoProvider.GetHardwareId(monitor);
+            }
+        }
+
+        /// <inheritdoc />
+        public void UpdateCachedMonitorsFromSnapshot(IReadOnlyList<MonitorInfo> monitors)
+        {
+            var copy = monitors.Select(m => new MonitorInfo
+            {
+                DeviceName = m.DeviceName,
+                HardwareId = m.HardwareId,
+                Bounds = m.Bounds,
+                IsPrimary = m.IsPrimary,
+                Dpi = m.Dpi,
+                DisplayNumber = m.DisplayNumber,
+                IsDdcCiSupported = m.IsDdcCiSupported
+            }).ToList();
+
+            lock (_lock)
+            {
+                _cachedMonitors = copy;
             }
         }
 

@@ -12,7 +12,7 @@ namespace OLED_Sleeper.UI.Services.Interfaces
         /// <summary>
         /// Raised when the workspace has finished building and monitor layout view models are ready.
         /// </summary>
-        event EventHandler<ObservableCollection<MonitorLayoutViewModel>> WorkspaceReady;
+        event EventHandler<ObservableCollection<MonitorLayoutViewModel>>? WorkspaceReady;
 
         /// <summary>
         /// Begins building the workspace asynchronously by discovering monitors, loading settings, and constructing layout view models.

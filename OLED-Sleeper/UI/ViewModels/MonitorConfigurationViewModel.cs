@@ -223,6 +223,24 @@ namespace OLED_Sleeper.UI.ViewModels
             }
         }
 
+        private bool _isActiveOnVisibleWindows;
+        private bool _initialIsActiveOnVisibleWindows;
+
+        /// <summary>
+        /// Gets or sets whether any visible window on this monitor (even when not focused) keeps the monitor active.
+        /// </summary>
+        public bool IsActiveOnVisibleWindows
+        {
+            get => _isActiveOnVisibleWindows;
+            set
+            {
+                _isActiveOnVisibleWindows = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(ActiveConditionsError));
+                UpdateDirtyState();
+            }
+        }
+
         #endregion Properties
 
         /// <summary>
@@ -261,7 +279,8 @@ namespace OLED_Sleeper.UI.ViewModels
                        SelectedTimeUnit != _initialSelectedTimeUnit ||
                        IsActiveOnInput != _initialIsActiveOnInput ||
                        IsActiveOnMousePosition != _initialIsActiveOnMousePosition ||
-                       IsActiveOnActiveWindow != _initialIsActiveOnActiveWindow;
+                       IsActiveOnActiveWindow != _initialIsActiveOnActiveWindow ||
+                       IsActiveOnVisibleWindows != _initialIsActiveOnVisibleWindows;
 
             OnPropertyChanged(nameof(IsDirty));
             OnDirtyStateChanged?.Invoke();
@@ -280,6 +299,7 @@ namespace OLED_Sleeper.UI.ViewModels
             _initialIsActiveOnInput = IsActiveOnInput;
             _initialIsActiveOnMousePosition = IsActiveOnMousePosition;
             _initialIsActiveOnActiveWindow = IsActiveOnActiveWindow;
+            _initialIsActiveOnVisibleWindows = IsActiveOnVisibleWindows;
             UpdateDirtyState();
         }
 
@@ -297,6 +317,7 @@ namespace OLED_Sleeper.UI.ViewModels
             IsActiveOnInput = settings.IsActiveOnInput;
             IsActiveOnMousePosition = settings.IsActiveOnMousePosition;
             IsActiveOnActiveWindow = settings.IsActiveOnActiveWindow;
+            IsActiveOnVisibleWindows = settings.IsActiveOnVisibleWindows;
         }
 
         /// <summary>
@@ -307,7 +328,7 @@ namespace OLED_Sleeper.UI.ViewModels
         {
             return new MonitorSettings
             {
-                HardwareId = _monitorInfo.HardwareId,
+                HardwareId = _monitorInfo.HardwareId ?? string.Empty,
                 IsManaged = IsManaged,
                 Behavior = Behavior,
                 DimLevel = DimLevel,
@@ -315,7 +336,8 @@ namespace OLED_Sleeper.UI.ViewModels
                 IdleUnit = SelectedTimeUnit,
                 IsActiveOnInput = IsActiveOnInput,
                 IsActiveOnMousePosition = IsActiveOnMousePosition,
-                IsActiveOnActiveWindow = IsActiveOnActiveWindow
+                IsActiveOnActiveWindow = IsActiveOnActiveWindow,
+                IsActiveOnVisibleWindows = IsActiveOnVisibleWindows
             };
         }
 
@@ -363,6 +385,7 @@ namespace OLED_Sleeper.UI.ViewModels
                     case nameof(IsActiveOnInput):
                     case nameof(IsActiveOnMousePosition):
                     case nameof(IsActiveOnActiveWindow):
+                    case nameof(IsActiveOnVisibleWindows):
                         result = ValidateActiveConditions();
                         break;
 
@@ -391,7 +414,7 @@ namespace OLED_Sleeper.UI.ViewModels
         /// <returns>An error message if invalid, otherwise null.</returns>
         private string? ValidateActiveConditions()
         {
-            if (!IsActiveOnInput && !IsActiveOnMousePosition && !IsActiveOnActiveWindow)
+            if (!IsActiveOnInput && !IsActiveOnMousePosition && !IsActiveOnActiveWindow && !IsActiveOnVisibleWindows)
                 return "At least one 'Consider Active When' option must be selected.";
             return null;
         }

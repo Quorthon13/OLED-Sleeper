@@ -32,6 +32,12 @@ namespace OLED_Sleeper.Features.MonitorDimming.Handlers
         {
             try
             {
+                if (string.IsNullOrEmpty(command.HardwareId))
+                {
+                    Log.Warning("ApplyUndimCommand missing HardwareId; skipping.");
+                    return;
+                }
+
                 Log.Information("Executing UndimMonitorCommand for monitor {HardwareId}.", command.HardwareId);
                 await _monitorDimmingService.UndimMonitorAsync(command.HardwareId);
             }

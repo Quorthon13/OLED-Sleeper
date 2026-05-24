@@ -32,6 +32,12 @@ namespace OLED_Sleeper.Features.MonitorBlackout.Handlers
         {
             try
             {
+                if (string.IsNullOrEmpty(command.HardwareId))
+                {
+                    Log.Warning("HideBlackoutOverlayCommand missing HardwareId; skipping.");
+                    return;
+                }
+
                 Log.Information("Executing HideBlackoutOverlayCommand for monitor {HardwareId}.", command.HardwareId);
                 await _monitorBlackoutService.HideBlackoutOverlayAsync(command.HardwareId);
             }

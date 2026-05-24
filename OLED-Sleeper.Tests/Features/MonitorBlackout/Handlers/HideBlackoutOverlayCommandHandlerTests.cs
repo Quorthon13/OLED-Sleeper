@@ -52,7 +52,7 @@ namespace OLED_Sleeper.Tests.Features.MonitorBlackout.Handlers
         }
 
         [Fact]
-        public async Task HandleAsync_WithNullHardwareId_DoesNotThrow()
+        public async Task HandleAsync_WithNullHardwareId_DoesNotThrowAndSkipsService()
         {
             // Arrange
             var command = new HideBlackoutOverlayCommand { HardwareId = null };
@@ -62,7 +62,7 @@ namespace OLED_Sleeper.Tests.Features.MonitorBlackout.Handlers
 
             // Assert
             Assert.Null(exception);
-            _monitorBlackoutServiceMock.Verify(x => x.HideBlackoutOverlayAsync(It.IsAny<string>()), Times.Once);
+            _monitorBlackoutServiceMock.Verify(x => x.HideBlackoutOverlayAsync(It.IsAny<string>()), Times.Never);
         }
     }
 }

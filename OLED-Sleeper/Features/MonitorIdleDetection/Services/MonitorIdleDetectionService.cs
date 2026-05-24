@@ -1,5 +1,6 @@
 ﻿using OLED_Sleeper.Core.Interfaces;
 using OLED_Sleeper.Features.MonitorBehavior.Commands;
+using OLED_Sleeper.Features.MonitorBlackout.Services.Interfaces;
 using OLED_Sleeper.Features.MonitorIdleDetection.Models;
 using OLED_Sleeper.Features.MonitorIdleDetection.Services.Interfaces;
 using OLED_Sleeper.Features.MonitorInformation.Models;
@@ -8,6 +9,7 @@ using OLED_Sleeper.Features.UserSettings.Models;
 using OLED_Sleeper.Native;
 using Serilog;
 using System.Runtime.InteropServices;
+using System.Text;
 using System.Windows;
 
 namespace OLED_Sleeper.Features.MonitorIdleDetection.Services
@@ -27,10 +29,15 @@ namespace OLED_Sleeper.Features.MonitorIdleDetection.Services
         private readonly IMediator _mediator;
 
         private readonly IMonitorInfoManager _monitorManager;
-        private CancellationTokenSource _cancellationTokenSource;
+        private readonly IMonitorBlackoutService _monitorBlackoutService;
+        private CancellationTokenSource? _cancellationTokenSource;
         private List<ManagedMonitorState> _managedMonitors = new();
         private readonly object _lock = new();
         private readonly Dictionary<string, MonitorTimerState> _monitorStates = new();
+        private static readonly HashSet<string> EmptyHardwareIdSet = new(StringComparer.Ordinal);
+        private HashSet<string> _cachedVisibleWindowHardwareIds = new(StringComparer.Ordinal);
+        private DateTime _visibleWindowCacheUtc = DateTime.MinValue;
+        private const int VisibleWindowScanIntervalMs = 400;
 
         // === Construction ===
 
@@ -39,10 +46,15 @@ namespace OLED_Sleeper.Features.MonitorIdleDetection.Services
         /// </summary>
         /// <param name="monitorManager">Service for monitor information.</param>
         /// <param name="mediator">Mediator for dispatching monitor behavior commands.</param>
-        public MonitorIdleDetectionService(IMonitorInfoManager monitorManager, IMediator mediator)
+        /// <param name="monitorBlackoutService">Service used to ignore blackout overlay windows when enumerating visible windows.</param>
+        public MonitorIdleDetectionService(
+            IMonitorInfoManager monitorManager,
+            IMediator mediator,
+            IMonitorBlackoutService monitorBlackoutService)
         {
             _monitorManager = monitorManager;
             _mediator = mediator;
+            _monitorBlackoutService = monitorBlackoutService;
         }
 
         // === Service Lifecycle ===
@@ -52,8 +64,16 @@ namespace OLED_Sleeper.Features.MonitorIdleDetection.Services
         /// </summary>
         public void Start()
         {
-            _cancellationTokenSource = new CancellationTokenSource();
-            Task.Run(() => IdleCheckLoop(_cancellationTokenSource.Token));
+            lock (_lock)
+            {
+                if (_cancellationTokenSource != null)
+                    return;
+
+                _cancellationTokenSource = new CancellationTokenSource();
+                var token = _cancellationTokenSource.Token;
+                _ = Task.Run(() => IdleCheckLoop(token));
+            }
+
             Log.Information("MonitorIdleDetectionService started.");
         }
 
@@ -62,8 +82,13 @@ namespace OLED_Sleeper.Features.MonitorIdleDetection.Services
         /// </summary>
         public void Stop()
         {
-            _cancellationTokenSource?.Cancel();
-            _cancellationTokenSource?.Dispose();
+            lock (_lock)
+            {
+                _cancellationTokenSource?.Cancel();
+                _cancellationTokenSource?.Dispose();
+                _cancellationTokenSource = null;
+            }
+
             Log.Information("MonitorIdleDetectionService stopped.");
         }
 
@@ -79,28 +104,58 @@ namespace OLED_Sleeper.Features.MonitorIdleDetection.Services
             {
                 _monitorManager.MonitorListReady -= OnMonitorsReady;
 
+                int count;
                 lock (_lock)
                 {
-                    _managedMonitors = (from setting in activeSettings
-                                        join monitorInfo in allMonitors on setting.HardwareId equals monitorInfo.HardwareId
-                                        select new ManagedMonitorState
-                                        {
-                                            Settings = setting,
-                                            Bounds = monitorInfo.Bounds,
-                                            DisplayNumber = monitorInfo.DisplayNumber
-                                        }).ToList();
-
-                    _monitorStates.Clear();
-                    foreach (var monitor in _managedMonitors)
-                    {
-                        _monitorStates[monitor.Settings.HardwareId] = new MonitorTimerState();
-                    }
+                    ApplyManagedMonitorsAndResetTimersUnlocked(activeSettings, allMonitors);
+                    count = _managedMonitors.Count;
                 }
-                Log.Information("MonitorIdleDetectionService settings updated. Now tracking {Count} monitors.", _managedMonitors.Count);
+
+                Log.Information("MonitorIdleDetectionService settings updated. Now tracking {Count} monitors.", count);
             }
 
             _monitorManager.MonitorListReady += OnMonitorsReady;
             _monitorManager.GetCurrentMonitorsAsync();
+        }
+
+        /// <inheritdoc />
+        public void ApplyTopologyAndSettings(List<MonitorSettings> monitorSettings, IReadOnlyList<MonitorInfo> activeEnrichedMonitors)
+        {
+            var activeSettings = monitorSettings.Where(s => s.IsManaged).ToList();
+
+            int count;
+            lock (_lock)
+            {
+                ApplyManagedMonitorsAndResetTimersUnlocked(activeSettings, activeEnrichedMonitors);
+                count = _managedMonitors.Count;
+            }
+
+            Log.Information("MonitorIdleDetectionService topology applied. Now tracking {Count} monitors.", count);
+        }
+
+        /// <summary>
+        /// Rebuilds managed monitors and timer state. Caller must hold <c>_lock</c>.
+        /// </summary>
+        private void ApplyManagedMonitorsAndResetTimersUnlocked(
+            List<MonitorSettings> activeSettings,
+            IReadOnlyList<MonitorInfo> allMonitors)
+        {
+            _managedMonitors = (from setting in activeSettings
+                                join monitorInfo in allMonitors on setting.HardwareId equals monitorInfo.HardwareId
+                                select new ManagedMonitorState
+                                {
+                                    Settings = setting,
+                                    Bounds = monitorInfo.Bounds,
+                                    DisplayNumber = monitorInfo.DisplayNumber
+                                }).ToList();
+
+            _monitorStates.Clear();
+            foreach (var monitor in _managedMonitors)
+            {
+                _monitorStates[monitor.Settings.HardwareId] = new MonitorTimerState();
+            }
+
+            _visibleWindowCacheUtc = DateTime.MinValue;
         }
 
         // === Idle Detection Loop ===
@@ -130,7 +185,14 @@ namespace OLED_Sleeper.Features.MonitorIdleDetection.Services
         /// </summary>
         private void ProcessMonitors()
         {
-            var systemState = GetSystemState();
+            List<ManagedMonitorState> snapshot;
+            lock (_lock)
+            {
+                snapshot = _managedMonitors.ToList();
+            }
+
+            var visibleOnHardwareIds = GetVisibleWindowHardwareIdsSnapshot(snapshot);
+            var systemState = GetSystemState(visibleOnHardwareIds);
 
             lock (_lock)
             {
@@ -250,6 +312,8 @@ namespace OLED_Sleeper.Features.MonitorIdleDetection.Services
                 return ActivityReason.MousePosition;
             if (IsActiveWindowActive(monitor, state))
                 return ActivityReason.ActiveWindow;
+            if (IsVisibleWindowActive(monitor, state))
+                return ActivityReason.VisibleWindow;
             return ActivityReason.None;
         }
 
@@ -283,20 +347,201 @@ namespace OLED_Sleeper.Features.MonitorIdleDetection.Services
             return false;
         }
 
+        /// <summary>
+        /// Checks whether a visible (non-foreground) window on this monitor should count as activity.
+        /// </summary>
+        private static bool IsVisibleWindowActive(ManagedMonitorState monitor, SystemState state)
+        {
+            return monitor.Settings.IsActiveOnVisibleWindows
+                   && state.HardwareIdsWithVisibleWindows.Contains(monitor.Settings.HardwareId);
+        }
+
+        /// <summary>
+        /// Returns cached or freshly enumerated hardware IDs for monitors that have a qualifying visible window.
+        /// </summary>
+        private HashSet<string> GetVisibleWindowHardwareIdsSnapshot(IReadOnlyList<ManagedMonitorState> monitors)
+        {
+            if (!monitors.Any(m => m.Settings.IsActiveOnVisibleWindows))
+                return EmptyHardwareIdSet;
+
+            var now = DateTime.UtcNow;
+            if ((now - _visibleWindowCacheUtc).TotalMilliseconds < VisibleWindowScanIntervalMs)
+                return _cachedVisibleWindowHardwareIds;
+
+            _visibleWindowCacheUtc = now;
+            _cachedVisibleWindowHardwareIds = ComputeHardwareIdsWithVisibleAppWindows(monitors);
+            return _cachedVisibleWindowHardwareIds;
+        }
+
+        /// <summary>
+        /// Enumerates top-level windows and maps monitors (with the option enabled) that intersect a visible, non-shell window.
+        /// </summary>
+        private HashSet<string> ComputeHardwareIdsWithVisibleAppWindows(IReadOnlyList<ManagedMonitorState> monitors)
+        {
+            var result = new HashSet<string>(StringComparer.Ordinal);
+            var targets = monitors.Where(m => m.Settings.IsActiveOnVisibleWindows).ToList();
+            if (targets.Count == 0)
+                return result;
+
+            var distinctHardwareIds = targets.Select(m => m.Settings.HardwareId).Distinct(StringComparer.Ordinal).ToList();
+            var monitorHandleByHardwareId = new Dictionary<string, nint>(StringComparer.Ordinal);
+            foreach (var id in distinctHardwareIds)
+            {
+                var sample = targets.First(m => m.Settings.HardwareId == id);
+                monitorHandleByHardwareId[id] = GetMonitorHandleFromBounds(sample.Bounds);
+            }
+
+            nint shellWindow = NativeMethods.GetShellWindow();
+
+            NativeMethods.EnumWindows((hWnd, _) =>
+            {
+                if (result.Count >= distinctHardwareIds.Count)
+                    return false;
+
+                nint hwnd = hWnd;
+                if (!NativeMethods.IsWindow(hwnd) || !NativeMethods.IsWindowVisible(hwnd) || NativeMethods.IsIconic(hwnd))
+                    return true;
+                if (hwnd == shellWindow || _monitorBlackoutService.IsOverlayWindow(hwnd))
+                    return true;
+                if (IsWindowCloaked(hwnd))
+                    return true;
+
+                var className = GetWindowClassName(hwnd);
+                if (IsShellDesktopWindowClass(className))
+                    return true;
+
+                Rect windowBounds = GetWindowScreenBoundsForVisibleScan(hwnd);
+                if (windowBounds.IsEmpty || windowBounds.Width <= 0 || windowBounds.Height <= 0)
+                    return true;
+
+                nint windowMonitor = (nint)NativeMethods.MonitorFromWindow((IntPtr)hwnd, NativeMethods.MONITOR_DEFAULTTONULL);
+
+                foreach (var m in targets)
+                {
+                    if (result.Contains(m.Settings.HardwareId))
+                        continue;
+                    if (!monitorHandleByHardwareId.TryGetValue(m.Settings.HardwareId, out nint targetMonitor))
+                        continue;
+
+                    bool anchoredOnMonitor = windowMonitor != nint.Zero && windowMonitor == targetMonitor;
+                    bool rectsOverlap = MonitorIntersectsWindow(m.Bounds, windowBounds);
+                    if (!(anchoredOnMonitor || rectsOverlap))
+                        continue;
+
+                    // Require meaningful coverage on this monitor so shadows, DWM helpers, or huge rects
+                    // that only clip a sliver of the display do not block blackout.
+                    if (!HasSignificantVisibleOverlap(m.Bounds, windowBounds))
+                        continue;
+
+                    result.Add(m.Settings.HardwareId);
+                }
+
+                return true;
+            }, IntPtr.Zero);
+
+            return result;
+        }
+
+        private static nint GetMonitorHandleFromBounds(Rect bounds)
+        {
+            var nativeRect = new NativeMethods.Rect
+            {
+                left = (int)Math.Floor(bounds.Left),
+                top = (int)Math.Floor(bounds.Top),
+                right = (int)Math.Ceiling(bounds.Right),
+                bottom = (int)Math.Ceiling(bounds.Bottom)
+            };
+            return (nint)NativeMethods.MonitorFromRect(ref nativeRect, NativeMethods.MONITOR_DEFAULTTONEAREST);
+        }
+
+        /// <summary>
+        /// Window bounds for "is something covering this monitor" checks.
+        /// Uses <see cref="NativeMethods.GetWindowRect"/> first because DWM extended frame bounds are often wrong or empty for fullscreen and GPU-presented windows.
+        /// </summary>
+        private static Rect GetWindowScreenBoundsForVisibleScan(nint hwnd)
+        {
+            if (NativeMethods.GetWindowRect(hwnd, out var nativeRect))
+            {
+                var r = nativeRect.ToWindowsRect();
+                if (r.Width > 0 && r.Height > 0)
+                    return r;
+            }
+
+            if (NativeMethods.DwmGetWindowAttribute(hwnd, NativeMethods.DWMWA_EXTENDED_FRAME_BOUNDS, out nativeRect, Marshal.SizeOf(typeof(NativeMethods.Rect))) == 0)
+            {
+                var r = nativeRect.ToWindowsRect();
+                if (r.Width > 0 && r.Height > 0)
+                    return r;
+            }
+
+            return Rect.Empty;
+        }
+
+        private static bool MonitorIntersectsWindow(Rect monitorBounds, Rect windowBounds)
+        {
+            Rect intersection = Rect.Intersect(monitorBounds, windowBounds);
+            return !intersection.IsEmpty && intersection.Width > 0 && intersection.Height > 0;
+        }
+
+        /// <summary>
+        /// True when the window covers enough of the monitor to count as real content (not a shadow, sliver, or stray overlap from another display).
+        /// </summary>
+        private static bool HasSignificantVisibleOverlap(Rect monitorBounds, Rect windowBounds)
+        {
+            Rect intersection = Rect.Intersect(monitorBounds, windowBounds);
+            if (intersection.IsEmpty || intersection.Width <= 0 || intersection.Height <= 0)
+                return false;
+
+            double intersectionPixels = intersection.Width * intersection.Height;
+            double monitorPixels = monitorBounds.Width * monitorBounds.Height;
+            if (monitorPixels <= 0)
+                return false;
+
+            const double minFractionOfMonitor = 0.015;
+            const double absoluteMinPixels = 40_000;
+            double threshold = Math.Max(absoluteMinPixels, monitorPixels * minFractionOfMonitor);
+            return intersectionPixels >= threshold;
+        }
+
+        private static string GetWindowClassName(nint hwnd)
+        {
+            var sb = new StringBuilder(256);
+            return NativeMethods.GetClassName(hwnd, sb, sb.Capacity) > 0 ? sb.ToString() : string.Empty;
+        }
+
+        private static bool IsShellDesktopWindowClass(string className) =>
+            className.Equals("Progman", StringComparison.OrdinalIgnoreCase)
+            || className.Equals("WorkerW", StringComparison.OrdinalIgnoreCase)
+            || className.Equals("Shell_TrayWnd", StringComparison.OrdinalIgnoreCase)
+            || className.Equals("Shell_SecondaryTrayWnd", StringComparison.OrdinalIgnoreCase)
+            || className.Equals("NotifyIconOverflowWindow", StringComparison.OrdinalIgnoreCase)
+            || className.Equals("DummyDWMListenerWindow", StringComparison.OrdinalIgnoreCase)
+            || className.Equals("XamlExplorerHostIslandWindow", StringComparison.OrdinalIgnoreCase)
+            || className.Equals("SysShadow", StringComparison.OrdinalIgnoreCase)
+            || className.Equals("Windows.UI.Composition.DesktopWindowContentBridge", StringComparison.OrdinalIgnoreCase);
+
+        private static bool IsWindowCloaked(nint hwnd)
+        {
+            if (NativeMethods.DwmGetWindowAttributeInt(hwnd, NativeMethods.DWMWA_CLOAKED, out int cloaked, sizeof(int)) != 0)
+                return false;
+            return cloaked != 0;
+        }
+
         // === System State Helpers ===
 
         /// <summary>
         /// Gathers all required system-wide state information at once.
         /// </summary>
+        /// <param name="hardwareIdsWithVisibleWindows">Monitors that currently have a qualifying visible window.</param>
         /// <returns>System state snapshot.</returns>
-        private static SystemState GetSystemState()
+        private static SystemState GetSystemState(HashSet<string> hardwareIdsWithVisibleWindows)
         {
             uint idleTime = GetSystemIdleTimeMilliseconds();
             NativeMethods.GetCursorPos(out var nativePoint);
             Point cursorPosition = new(nativePoint.X, nativePoint.Y);
             nint foregroundWindowHandle = NativeMethods.GetForegroundWindow();
             Rect windowRect = GetForegroundWindowRect(foregroundWindowHandle);
-            return new SystemState(idleTime, cursorPosition, windowRect, foregroundWindowHandle);
+            return new SystemState(idleTime, cursorPosition, windowRect, foregroundWindowHandle, hardwareIdsWithVisibleWindows);
         }
 
         /// <summary>
@@ -351,7 +596,7 @@ namespace OLED_Sleeper.Features.MonitorIdleDetection.Services
         private class ManagedMonitorState
         {
             public int DisplayNumber { get; set; }
-            public MonitorSettings Settings { get; set; }
+            public required MonitorSettings Settings { get; set; }
             public Rect Bounds { get; set; }
         }
 
@@ -373,13 +618,20 @@ namespace OLED_Sleeper.Features.MonitorIdleDetection.Services
             public readonly Point CursorPosition;
             public readonly Rect ForegroundWindowRect;
             public readonly nint ForegroundWindowHandle;
+            public readonly HashSet<string> HardwareIdsWithVisibleWindows;
 
-            public SystemState(uint idleTime, Point cursorPosition, Rect windowRect, nint windowHandle)
+            public SystemState(
+                uint idleTime,
+                Point cursorPosition,
+                Rect windowRect,
+                nint windowHandle,
+                HashSet<string> hardwareIdsWithVisibleWindows)
             {
                 IdleTimeMilliseconds = idleTime;
                 CursorPosition = cursorPosition;
                 ForegroundWindowRect = windowRect;
                 ForegroundWindowHandle = windowHandle;
+                HardwareIdsWithVisibleWindows = hardwareIdsWithVisibleWindows;
             }
         }
     }

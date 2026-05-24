@@ -11,6 +11,6 @@ namespace OLED_Sleeper.Features.MonitorBehavior.Commands
         /// <summary>
         /// Gets or sets the unique hardware ID of the monitor to be restored.
         /// </summary>
-        public string HardwareId { get; set; }
+        public required string HardwareId { get; set; }
     }
 }

@@ -22,6 +22,11 @@
         ActiveWindow,
 
         /// <summary>
+        /// A visible application window is present on this monitor even if it is not the foreground window.
+        /// </summary>
+        VisibleWindow,
+
+        /// <summary>
         /// System input (keyboard or mouse activity) was detected.
         /// </summary>
         SystemInput

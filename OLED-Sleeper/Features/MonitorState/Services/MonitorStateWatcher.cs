@@ -11,16 +11,25 @@ namespace OLED_Sleeper.Features.MonitorState.Services
     /// <summary>
     /// Monitors the set of connected displays and dispatches synchronization commands when changes are detected.
     /// This class polls the system for monitor changes and uses the mediator pattern to notify the application of state changes.
+    /// Topology changes are debounced: the same layout must be reported on several consecutive polls before a sync runs,
+    /// which avoids spurious syncs (and overlay churn) when enumeration flickers during display wake.
     /// </summary>
     public class MonitorStateWatcher : IMonitorStateWatcher
     {
         #region Fields
 
+        /// <summary>
+        /// Number of consecutive polls that must report the same topology before committing a sync.
+        /// </summary>
+        private const int RequiredStableTopologyPolls = 3;
+
         private readonly IMonitorInfoManager _monitorInfoManager;
         private readonly IMediator _mediator;
         private readonly Timer _pollTimer;
         private readonly object _lock = new();
-        private IReadOnlyList<MonitorInfo> _lastKnownMonitors = Array.Empty<MonitorInfo>();
+        private IReadOnlyList<MonitorInfo> _committedMonitors = Array.Empty<MonitorInfo>();
+        private List<MonitorInfo>? _pendingTopologySnapshot;
+        private int _stableTopologyPollCount;
 
         #endregion Fields
 
@@ -87,12 +96,13 @@ namespace OLED_Sleeper.Features.MonitorState.Services
         /// </summary>
         private void RetrieveInitialMonitorList()
         {
-            EventHandler<IReadOnlyList<MonitorInfo>> handler = null;
+            EventHandler<IReadOnlyList<MonitorInfo>>? handler = null;
             handler = (sender, monitors) =>
             {
                 _monitorInfoManager.MonitorListReady -= handler;
-                _lastKnownMonitors = monitors;
-                _mediator.SendAsync(new SynchronizeMonitorStateCommand([], _lastKnownMonitors));
+                _committedMonitors = CloneMonitorList(monitors);
+                ResetTopologyDebounce();
+                _mediator.SendAsync(new SynchronizeMonitorStateCommand([], _committedMonitors));
                 _pollTimer.Start();
             };
             _monitorInfoManager.MonitorListReady += handler;
@@ -100,29 +110,48 @@ namespace OLED_Sleeper.Features.MonitorState.Services
         }
 
         /// <summary>
-        /// Polls for monitor changes and dispatches a synchronization command if a change is detected.
+        /// Polls for monitor changes and dispatches a synchronization command once a new topology is stable across several polls.
         /// </summary>
         private void PollTimerElapsed(object? sender, ElapsedEventArgs e)
         {
             lock (_lock)
             {
                 var currentMonitors = _monitorInfoManager.GetLatestMonitorsBasicInfo();
-                if (!AreMonitorListsEqual(_lastKnownMonitors, currentMonitors))
+
+                if (AreMonitorListsEqual(_committedMonitors, currentMonitors))
                 {
-                    EnrichMonitorInfoList(currentMonitors);
-                    var oldMonitors = _lastKnownMonitors;
-                    _lastKnownMonitors = currentMonitors;
-                    _mediator.SendAsync(new SynchronizeMonitorStateCommand(oldMonitors, currentMonitors));
+                    ResetTopologyDebounce();
+                    return;
                 }
+
+                if (_pendingTopologySnapshot == null || !AreMonitorListsEqual(_pendingTopologySnapshot, currentMonitors))
+                {
+                    _pendingTopologySnapshot = CopyBasicTopology(currentMonitors);
+                    _stableTopologyPollCount = 1;
+                    return;
+                }
+
+                _stableTopologyPollCount++;
+                if (_stableTopologyPollCount < RequiredStableTopologyPolls)
+                    return;
+
+                EnrichMonitorInfoList(currentMonitors);
+                var oldCommitted = _committedMonitors;
+                _committedMonitors = CloneMonitorList(currentMonitors);
+                ResetTopologyDebounce();
+                _mediator.SendAsync(new SynchronizeMonitorStateCommand(oldCommitted, _committedMonitors));
             }
+        }
+
+        private void ResetTopologyDebounce()
+        {
+            _pendingTopologySnapshot = null;
+            _stableTopologyPollCount = 0;
         }
 
         /// <summary>
         /// Compares two monitor lists for equality based on device name set and count.
         /// </summary>
-        /// <param name="a">First monitor list.</param>
-        /// <param name="b">Second monitor list.</param>
-        /// <returns>True if the lists are equal; otherwise, false.</returns>
         private static bool AreMonitorListsEqual(IReadOnlyList<MonitorInfo>? a, IReadOnlyList<MonitorInfo>? b)
         {
             if (a == null || b == null) return false;
@@ -132,10 +161,36 @@ namespace OLED_Sleeper.Features.MonitorState.Services
             return aNames.SetEquals(bNames);
         }
 
+        private static List<MonitorInfo> CloneMonitorList(IReadOnlyList<MonitorInfo> source) =>
+            source.Select(CloneMonitorInfo).ToList();
+
+        private static MonitorInfo CloneMonitorInfo(MonitorInfo m) => new()
+        {
+            DeviceName = m.DeviceName,
+            HardwareId = m.HardwareId,
+            Bounds = m.Bounds,
+            IsPrimary = m.IsPrimary,
+            Dpi = m.Dpi,
+            DisplayNumber = m.DisplayNumber,
+            IsDdcCiSupported = m.IsDdcCiSupported
+        };
+
+        /// <summary>
+        /// Copies topology fields used for debounce comparison (hardware id is filled later during enrichment).
+        /// </summary>
+        private static List<MonitorInfo> CopyBasicTopology(IReadOnlyList<MonitorInfo> source) =>
+            source.Select(m => new MonitorInfo
+            {
+                DeviceName = m.DeviceName,
+                Bounds = m.Bounds,
+                IsPrimary = m.IsPrimary,
+                Dpi = m.Dpi,
+                DisplayNumber = m.DisplayNumber
+            }).ToList();
+
         /// <summary>
         /// Enriches a list of MonitorInfo objects with DDC/CI support and hardware ID.
         /// </summary>
-        /// <param name="monitors">The list of monitors to enrich.</param>
         private void EnrichMonitorInfoList(List<MonitorInfo> monitors)
         {
             _monitorInfoManager.EnrichMonitorInfoList(monitors);

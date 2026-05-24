@@ -61,7 +61,7 @@ namespace OLED_Sleeper.UI.ViewModels
         /// <summary>
         /// The hardware ID for the monitor.
         /// </summary>
-        public string HardwareId => _monitor.HardwareId;
+        public string HardwareId => _monitor.HardwareId ?? string.Empty;
 
         /// <summary>
         /// The resolution of the monitor as a formatted string (e.g., 1920x1080).
