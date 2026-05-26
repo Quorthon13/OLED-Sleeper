@@ -293,7 +293,7 @@
         FontSize="18"
         FontWeight="SemiBold"
         VerticalAlignment="Center"
-        ToolTip="Enable or disable management for this monitor." />
+        ToolTip="启用或禁用此显示器的管理。" />
 
             <Separator Background="{StaticResource SeparatorColorBrush}" Margin="0,12" />
 
@@ -315,14 +315,14 @@
                             <ToolTip Content="{Binding BehaviorSectionTooltip}" />
                         </StackPanel.ToolTip>
                         <StackPanel Orientation="Horizontal" Margin="0,0,0,5">
-                            <TextBlock Text="BEHAVIOR" Foreground="{StaticResource SecondaryForegroundColor}" FontSize="12" FontWeight="Light" />
+                            <TextBlock Text="行为" Foreground="{StaticResource SecondaryForegroundColor}" FontSize="12" FontWeight="Light" />
                             <TextBlock Text="*" Foreground="{StaticResource DestructiveColorBrush}" FontWeight="Bold" Margin="4,-2,0,0" VerticalAlignment="Top"
                                        Visibility="{Binding BehaviorError, Converter={StaticResource ErrorVisibilityConverter}}" />
                         </StackPanel>
                         <StackPanel Orientation="Horizontal" Margin="0,5,0,0">
-                            <RadioButton Content="Blackout" GroupName="Behavior" Style="{StaticResource ModernRadioButton}"
+                            <RadioButton Content="黑屏" GroupName="Behavior" Style="{StaticResource ModernRadioButton}"
                                 IsChecked="{Binding Behavior, Converter={StaticResource EnumToBooleanConverter}, ConverterParameter={x:Static models1:MonitorBehaviorType.Blackout}, UpdateSourceTrigger=PropertyChanged}" />
-                            <RadioButton Content="Dim" GroupName="Behavior" Style="{StaticResource ModernRadioButton}" Margin="25,0,0,0"
+                            <RadioButton Content="调暗" GroupName="Behavior" Style="{StaticResource ModernRadioButton}" Margin="25,0,0,0"
                                 IsChecked="{Binding Behavior, Converter={StaticResource EnumToBooleanConverter}, ConverterParameter={x:Static models1:MonitorBehaviorType.Dim}, UpdateSourceTrigger=PropertyChanged}"
                                 IsEnabled="{Binding IsDimBehaviorEnabled}"
                                 ToolTip="{Binding DimBehaviorTooltip}"
@@ -333,9 +333,9 @@
                     <!-- Brightness Level Section -->
                     <StackPanel Grid.Row="0" Grid.Column="1" Margin="40,0,0,0" IsEnabled="{Binding IsDimSliderEnabled}" VerticalAlignment="Center" ToolTipService.InitialShowDelay="200">
                         <StackPanel.ToolTip>
-                            <ToolTip>Set the brightness level to use when this monitor is dimmed.</ToolTip>
+                            <ToolTip>设置此显示器调暗时的亮度级别。</ToolTip>
                         </StackPanel.ToolTip>
-                        <TextBlock Text="BRIGHTNESS LEVEL" Foreground="{StaticResource SecondaryForegroundColor}" FontSize="12" FontWeight="Light" />
+                        <TextBlock Text="亮度级别" Foreground="{StaticResource SecondaryForegroundColor}" FontSize="12" FontWeight="Light" />
                         <Grid Margin="0,8,0,0">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*" />
@@ -353,10 +353,10 @@
                     <!-- Idle Timer Section -->
                     <StackPanel Grid.Row="1" Grid.Column="0" Margin="0,20,0,0" ToolTipService.InitialShowDelay="200">
                         <StackPanel.ToolTip>
-                            <ToolTip Content="Set the duration of user inactivity required before the selected behavior is triggered." />
+                            <ToolTip Content="设置触发所选行为前需要的用户不活动时长。" />
                         </StackPanel.ToolTip>
                         <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="IDLE TIMER" Foreground="{StaticResource SecondaryForegroundColor}" FontSize="12" FontWeight="Light" />
+                            <TextBlock Text="空闲计时器" Foreground="{StaticResource SecondaryForegroundColor}" FontSize="12" FontWeight="Light" />
                         </StackPanel>
                         <Grid Margin="0,8,0,0">
                             <Grid.ColumnDefinitions>
@@ -369,10 +369,10 @@
                             </Grid.RowDefinitions>
 
                             <!-- Unit Label -->
-                            <TextBlock Grid.Row="0" Grid.Column="0" Text="Unit" Foreground="{StaticResource SecondaryForegroundColor}" FontSize="11" Margin="4,0,0,3" />
+                            <TextBlock Grid.Row="0" Grid.Column="0" Text="单位" Foreground="{StaticResource SecondaryForegroundColor}" FontSize="11" Margin="4,0,0,3" />
                             <!-- Value Label + Error -->
                             <StackPanel Grid.Row="0" Grid.Column="1" Orientation="Horizontal" Margin="10,0,0,0">
-                                <TextBlock Text="Value" Foreground="{StaticResource SecondaryForegroundColor}" FontSize="11" Margin="4,0,0,3" />
+                                <TextBlock Text="数值" Foreground="{StaticResource SecondaryForegroundColor}" FontSize="11" Margin="4,0,0,3" />
                                 <TextBlock Text="*" Foreground="{StaticResource DestructiveColorBrush}" FontWeight="Bold" Margin="4,-2,0,0" VerticalAlignment="Top"
                                            Visibility="{Binding IdleValueError, Converter={StaticResource ErrorVisibilityConverter}}" />
                             </StackPanel>
@@ -397,31 +397,31 @@
                         <StackPanel.ToolTip>
                             <ToolTip>
                                 <TextBlock>
-                  <Run FontWeight="SemiBold" TextDecorations="Underline">Monitor-Specific Conditions</Run><LineBreak />
-                  These options prevent ONLY this monitor from sleeping.<LineBreak /><LineBreak />
-                  • <Run FontWeight="SemiBold">Mouse cursor is on this monitor:</Run><LineBreak />
-                  <Span Foreground="{StaticResource SecondaryForegroundColor}">Keeps this monitor awake just by leaving your mouse on it.</Span><LineBreak />
-                  • <Run FontWeight="SemiBold">Application is focused on this monitor:</Run><LineBreak />
-                  <Span Foreground="{StaticResource SecondaryForegroundColor}">Keeps the monitor awake if it has the application you're currently using (the window you last clicked).</Span>
+                  <Run FontWeight="SemiBold" TextDecorations="Underline">特定于此显示器的条件</Run><LineBreak />
+                  这些选项仅阻止此显示器进入睡眠。<LineBreak /><LineBreak />
+                  • <Run FontWeight="SemiBold">鼠标在此显示器上：</Run><LineBreak />
+                  <Span Foreground="{StaticResource SecondaryForegroundColor}">只需将鼠标留在此显示器上即可使其保持唤醒。</Span><LineBreak />
+                  • <Run FontWeight="SemiBold">应用聚焦在此显示器：</Run><LineBreak />
+                  <Span Foreground="{StaticResource SecondaryForegroundColor}">如果您当前使用的应用（最后点击的窗口）在此显示器上，则使其保持唤醒。</Span>
                   <LineBreak /><LineBreak />
-                  <Run FontWeight="SemiBold" TextDecorations="Underline">General Condition</Run><LineBreak />
-                  This option is system-wide.<LineBreak /><LineBreak />
-                  • <Run FontWeight="SemiBold">System-wide user input:</Run><LineBreak />
-                  <Span Foreground="{StaticResource SecondaryForegroundColor}">Windows' standard behavior. Any input on ANY monitor keeps this monitor active.</Span>
+                  <Run FontWeight="SemiBold" TextDecorations="Underline">常规条件</Run><LineBreak />
+                  此选项是系统级别的。<LineBreak /><LineBreak />
+                  • <Run FontWeight="SemiBold">系统级用户输入：</Run><LineBreak />
+                  <Span Foreground="{StaticResource SecondaryForegroundColor}">Windows 的标准行为。任何显示器上的任何输入都会使此显示器保持活动。</Span>
                                 </TextBlock>
                             </ToolTip>
                         </StackPanel.ToolTip>
                         <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="CONSIDER ACTIVE WHEN..." Foreground="{StaticResource SecondaryForegroundColor}" FontSize="12" FontWeight="Light" />
+                            <TextBlock Text="在以下情况视为活动…" Foreground="{StaticResource SecondaryForegroundColor}" FontSize="12" FontWeight="Light" />
                             <TextBlock Text="*" Foreground="{StaticResource DestructiveColorBrush}" FontWeight="Bold" Margin="4,-2,0,0" VerticalAlignment="Top"
                          Visibility="{Binding ActiveConditionsError, Converter={StaticResource ErrorVisibilityConverter}}" />
                         </StackPanel>
                         <StackPanel Margin="0,8,0,0">
-                            <CheckBox Margin="0,0,0,8" Style="{StaticResource ModernCheckBox}" Content="Mouse cursor is on this monitor"
+                            <CheckBox Margin="0,0,0,8" Style="{StaticResource ModernCheckBox}" Content="鼠标在此显示器上"
                         IsChecked="{Binding IsActiveOnMousePosition, UpdateSourceTrigger=PropertyChanged, ValidatesOnDataErrors=True}" />
-                            <CheckBox Margin="0,0,0,8" Style="{StaticResource ModernCheckBox}" Content="Application is focused on this monitor"
+                            <CheckBox Margin="0,0,0,8" Style="{StaticResource ModernCheckBox}" Content="应用聚焦在此显示器"
                         IsChecked="{Binding IsActiveOnActiveWindow, UpdateSourceTrigger=PropertyChanged, ValidatesOnDataErrors=True}" />
-                            <CheckBox Margin="0,0,0,0" Style="{StaticResource ModernCheckBox}" Content="System has user input"
+                            <CheckBox Margin="0,0,0,0" Style="{StaticResource ModernCheckBox}" Content="系统有用户输入"
                         IsChecked="{Binding IsActiveOnInput, UpdateSourceTrigger=PropertyChanged, ValidatesOnDataErrors=True}" />
                         </StackPanel>
                     </StackPanel>
