@@ -14,6 +14,9 @@ namespace OLED_Sleeper.Features.MonitorDimming.Services
     /// </summary>
     public class MonitorDimmingService : IMonitorDimmingService
     {
+        private readonly IMonitorInfoManager _monitorManager;
+        private readonly IMonitorBrightnessStateService _brightnessStateService;
+
         /// <summary>Number of times a restore write is attempted before the recording is kept and the attempt abandoned.</summary>
         private const int RestoreAttempts = 3;
 
@@ -25,9 +28,6 @@ namespace OLED_Sleeper.Features.MonitorDimming.Services
 
         /// <summary>Returned by <see cref="GetCurrentBrightness"/> when the monitor could not be read.</summary>
         private const uint BrightnessUnknown = uint.MaxValue;
-
-        private readonly IMonitorInfoManager _monitorManager;
-        private readonly IMonitorBrightnessStateService _brightnessStateService;
 
         /// <summary>Guards <see cref="_originalBrightnessLevels"/> and the state file write that follows each change to it.</summary>
         private readonly object _stateLock = new();
