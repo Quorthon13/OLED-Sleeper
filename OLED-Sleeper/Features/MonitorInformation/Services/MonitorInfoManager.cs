@@ -1,4 +1,4 @@
-﻿using OLED_Sleeper.Features.MonitorInformation.Models;
+using OLED_Sleeper.Features.MonitorInformation.Models;
 using OLED_Sleeper.Features.MonitorInformation.Services.Interfaces;
 using Serilog;
 
@@ -6,27 +6,23 @@ namespace OLED_Sleeper.Features.MonitorInformation.Services
 {
     /// <summary>
     /// Manages monitor information, including caching and enrichment with DDC/CI support and hardware IDs.
-    /// Publishes an event when the monitor list is ready after async retrieval.
     /// </summary>
+    /// <remarks>
+    /// The lock here guards only the cached task reference. It is never held while running the native
+    /// enumeration and never held while invoking a caller's code — callers observe completion by awaiting
+    /// the returned task, on their own thread. Holding this lock across a callback is what previously
+    /// allowed a lock-order inversion against <c>MonitorIdleDetectionService</c>'s lock, and a deadlock
+    /// against a blocking <c>Dispatcher.Invoke</c>; keep it that way.
+    /// </remarks>
     public class MonitorInfoManager : IMonitorInfoManager
     {
         #region Fields
 
         private readonly IMonitorInfoProvider _monitorInfoProvider;
-        private List<MonitorInfo> _cachedMonitors;
-        private readonly object _lock = new object();
-        private Task? _refreshTask;
+        private readonly object _lock = new();
+        private Task<IReadOnlyList<MonitorInfo>>? _cachedScan;
 
         #endregion Fields
-
-        #region Events
-
-        /// <summary>
-        /// Raised when the monitor list has been retrieved and enriched.
-        /// </summary>
-        public event EventHandler<IReadOnlyList<MonitorInfo>> MonitorListReady;
-
-        #endregion Events
 
         #region Constructor
 
@@ -43,68 +39,32 @@ namespace OLED_Sleeper.Features.MonitorInformation.Services
 
         #region Public Methods
 
-        /// <summary>
-        /// Begins asynchronous retrieval and enrichment of the monitor list.
-        /// Ensures only one refresh runs at a time. Subscribers will be notified via <see cref="MonitorListReady"/> when the list is available.
-        /// If the cache is already populated, the event is raised immediately.
-        /// </summary>
-        public void GetCurrentMonitorsAsync()
+        /// <inheritdoc />
+        public Task<IReadOnlyList<MonitorInfo>> GetCurrentMonitorsAsync()
         {
             lock (_lock)
             {
-                if (_cachedMonitors != null)
-                {
-                    MonitorListReady?.Invoke(this, _cachedMonitors);
-                    return;
-                }
-                if (_refreshTask != null)
-                {
-                    Log.Debug("MonitorInfoManager: Refresh already in progress, skipping duplicate native call.");
-                    return;
-                }
-                _refreshTask = Task.Run(() =>
-                {
-                    RefreshMonitorsInternal();
-                    lock (_lock)
-                    {
-                        MonitorListReady?.Invoke(this, _cachedMonitors);
-                        _refreshTask = null; // Allow future refreshes if needed
-                    }
-                });
+                return _cachedScan ??= StartScan();
             }
         }
 
-        /// <summary>
-        /// Forces a refresh of the monitor list from the system asynchronously.
-        /// The refresh is performed on a background thread, and subscribers will be notified via <see cref="MonitorListReady"/> when the list is available.
-        /// This method is event-driven and does not return a Task.
-        /// </summary>
-        public void RefreshMonitorsAsync()
+        /// <inheritdoc />
+        public Task<IReadOnlyList<MonitorInfo>> RefreshMonitorsAsync()
         {
-            Task.Run(() =>
+            Log.Information("Manual refresh requested. Re-scanning monitors.");
+            lock (_lock)
             {
-                lock (_lock)
-                {
-                    Log.Information("Manual refresh requested. Re-scanning monitors.");
-                    RefreshMonitorsInternal();
-                    MonitorListReady?.Invoke(this, _cachedMonitors);
-                }
-            });
+                return _cachedScan = StartScan();
+            }
         }
 
-        /// <summary>
-        /// Gets the latest, up-to-date list of monitors from the system (basic info only, no enrichment).
-        /// </summary>
-        /// <returns>The latest list of <see cref="MonitorInfo"/> objects (basic info only).</returns>
+        /// <inheritdoc />
         public List<MonitorInfo> GetLatestMonitorsBasicInfo()
         {
             return _monitorInfoProvider.GetAllMonitorsBasicInfo();
         }
 
-        /// <summary>
-        /// Enriches a list of MonitorInfo objects with DDC/CI support and hardware ID.
-        /// </summary>
-        /// <param name="monitors">The list of monitors to enrich.</param>
+        /// <inheritdoc />
         public void EnrichMonitorInfoList(List<MonitorInfo>? monitors)
         {
             if (monitors == null) return;
@@ -120,13 +80,42 @@ namespace OLED_Sleeper.Features.MonitorInformation.Services
         #region Private Methods
 
         /// <summary>
-        /// Refreshes the monitor cache by retrieving basic info and enriching each monitor with DDC/CI support and hardware ID.
+        /// Starts a background scan of the system's monitors. Must be called while holding <see cref="_lock"/>.
         /// </summary>
-        private void RefreshMonitorsInternal()
+        /// <remarks>
+        /// A faulted scan is evicted from the cache rather than retained. Caching a faulted task would make
+        /// every later call rethrow the original failure forever; dropping it lets the next caller retry the
+        /// native enumeration. The fault continuation also observes the exception so it is logged rather than
+        /// disappearing as an unobserved task exception.
+        /// </remarks>
+        private Task<IReadOnlyList<MonitorInfo>> StartScan()
         {
-            var monitors = _monitorInfoProvider.GetAllMonitorsBasicInfo();
-            EnrichMonitorInfoList(monitors);
-            _cachedMonitors = monitors;
+            var scan = Task.Run<IReadOnlyList<MonitorInfo>>(() =>
+            {
+                var monitors = _monitorInfoProvider.GetAllMonitorsBasicInfo();
+                EnrichMonitorInfoList(monitors);
+                return monitors;
+            });
+
+            _ = scan.ContinueWith(
+                faulted =>
+                {
+                    Log.Error(faulted.Exception?.GetBaseException(),
+                        "Monitor enumeration failed. Dropping the cached scan so the next request retries.");
+
+                    lock (_lock)
+                    {
+                        if (ReferenceEquals(_cachedScan, faulted))
+                        {
+                            _cachedScan = null;
+                        }
+                    }
+                },
+                CancellationToken.None,
+                TaskContinuationOptions.OnlyOnFaulted,
+                TaskScheduler.Default);
+
+            return scan;
         }
 
         #endregion Private Methods

@@ -65,30 +65,6 @@ namespace OLED_Sleeper.Features.MonitorDimming.Services
         #region Private Helpers
 
         /// <summary>
-        /// Wraps the event-based monitor retrieval in a Task that can be awaited.
-        /// </summary>
-        /// <returns>A task that completes with the list of monitors.</returns>
-        private Task<IReadOnlyList<MonitorInfo>> GetMonitorsAsync()
-        {
-            var tcs = new TaskCompletionSource<IReadOnlyList<MonitorInfo>>();
-
-            EventHandler<IReadOnlyList<MonitorInfo>> handler = null;
-            handler = (sender, monitors) =>
-            {
-                // Unsubscribe to prevent memory leaks.
-                _monitorManager.MonitorListReady -= handler;
-                // Set the result, which will complete the awaited Task.
-                tcs.SetResult(monitors);
-            };
-
-            _monitorManager.MonitorListReady += handler;
-            // This call starts the process that will eventually fire the MonitorListReady event.
-            _monitorManager.GetCurrentMonitorsAsync();
-
-            return tcs.Task;
-        }
-
-        /// <summary>
         /// Safely obtains and destroys a physical monitor handle, executing the provided action.
         /// </summary>
         /// <param name="hardwareId">The hardware ID of the monitor.</param>
@@ -128,7 +104,7 @@ namespace OLED_Sleeper.Features.MonitorDimming.Services
         /// <returns>The HMONITOR handle, or IntPtr.Zero if not found.</returns>
         private async Task<nint> FindMonitorHandleByHardwareIdAsync(string hardwareId)
         {
-            var allMonitors = await GetMonitorsAsync();
+            var allMonitors = await _monitorManager.GetCurrentMonitorsAsync();
             var targetMonitor = allMonitors.FirstOrDefault(m => m.HardwareId == hardwareId);
             if (targetMonitor == null) return nint.Zero;
 

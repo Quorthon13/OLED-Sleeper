@@ -34,7 +34,7 @@ public class SynchronizeMonitorStateCommandHandler(
     /// updating managed monitor settings, and restarting idle detection.
     /// </summary>
     /// <param name="command">The command containing the old and new monitor lists.</param>
-    public Task HandleAsync(SynchronizeMonitorStateCommand command)
+    public async Task HandleAsync(SynchronizeMonitorStateCommand command)
     {
         idleDetectionService.Stop();
 
@@ -44,11 +44,11 @@ public class SynchronizeMonitorStateCommandHandler(
         var savedSettings = settingsFileService.LoadSettings();
         UpdateManagedSettings(savedSettings, command.NewMonitors);
 
-        idleDetectionService.UpdateSettings(savedSettings);
+        // Awaited so idle detection restarts against the new settings rather than racing them.
+        await idleDetectionService.UpdateSettingsAsync(savedSettings);
         idleDetectionService.Start();
 
         Log.Information("Monitor state synchronized. Active monitors: {Count}", command.NewMonitors.Count);
-        return Task.CompletedTask;
     }
 
     /// <summary>

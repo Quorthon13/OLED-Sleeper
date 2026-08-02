@@ -48,7 +48,13 @@ namespace OLED_Sleeper.Features.MonitorBlackout.Handlers
             {
                 Log.Information("Executing ApplyBlackoutCommand for monitor {HardwareId}.", command.HardwareId);
 
-                var monitorInfo = await GetMonitorInfoAsync(command.HardwareId);
+                var monitors = await _monitorInfoManager.GetCurrentMonitorsAsync();
+                var monitorInfo = monitors.FirstOrDefault(m => m.HardwareId == command.HardwareId);
+                if (monitorInfo?.HardwareId == null)
+                {
+                    Log.Warning("Cannot apply blackout: no monitor found with HardwareId {HardwareId}.", command.HardwareId);
+                    return;
+                }
 
                 // Task 1: Show the software blackout overlay.
                 // We start this task but don't await it immediately.
@@ -73,29 +79,6 @@ namespace OLED_Sleeper.Features.MonitorBlackout.Handlers
             {
                 Log.Error(ex, "Failed to apply blackout for monitor {HardwareId}.", command.HardwareId);
             }
-        }
-
-        /// <summary>
-        /// Asynchronously retrieves the <see cref="MonitorInfo"/> for the specified hardware ID by awaiting the MonitorListReady event.
-        /// This method bridges the event-based monitor info retrieval to an awaitable Task, ensuring the handler can work with up-to-date monitor data.
-        /// </summary>
-        /// <param name="hardwareId">The unique hardware ID of the monitor to retrieve.</param>
-        /// <returns>The <see cref="MonitorInfo"/> for the specified hardware ID, or null if not found.</returns>
-        private async Task<MonitorInfo?> GetMonitorInfoAsync(string? hardwareId)
-        {
-            var tcs = new TaskCompletionSource<MonitorInfo?>();
-
-            void Handler(object? sender, IReadOnlyList<MonitorInfo> monitors)
-            {
-                _monitorInfoManager.MonitorListReady -= Handler;
-                var monitor = monitors.FirstOrDefault(m => m.HardwareId == hardwareId);
-                tcs.SetResult(monitor);
-            }
-
-            _monitorInfoManager.MonitorListReady += Handler;
-            _monitorInfoManager.GetCurrentMonitorsAsync();
-
-            return await tcs.Task;
         }
     }
 }

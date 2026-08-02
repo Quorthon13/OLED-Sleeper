@@ -3,6 +3,7 @@ using OLED_Sleeper.Features.UserSettings.Services.Interfaces;
 using OLED_Sleeper.UI.Commands;
 using OLED_Sleeper.UI.Helpers;
 using OLED_Sleeper.UI.Services.Interfaces;
+using Serilog;
 using System.Collections.ObjectModel;
 using System.Windows;
 using System.Windows.Input;
@@ -196,7 +197,7 @@ namespace OLED_Sleeper.UI.ViewModels
         public void RefreshMonitors(bool preserveSelection)
         {
             UpdateMonitorsInternal(_containerWidth, _containerHeight, preserveSelection);
-            _workspaceService.RefreshWorkspaceAsync(_containerWidth, _containerHeight);
+            ObserveWorkspaceTask(_workspaceService.RefreshWorkspaceAsync(_containerWidth, _containerHeight));
         }
 
         /// <summary>
@@ -207,7 +208,21 @@ namespace OLED_Sleeper.UI.ViewModels
         public void RecalculateLayout(double width, double height)
         {
             UpdateMonitorsInternal(width, height, preserveSelection: true);
-            _workspaceService.BuildWorkspaceAsync(width, height);
+            ObserveWorkspaceTask(_workspaceService.BuildWorkspaceAsync(width, height));
+        }
+
+        /// <summary>
+        /// Observes a fire-and-forget workspace task so a failure is logged instead of being lost
+        /// as an unobserved task exception.
+        /// </summary>
+        /// <param name="task">The workspace task to observe.</param>
+        private static void ObserveWorkspaceTask(Task task)
+        {
+            _ = task.ContinueWith(
+                faulted => Log.Error(faulted.Exception?.GetBaseException(), "Failed to build the monitor workspace."),
+                CancellationToken.None,
+                TaskContinuationOptions.OnlyOnFaulted,
+                TaskScheduler.Default);
         }
 
         /// <summary>

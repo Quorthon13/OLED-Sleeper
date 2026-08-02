@@ -83,3 +83,7 @@ _ReSharper*/
 # SonarQube
 .sonar/
 .sonarqube/
+
+# Claude
+CLAUDE.md
+.claude/

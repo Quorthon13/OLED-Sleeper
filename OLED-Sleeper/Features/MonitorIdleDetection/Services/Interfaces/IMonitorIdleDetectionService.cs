@@ -22,6 +22,7 @@ namespace OLED_Sleeper.Features.MonitorIdleDetection.Services.Interfaces
         /// Updates the settings for all managed monitors.
         /// </summary>
         /// <param name="monitorSettings">The list of monitor settings to manage.</param>
-        void UpdateSettings(List<MonitorSettings> monitorSettings);
+        /// <returns>A task that completes once the new settings are in effect.</returns>
+        Task UpdateSettingsAsync(List<MonitorSettings> monitorSettings);
     }
 }

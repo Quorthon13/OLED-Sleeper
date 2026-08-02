@@ -41,34 +41,25 @@ namespace OLED_Sleeper.UI.Services
         /// </summary>
         /// <param name="containerWidth">The width of the container.</param>
         /// <param name="containerHeight">The height of the container.</param>
-        public void BuildWorkspaceAsync(double containerWidth, double containerHeight)
+        public async Task BuildWorkspaceAsync(double containerWidth, double containerHeight)
         {
-            void Handler(object sender, System.Collections.Generic.IReadOnlyList<MonitorInfo> monitorInfos)
-            {
-                _monitorManager.MonitorListReady -= Handler;
-                var savedSettings = _settingsService.LoadSettings();
-                var monitorLayoutViewModels = _monitorLayoutService.CreateLayout(monitorInfos.ToList(), containerWidth, containerHeight);
-                ApplySettingsToViewModels(monitorLayoutViewModels, savedSettings);
-                WorkspaceReady?.Invoke(this, monitorLayoutViewModels);
-            }
-            _monitorManager.MonitorListReady += Handler;
-            _monitorManager.GetCurrentMonitorsAsync();
+            var monitorInfos = await _monitorManager.GetCurrentMonitorsAsync();
+
+            var savedSettings = _settingsService.LoadSettings();
+            var monitorLayoutViewModels = _monitorLayoutService.CreateLayout(monitorInfos.ToList(), containerWidth, containerHeight);
+            ApplySettingsToViewModels(monitorLayoutViewModels, savedSettings);
+            WorkspaceReady?.Invoke(this, monitorLayoutViewModels);
         }
 
         /// <summary>
-        /// Begins a full refresh of the workspace asynchronously by refreshing the monitor list and then rebuilding the workspace.
+        /// Performs a full refresh of the workspace by re-scanning the monitor list and then rebuilding the workspace.
         /// </summary>
         /// <param name="containerWidth">The width of the container for layout scaling.</param>
         /// <param name="containerHeight">The height of the container for layout scaling.</param>
-        public void RefreshWorkspaceAsync(double containerWidth, double containerHeight)
+        public async Task RefreshWorkspaceAsync(double containerWidth, double containerHeight)
         {
-            void Handler(object sender, System.Collections.Generic.IReadOnlyList<MonitorInfo> monitorInfos)
-            {
-                _monitorManager.MonitorListReady -= Handler;
-                BuildWorkspaceAsync(containerWidth, containerHeight);
-            }
-            _monitorManager.MonitorListReady += Handler;
-            _monitorManager.RefreshMonitorsAsync();
+            await _monitorManager.RefreshMonitorsAsync();
+            await BuildWorkspaceAsync(containerWidth, containerHeight);
         }
 
         /// <summary>
