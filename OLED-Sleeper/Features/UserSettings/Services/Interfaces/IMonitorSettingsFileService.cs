@@ -19,7 +19,8 @@ namespace OLED_Sleeper.Features.UserSettings.Services.Interfaces
         List<MonitorSettings> LoadSettings();
 
         /// <summary>
-        /// Saves the provided monitor settings to persistent storage.
+        /// Saves the provided monitor settings to persistent storage. Stored settings for monitors that are
+        /// not in <paramref name="settings"/> are kept.
         /// </summary>
         /// <param name="settings">The list of monitor settings to save.</param>
         void SaveSettings(List<MonitorSettings> settings);

@@ -59,24 +59,46 @@ namespace OLED_Sleeper.Features.UserSettings.Services
         }
 
         /// <summary>
-        /// Saves the specified monitor settings to the settings file.
-        /// Invokes the <see cref="SettingsChanged"/> event after successful save.
+        /// Saves the specified monitor settings to the settings file, keeping stored entries for monitors
+        /// the caller did not supply.
+        /// Invokes the <see cref="SettingsChanged"/> event with the supplied settings after a successful save.
         /// </summary>
         /// <param name="settings">The list of <see cref="MonitorSettings"/> to save.</param>
         public void SaveSettings(List<MonitorSettings> settings)
         {
             try
             {
+                var merged = MergeWithStoredSettings(settings);
                 var options = new JsonSerializerOptions { WriteIndented = true };
-                var json = JsonSerializer.Serialize(settings, options);
+                var json = JsonSerializer.Serialize(merged, options);
                 File.WriteAllText(_settingsFilePath, json);
-                Log.Information("Successfully saved {Count} monitor settings to {FilePath}.", settings.Count, _settingsFilePath);
+                Log.Information("Successfully saved {Count} monitor settings to {FilePath}.", merged.Count, _settingsFilePath);
                 SettingsChanged?.Invoke(settings);
             }
             catch (Exception ex)
             {
                 Log.Error(ex, "Failed to save settings to {FilePath}.", _settingsFilePath);
             }
+        }
+
+        /// <summary>
+        /// Appends the stored settings whose hardware ID is absent from <paramref name="settings"/> to the
+        /// supplied list. The caller only ever builds settings for connected monitors, so without this the
+        /// write would drop the configuration of every disconnected one.
+        /// </summary>
+        /// <param name="settings">The settings supplied by the caller.</param>
+        /// <returns>The supplied settings followed by the stored settings that were kept.</returns>
+        private List<MonitorSettings> MergeWithStoredSettings(List<MonitorSettings> settings)
+        {
+            var suppliedIds = settings.Select(s => s.HardwareId).ToHashSet();
+            var retained = LoadSettings().Where(stored => !suppliedIds.Contains(stored.HardwareId)).ToList();
+
+            if (retained.Count > 0)
+            {
+                Log.Information("Kept stored settings for {Count} monitors that were not supplied.", retained.Count);
+            }
+
+            return settings.Concat(retained).ToList();
         }
     }
 }
