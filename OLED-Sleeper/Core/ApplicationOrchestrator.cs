@@ -67,21 +67,24 @@ namespace OLED_Sleeper.Core
         /// </summary>
         public void Start()
         {
-            SendRestoreBrightnessOnAllMonitorsCommand();
+            RestoreAllMonitors();
             SubscribeToEvents();
             InitializeStateWatcher();
         }
 
         /// <summary>
-        /// Stops the orchestrator, restores all monitor brightness, unsubscribes from events, and stops monitor state monitoring.
+        /// Unsubscribes from events, stops the idle loop and the state watcher, then restores all monitor
+        /// brightness. The returned task completes when the restore has finished.
         /// </summary>
-        public void Stop()
+        public async Task StopAsync()
         {
             Log.Information("ApplicationOrchestrator is stopping.");
-            RestoreAllMonitors();
+
             UnsubscribeFromEvents();
             _monitorIdleDetectionService.Stop();
             _monitorStateWatcher.Stop();
+
+            await RestoreAllMonitorsAsync();
         }
 
         #endregion Startup/Shutdown
@@ -119,12 +122,29 @@ namespace OLED_Sleeper.Core
         }
 
         /// <summary>
-        /// Restores all monitors' brightness levels to their normal state.
+        /// Restores all monitors' brightness levels to their normal state, without waiting for completion.
         /// </summary>
         public void RestoreAllMonitors()
         {
+            _ = RestoreAllMonitorsAsync();
+        }
+
+        /// <summary>
+        /// Restores all monitors' brightness levels to their normal state.
+        /// </summary>
+        private async Task RestoreAllMonitorsAsync()
+        {
             Log.Information("Restoring all monitors brightness levels...");
-            SendRestoreBrightnessOnAllMonitorsCommand();
+
+            try
+            {
+                await _mediator.SendAsync(new RestoreBrightnessOnAllMonitorsCommand());
+                Log.Information("RestoreBrightnessOnAllMonitorsCommand completed.");
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Failed to restore monitor brightness levels.");
+            }
         }
 
         #endregion Monitor State Initialization & Restoration
@@ -172,16 +192,6 @@ namespace OLED_Sleeper.Core
         #endregion Monitor State Event Handlers
 
         #region Command Senders
-
-        /// <summary>
-        /// Sends a command to restore brightness for all monitors that may have been dimmed from a previous session.
-        /// </summary>
-        private void SendRestoreBrightnessOnAllMonitorsCommand()
-        {
-            var command = new RestoreBrightnessOnAllMonitorsCommand();
-            _mediator.SendAsync(command);
-            Log.Information("RestoreBrightnessOnAllMonitorsCommand sent.");
-        }
 
         /// <summary>
         /// Sends a command to restore a monitor's state by undimming it and hiding any blackout overlay.

@@ -25,7 +25,7 @@ namespace OLED_Sleeper.Features.MonitorIdleDetection.Services
         // === Dependencies & State ===
         private readonly IMediator _mediator;
 
-        private CancellationTokenSource _cancellationTokenSource;
+        private CancellationTokenSource? _cancellationTokenSource;
         private List<ManagedMonitorState> _managedMonitors = new();
         private readonly object _lock = new();
         private readonly Dictionary<string, MonitorTimerState> _monitorStates = new();
@@ -44,22 +44,28 @@ namespace OLED_Sleeper.Features.MonitorIdleDetection.Services
         // === Service Lifecycle ===
 
         /// <summary>
-        /// Starts the idle detection service and begins monitoring.
+        /// Starts the idle detection service and begins monitoring. Any previous loop is stopped first.
         /// </summary>
         public void Start()
         {
-            _cancellationTokenSource = new CancellationTokenSource();
-            Task.Run(() => IdleCheckLoop(_cancellationTokenSource.Token));
+            Stop();
+
+            var cancellationTokenSource = new CancellationTokenSource();
+            _cancellationTokenSource = cancellationTokenSource;
+            Task.Run(() => IdleCheckLoop(cancellationTokenSource.Token));
             Log.Information("MonitorIdleDetectionService started.");
         }
 
         /// <summary>
-        /// Stops the idle detection service and monitoring.
+        /// Stops the idle detection service and monitoring. A second call does nothing.
         /// </summary>
         public void Stop()
         {
-            _cancellationTokenSource?.Cancel();
-            _cancellationTokenSource?.Dispose();
+            var cancellationTokenSource = Interlocked.Exchange(ref _cancellationTokenSource, null);
+            if (cancellationTokenSource == null) return;
+
+            cancellationTokenSource.Cancel();
+            cancellationTokenSource.Dispose();
             Log.Information("MonitorIdleDetectionService stopped.");
         }
 

@@ -16,21 +16,35 @@ namespace OLED_Sleeper.Infrastructure
     /// </summary>
     public class ApplicationBootstrapper(string[] args) : IDisposable
     {
+        /// <summary>
+        /// How long shutdown waits for the monitor restore to finish.
+        /// </summary>
+        private const int RestoreOnShutdownTimeoutMs = 10000;
+
         private readonly ApplicationOptions _applicationOptions = CommandLineHelper.ParseArguments(args);
 
         private IServiceProvider? _serviceProvider;
         private ITrayIconService? _trayIconService;
         private IMainWindowService? _mainWindowService;
         private ApplicationInstanceManager? _instanceManager;
+        private IApplicationOrchestrator? _orchestrator;
         private bool _isExiting = false;
 
         /// <summary>
         /// Initializes the application: logging, single-instance, DI, orchestrator, main window, and tray icon.
+        /// A second instance stops after the single-instance check and starts no services.
         /// </summary>
         public void Initialize()
         {
             LoggingConfigurator.Configure();
             InitializeInstanceManager();
+
+            if (!_instanceManager!.IsFirstInstance)
+            {
+                Log.Information("Another instance is already running. Exiting without starting any services.");
+                return;
+            }
+
             ConfigureServices();
             StartOrchestrator();
 
@@ -63,8 +77,8 @@ namespace OLED_Sleeper.Infrastructure
         {
             if (_serviceProvider != null)
             {
-                var orchestrator = _serviceProvider.GetRequiredService<IApplicationOrchestrator>();
-                orchestrator.Start();
+                _orchestrator = _serviceProvider.GetRequiredService<IApplicationOrchestrator>();
+                _orchestrator.Start();
             }
         }
 
@@ -100,26 +114,52 @@ namespace OLED_Sleeper.Infrastructure
         }
 
         /// <summary>
-        /// Performs shutdown logic, including log flush and tray icon disposal.
-        /// Only the first instance will restore monitor states.
+        /// Stops the orchestrator, disposes the tray icon and the instance manager, flushes the log, and exits.
+        /// A second instance has no orchestrator and restores nothing.
         /// </summary>
         public void ShutdownApp()
         {
             if (_isExiting) return; // Prevent re-entrancy
             _isExiting = true;
 
-            if (_instanceManager?.IsFirstInstance == true)
-            {
-                Log.Information("Shutdown initiated. Restoring all monitors...");
-                ApplicationNotifications.TriggerRestoreAllMonitors();
-            }
+            StopOrchestrator();
+
+            _trayIconService?.Dispose();
+            _instanceManager?.Dispose();
 
             Log.Information("--- Application Exiting ---");
             Log.CloseAndFlush();
 
-            _trayIconService?.Dispose();
-            _instanceManager?.Dispose();
-            Application.Current.Shutdown();
+            Application.Current?.Shutdown();
+        }
+
+        /// <summary>
+        /// Stops the orchestrator and blocks until the monitor restore finishes or
+        /// <see cref="RestoreOnShutdownTimeoutMs"/> elapses.
+        /// </summary>
+        /// <remarks>
+        /// The restore runs on the thread pool: by the time <c>OnExit</c> reaches this, the UI thread is no
+        /// longer processing dispatcher messages. On timeout the brightness state file is left unchanged and
+        /// the next launch restores the monitor.
+        /// </remarks>
+        private void StopOrchestrator()
+        {
+            if (_orchestrator == null) return;
+
+            Log.Information("Shutdown initiated. Restoring all monitors...");
+
+            try
+            {
+                var stopTask = Task.Run(() => _orchestrator.StopAsync());
+                if (!stopTask.Wait(RestoreOnShutdownTimeoutMs))
+                {
+                    Log.Warning("Monitor restore did not finish within {TimeoutMs} ms. Exiting anyway.", RestoreOnShutdownTimeoutMs);
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Failed to stop the orchestrator during shutdown.");
+            }
         }
 
         /// <summary>

@@ -24,6 +24,7 @@ namespace OLED_Sleeper.Features.MonitorState.Services
         private IReadOnlyList<MonitorInfo> _lastKnownMonitors = Array.Empty<MonitorInfo>();
         private IReadOnlyList<MonitorInfo>? _pendingMonitors;
         private int _pollInProgress;
+        private volatile bool _isStopped;
 
         #endregion Fields
 
@@ -57,14 +58,18 @@ namespace OLED_Sleeper.Features.MonitorState.Services
                 if (_pollTimer.Enabled) return;
             }
 
+            _isStopped = false;
             _ = RetrieveInitialMonitorListAsync();
         }
 
         /// <summary>
-        /// Stops monitoring for monitor state changes.
+        /// Stops monitoring for monitor state changes. A poll already in flight runs to completion but does
+        /// not dispatch a synchronization.
         /// </summary>
         public void Stop()
         {
+            _isStopped = true;
+
             lock (_lock)
             {
                 _pollTimer.Stop();
@@ -93,13 +98,20 @@ namespace OLED_Sleeper.Features.MonitorState.Services
             {
                 var monitors = await _monitorInfoManager.GetCurrentMonitorsAsync();
 
+                if (_isStopped) return;
+
                 lock (_lock)
                 {
                     _lastKnownMonitors = monitors;
                 }
 
                 await _mediator.SendAsync(new SynchronizeMonitorStateCommand([], monitors));
-                _pollTimer.Start();
+
+                lock (_lock)
+                {
+                    if (_isStopped) return;
+                    _pollTimer.Start();
+                }
             }
             catch (Exception ex)
             {
@@ -117,6 +129,8 @@ namespace OLED_Sleeper.Features.MonitorState.Services
         /// </remarks>
         private void PollTimerElapsed(object? sender, ElapsedEventArgs e)
         {
+            if (_isStopped) return;
+
             if (Interlocked.CompareExchange(ref _pollInProgress, 1, 0) != 0)
             {
                 Log.Debug("Skipping a monitor poll because the previous one is still running.");
@@ -162,6 +176,12 @@ namespace OLED_Sleeper.Features.MonitorState.Services
                 if (refreshedMonitors.Count == 0)
                 {
                     Log.Warning("Monitor re-scan returned an empty display set. Keeping the last known monitor list.");
+                    return;
+                }
+
+                if (_isStopped)
+                {
+                    Log.Debug("The watcher was stopped during this poll. Skipping synchronization.");
                     return;
                 }
 
