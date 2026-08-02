@@ -14,6 +14,7 @@ namespace OLED_Sleeper.Features.MonitorInformation.Services
         private readonly IMonitorInfoProvider _monitorInfoProvider;
         private readonly object _lock = new();
         private Task<IReadOnlyList<MonitorInfo>>? _cachedScan;
+        private Task<IReadOnlyList<MonitorInfo>>? _inFlightRefresh;
 
         #endregion Fields
 
@@ -42,12 +43,24 @@ namespace OLED_Sleeper.Features.MonitorInformation.Services
         }
 
         /// <inheritdoc />
+        /// <remarks>
+        /// Callers that can fire repeatedly — the display-change watcher polls every 2s and a full scan can
+        /// take longer than that — share a single in-flight scan rather than each starting their own. Every
+        /// scan serialises DDC/CI probes on the same I²C bus, so concurrent scans do not just waste work,
+        /// they slow each other down.
+        /// </remarks>
         public Task<IReadOnlyList<MonitorInfo>> RefreshMonitorsAsync()
         {
-            Log.Information("Manual refresh requested. Re-scanning monitors.");
             lock (_lock)
             {
-                return _cachedScan = StartScan();
+                if (_inFlightRefresh is { IsCompleted: false })
+                {
+                    Log.Debug("Refresh requested while a scan is already running. Reusing the in-flight scan.");
+                    return _inFlightRefresh;
+                }
+
+                Log.Information("Refresh requested. Re-scanning monitors.");
+                return _cachedScan = _inFlightRefresh = StartScan();
             }
         }
 

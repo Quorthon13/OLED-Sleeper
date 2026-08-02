@@ -3,7 +3,6 @@ using OLED_Sleeper.Features.MonitorBehavior.Commands;
 using OLED_Sleeper.Features.MonitorIdleDetection.Models;
 using OLED_Sleeper.Features.MonitorIdleDetection.Services.Interfaces;
 using OLED_Sleeper.Features.MonitorInformation.Models;
-using OLED_Sleeper.Features.MonitorInformation.Services.Interfaces;
 using OLED_Sleeper.Features.UserSettings.Models;
 using OLED_Sleeper.Native;
 using Serilog;
@@ -26,7 +25,6 @@ namespace OLED_Sleeper.Features.MonitorIdleDetection.Services
         // === Dependencies & State ===
         private readonly IMediator _mediator;
 
-        private readonly IMonitorInfoManager _monitorManager;
         private CancellationTokenSource _cancellationTokenSource;
         private List<ManagedMonitorState> _managedMonitors = new();
         private readonly object _lock = new();
@@ -37,11 +35,9 @@ namespace OLED_Sleeper.Features.MonitorIdleDetection.Services
         /// <summary>
         /// Initializes a new instance of the <see cref="MonitorIdleDetectionService"/> class.
         /// </summary>
-        /// <param name="monitorManager">Service for monitor information.</param>
         /// <param name="mediator">Mediator for dispatching monitor behavior commands.</param>
-        public MonitorIdleDetectionService(IMonitorInfoManager monitorManager, IMediator mediator)
+        public MonitorIdleDetectionService(IMediator mediator)
         {
-            _monitorManager = monitorManager;
             _mediator = mediator;
         }
 
@@ -71,21 +67,26 @@ namespace OLED_Sleeper.Features.MonitorIdleDetection.Services
         /// Updates the settings for all managed monitors.
         /// </summary>
         /// <param name="monitorSettings">The list of monitor settings to manage.</param>
+        /// <param name="monitors">The monitors to join the settings against, supplying bounds and display numbers.</param>
         /// <remarks>
-        /// The monitor list is awaited *before* taking <see cref="_lock"/>. Acquiring this lock while the
-        /// monitor manager holds its own is what previously produced a lock-order inversion against the
-        /// idle loop; do not move the await inside the lock.
+        /// The monitor list is supplied by the caller rather than re-read here. The display-change watcher
+        /// already holds a freshly enriched list when it triggers this path; re-deriving it from the shared
+        /// cache discarded that and rebuilt hit-testing against whatever geometry the cache happened to hold,
+        /// which — since nothing invalidated the cache on a display change — was typically the startup scan.
+        /// <para>
+        /// This also keeps the monitor manager off this class's dependency list, so no lock it owns can ever
+        /// be taken while <see cref="_lock"/> is held. That ordering previously deadlocked against the idle loop.
+        /// </para>
         /// </remarks>
-        public async Task UpdateSettingsAsync(List<MonitorSettings> monitorSettings)
+        public Task UpdateSettingsAsync(List<MonitorSettings> monitorSettings, IReadOnlyList<MonitorInfo> monitors)
         {
             var activeSettings = monitorSettings.Where(s => s.IsManaged).ToList();
-            var allMonitors = await _monitorManager.GetCurrentMonitorsAsync();
 
             int trackedCount;
             lock (_lock)
             {
                 _managedMonitors = (from setting in activeSettings
-                                    join monitorInfo in allMonitors on setting.HardwareId equals monitorInfo.HardwareId
+                                    join monitorInfo in monitors on setting.HardwareId equals monitorInfo.HardwareId
                                     select new ManagedMonitorState
                                     {
                                         Settings = setting,
@@ -103,6 +104,7 @@ namespace OLED_Sleeper.Features.MonitorIdleDetection.Services
             }
 
             Log.Information("MonitorIdleDetectionService settings updated. Now tracking {Count} monitors.", trackedCount);
+            return Task.CompletedTask;
         }
 
         // === Idle Detection Loop ===
