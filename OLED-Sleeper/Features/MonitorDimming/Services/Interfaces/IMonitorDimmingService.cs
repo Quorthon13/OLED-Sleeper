@@ -21,14 +21,6 @@ namespace OLED_Sleeper.Features.MonitorDimming.Services.Interfaces
         Task UndimMonitorAsync(string hardwareId);
 
         /// <summary>
-        /// Restores the specified monitor to a previously saved brightness value asynchronously.
-        /// </summary>
-        /// <param name="hardwareId">The unique hardware ID of the monitor.</param>
-        /// <param name="originalBrightness">The brightness value to restore.</param>
-        /// <returns>A task representing the asynchronous operation.</returns>
-        Task RestoreBrightnessAsync(string hardwareId, uint originalBrightness);
-
-        /// <summary>
         /// Gets a dictionary of all currently dimmed monitors and their original brightness values.
         /// </summary>
         /// <returns>A dictionary mapping hardware IDs to original brightness values.</returns>
