@@ -2,6 +2,7 @@
 using OLED_Sleeper.Features.MonitorBehavior.Commands;
 using OLED_Sleeper.Features.MonitorDimming.Commands;
 using OLED_Sleeper.Features.MonitorIdleDetection.Services.Interfaces;
+using OLED_Sleeper.Features.MonitorInformation.Services.Interfaces;
 using OLED_Sleeper.Features.MonitorState.Services.Interfaces;
 using OLED_Sleeper.Features.UserSettings.Models;
 using OLED_Sleeper.Features.UserSettings.Services.Interfaces;
@@ -29,6 +30,7 @@ namespace OLED_Sleeper.Core
     {
         private readonly IMediator _mediator;
         private readonly IMonitorIdleDetectionService _monitorIdleDetectionService;
+        private readonly IMonitorInfoManager _monitorInfoManager;
         private readonly IMonitorSettingsFileService _monitorSettingsFileService;
         private readonly IMonitorStateWatcher _monitorStateWatcher;
 
@@ -39,16 +41,19 @@ namespace OLED_Sleeper.Core
         /// </summary>
         /// <param name="mediator">Mediator for dispatching monitor-related commands.</param>
         /// <param name="monitorIdleDetectionService">Service for detecting monitor idle state and applying idle/active behaviors.</param>
+        /// <param name="monitorInfoManager">Service for querying current monitor information.</param>
         /// <param name="monitorSettingsFileService">Service for loading and saving monitor settings.</param>
         /// <param name="monitorStateWatcher">Service for monitoring system monitor connection/disconnection.</param>
         public ApplicationOrchestrator(
             IMediator mediator,
             IMonitorIdleDetectionService monitorIdleDetectionService,
+            IMonitorInfoManager monitorInfoManager,
             IMonitorSettingsFileService monitorSettingsFileService,
             IMonitorStateWatcher monitorStateWatcher)
         {
             _mediator = mediator;
             _monitorIdleDetectionService = monitorIdleDetectionService;
+            _monitorInfoManager = monitorInfoManager;
             _monitorSettingsFileService = monitorSettingsFileService;
             _monitorStateWatcher = monitorStateWatcher;
         }
@@ -140,12 +145,18 @@ namespace OLED_Sleeper.Core
         /// <remarks>
         /// The restore commands are issued only after the new settings are in effect, so a monitor cannot be
         /// restored and then immediately re-dimmed by the previous settings still being live.
+        /// <para>
+        /// This path is driven by the settings window, not by a display change, so the cached monitor list is
+        /// the right source for the geometry to join against — the display-change path passes its own freshly
+        /// scanned list instead.
+        /// </para>
         /// </remarks>
         private async Task ApplyChangedSettingsAsync(List<MonitorSettings> settings)
         {
             try
             {
-                await _monitorIdleDetectionService.UpdateSettingsAsync(settings);
+                var monitors = await _monitorInfoManager.GetCurrentMonitorsAsync();
+                await _monitorIdleDetectionService.UpdateSettingsAsync(settings, monitors);
 
                 foreach (var setting in settings)
                 {
