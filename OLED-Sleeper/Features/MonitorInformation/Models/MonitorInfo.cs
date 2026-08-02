@@ -42,5 +42,11 @@ namespace OLED_Sleeper.Features.MonitorInformation.Models
         /// Gets or sets a value indicating whether DDC/CI is supported by this monitor.
         /// </summary>
         public bool IsDdcCiSupported { get; set; }
+
+        /// <summary>
+        /// Gets or sets the highest value the monitor accepts for the brightness VCP code.
+        /// Zero when the monitor has not been probed or reported no range.
+        /// </summary>
+        public uint MaxBrightness { get; set; }
     }
 }

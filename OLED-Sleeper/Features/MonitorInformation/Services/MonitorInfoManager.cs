@@ -76,7 +76,9 @@ namespace OLED_Sleeper.Features.MonitorInformation.Services
             if (monitors == null) return;
             foreach (var monitor in monitors)
             {
-                monitor.IsDdcCiSupported = _monitorInfoProvider.GetDdcCiSupport(monitor);
+                var capabilities = _monitorInfoProvider.GetDdcCiCapabilities(monitor);
+                monitor.IsDdcCiSupported = capabilities.IsSupported;
+                monitor.MaxBrightness = capabilities.MaxBrightness;
                 monitor.HardwareId = _monitorInfoProvider.GetHardwareId(monitor);
             }
         }

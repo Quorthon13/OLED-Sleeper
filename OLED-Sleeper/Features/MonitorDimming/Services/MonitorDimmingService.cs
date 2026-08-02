@@ -29,6 +29,9 @@ namespace OLED_Sleeper.Features.MonitorDimming.Services
         /// <summary>Returned by <see cref="GetCurrentBrightness"/> when the monitor could not be read.</summary>
         private const uint BrightnessUnknown = uint.MaxValue;
 
+        /// <summary>Upper bound of the percentage scale that the settings and the UI express the dim level on.</summary>
+        private const uint DimLevelPercentageMax = 100;
+
         /// <summary>Guards <see cref="_originalBrightnessLevels"/> and the state file write that follows each change to it.</summary>
         private readonly object _stateLock = new();
 
@@ -102,20 +105,62 @@ namespace OLED_Sleeper.Features.MonitorDimming.Services
         }
 
         /// <summary>
-        /// Reads the current brightness, records it as the original, then sets the dim level.
+        /// Scales the dim level into the monitor's brightness range, reads the current brightness,
+        /// records it as the original, then writes the scaled value.
         /// </summary>
         /// <param name="hardwareId">The hardware ID of the monitor.</param>
-        /// <param name="dimLevel">The brightness level to set.</param>
+        /// <param name="dimLevel">The dim level as a percentage.</param>
         private async Task DimCoreAsync(string hardwareId, int dimLevel)
         {
+            var targetBrightness = await ScaleToMonitorRangeAsync(hardwareId, dimLevel);
+
             await WithPhysicalMonitorAsync(hardwareId, hPhysicalMonitor =>
             {
                 var currentBrightness = GetCurrentBrightness(hPhysicalMonitor, hardwareId);
                 if (currentBrightness == BrightnessUnknown) return false;
 
                 RecordOriginalBrightness(hardwareId, currentBrightness);
-                return SetMonitorBrightness(hPhysicalMonitor, hardwareId, (uint)dimLevel);
+                return SetMonitorBrightness(hPhysicalMonitor, hardwareId, targetBrightness);
             });
+        }
+
+        /// <summary>
+        /// Converts a dim level percentage into a raw brightness value using the range the monitor reported
+        /// when it was last probed.
+        /// </summary>
+        /// <param name="hardwareId">The hardware ID of the monitor.</param>
+        /// <param name="dimLevel">The dim level as a percentage.</param>
+        /// <returns>The value to write to the monitor.</returns>
+        private async Task<uint> ScaleToMonitorRangeAsync(string hardwareId, int dimLevel)
+        {
+            var monitors = await _monitorManager.GetCurrentMonitorsAsync();
+            var maxBrightness = monitors.FirstOrDefault(m => m.HardwareId == hardwareId)?.MaxBrightness ?? 0;
+
+            var targetBrightness = ScaleToRange(dimLevel, maxBrightness);
+            if (targetBrightness != dimLevel)
+            {
+                Log.Debug("Dim level {DimLevel}% scales to brightness {TargetBrightness} on monitor {HardwareId}, whose range is 0-{MaxBrightness}.",
+                    dimLevel, targetBrightness, hardwareId, maxBrightness);
+            }
+
+            return targetBrightness;
+        }
+
+        /// <summary>
+        /// Maps a percentage onto a monitor's brightness range.
+        /// </summary>
+        /// <param name="dimLevelPercentage">The dim level as a percentage. Values outside 0-100 are clamped.</param>
+        /// <param name="maxBrightness">The monitor's highest accepted brightness value.</param>
+        /// <returns>
+        /// The percentage itself when the monitor reported no range or already runs on a 0-100 scale;
+        /// otherwise the percentage of <paramref name="maxBrightness"/>.
+        /// </returns>
+        private static uint ScaleToRange(int dimLevelPercentage, uint maxBrightness)
+        {
+            var percentage = (uint)Math.Clamp(dimLevelPercentage, 0, (int)DimLevelPercentageMax);
+            if (maxBrightness == 0 || maxBrightness == DimLevelPercentageMax) return percentage;
+
+            return (uint)Math.Round(percentage * maxBrightness / (double)DimLevelPercentageMax, MidpointRounding.AwayFromZero);
         }
 
         /// <summary>
@@ -352,7 +397,7 @@ namespace OLED_Sleeper.Features.MonitorDimming.Services
             }
             else
             {
-                Log.Information("Successfully dimmed monitor {HardwareId} to {DimLevel}%.", hardwareId, brightness);
+                Log.Information("Successfully dimmed monitor {HardwareId} to brightness {Brightness}.", hardwareId, brightness);
             }
 
             return true;

@@ -14,11 +14,11 @@ namespace OLED_Sleeper.Features.MonitorInformation.Services.Interfaces
         List<MonitorInfo> GetAllMonitorsBasicInfo();
 
         /// <summary>
-        /// Returns whether the given monitor supports DDC/CI.
+        /// Probes the given monitor over DDC/CI for its support and its brightness range.
         /// </summary>
-        /// <param name="monitor">The monitor to check.</param>
-        /// <returns>True if DDC/CI is supported; otherwise, false.</returns>
-        bool GetDdcCiSupport(MonitorInfo monitor);
+        /// <param name="monitor">The monitor to probe.</param>
+        /// <returns>What the probe reported. Both fields are unset when the monitor did not answer.</returns>
+        DdcCiCapabilities GetDdcCiCapabilities(MonitorInfo monitor);
 
         /// <summary>
         /// Returns the hardware ID for the given monitor.

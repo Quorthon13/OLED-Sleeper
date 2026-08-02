@@ -50,11 +50,13 @@ namespace OLED_Sleeper.Features.MonitorInformation.Services
         }
 
         /// <summary>
-        /// Returns whether the given monitor supports DDC/CI.
+        /// Probes the given monitor over DDC/CI for its support and its brightness range.
+        /// Both are read from a single physical monitor handle.
         /// </summary>
-        public bool GetDdcCiSupport(MonitorInfo monitor)
+        public DdcCiCapabilities GetDdcCiCapabilities(MonitorInfo monitor)
         {
             bool isSupported = false;
+            uint maxBrightness = 0;
             string deviceName = monitor.DeviceName;
             NativeMethods.MonitorEnumProc callback = (IntPtr hMonitor, IntPtr hdcMonitor, ref NativeMethods.Rect lprcMonitor, IntPtr dwData) =>
             {
@@ -69,6 +71,12 @@ namespace OLED_Sleeper.Features.MonitorInformation.Services
                         if (NativeMethods.GetCapabilitiesStringLength(hPhysicalMonitor, out _))
                         {
                             isSupported = true;
+
+                            if (NativeMethods.GetVCPFeatureAndVCPFeatureReply(
+                                    hPhysicalMonitor, NativeMethods.VCP_CODE_BRIGHTNESS, nint.Zero, out _, out var reportedMax))
+                            {
+                                maxBrightness = reportedMax;
+                            }
                         }
                         NativeMethods.DestroyPhysicalMonitors(1, physicalMonitors);
                     }
@@ -77,8 +85,9 @@ namespace OLED_Sleeper.Features.MonitorInformation.Services
             };
 
             NativeMethods.EnumDisplayMonitors(nint.Zero, nint.Zero, callback, nint.Zero);
-            Log.Debug("DDC/CI support for monitor with DeviceName {DeviceName}: {IsSupported}", deviceName, isSupported);
-            return isSupported;
+            Log.Debug("DDC/CI probe for monitor with DeviceName {DeviceName}: supported {IsSupported}, maximum brightness {MaxBrightness}.",
+                deviceName, isSupported, maxBrightness);
+            return new DdcCiCapabilities(isSupported, maxBrightness);
         }
 
         /// <summary>

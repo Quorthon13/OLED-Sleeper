@@ -9,7 +9,7 @@ namespace OLED_Sleeper.Features.MonitorDimming.Services.Interfaces
         /// Dims the specified monitor to the given brightness level asynchronously.
         /// </summary>
         /// <param name="hardwareId">The unique hardware ID of the monitor.</param>
-        /// <param name="dimLevel">The brightness level to set (0-100).</param>
+        /// <param name="dimLevel">The dim level as a percentage (0-100), scaled into the monitor's own brightness range.</param>
         /// <returns>A task representing the asynchronous operation.</returns>
         Task DimMonitorAsync(string? hardwareId, int dimLevel);
 
