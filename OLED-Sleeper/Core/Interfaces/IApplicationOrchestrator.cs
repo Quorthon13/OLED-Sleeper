@@ -12,7 +12,8 @@
 
         /// <summary>
         /// Stops the orchestrator, unsubscribing from events and restoring monitor states.
+        /// The returned task completes when the restore has finished.
         /// </summary>
-        void Stop();
+        Task StopAsync();
     }
 }
