@@ -7,13 +7,6 @@ namespace OLED_Sleeper.Features.MonitorInformation.Services
     /// <summary>
     /// Manages monitor information, including caching and enrichment with DDC/CI support and hardware IDs.
     /// </summary>
-    /// <remarks>
-    /// The lock here guards only the cached task reference. It is never held while running the native
-    /// enumeration and never held while invoking a caller's code — callers observe completion by awaiting
-    /// the returned task, on their own thread. Holding this lock across a callback is what previously
-    /// allowed a lock-order inversion against <c>MonitorIdleDetectionService</c>'s lock, and a deadlock
-    /// against a blocking <c>Dispatcher.Invoke</c>; keep it that way.
-    /// </remarks>
     public class MonitorInfoManager : IMonitorInfoManager
     {
         #region Fields
