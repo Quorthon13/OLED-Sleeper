@@ -131,10 +131,30 @@ namespace OLED_Sleeper.Core
         /// </summary>
         private void OnSettingsChanged(List<MonitorSettings> settings)
         {
-            _monitorIdleDetectionService.UpdateSettings(settings);
-            foreach (var setting in settings)
+            _ = ApplyChangedSettingsAsync(settings);
+        }
+
+        /// <summary>
+        /// Applies changed settings to idle detection, then restores each affected monitor.
+        /// </summary>
+        /// <remarks>
+        /// The restore commands are issued only after the new settings are in effect, so a monitor cannot be
+        /// restored and then immediately re-dimmed by the previous settings still being live.
+        /// </remarks>
+        private async Task ApplyChangedSettingsAsync(List<MonitorSettings> settings)
+        {
+            try
             {
-                SendRestoreMonitorStateCommand(setting.HardwareId);
+                await _monitorIdleDetectionService.UpdateSettingsAsync(settings);
+
+                foreach (var setting in settings)
+                {
+                    SendRestoreMonitorStateCommand(setting.HardwareId);
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Failed to apply changed monitor settings.");
             }
         }
 

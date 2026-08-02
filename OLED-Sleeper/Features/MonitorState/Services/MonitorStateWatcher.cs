@@ -3,6 +3,7 @@ using OLED_Sleeper.Features.MonitorInformation.Models;
 using OLED_Sleeper.Features.MonitorInformation.Services.Interfaces;
 using OLED_Sleeper.Features.MonitorState.Commands;
 using OLED_Sleeper.Features.MonitorState.Services.Interfaces;
+using Serilog;
 using System.Timers;
 using Timer = System.Timers.Timer;
 
@@ -51,11 +52,10 @@ namespace OLED_Sleeper.Features.MonitorState.Services
         {
             lock (_lock)
             {
-                if (!_pollTimer.Enabled)
-                {
-                    RetrieveInitialMonitorList();
-                }
+                if (_pollTimer.Enabled) return;
             }
+
+            _ = RetrieveInitialMonitorListAsync();
         }
 
         /// <summary>
@@ -82,38 +82,70 @@ namespace OLED_Sleeper.Features.MonitorState.Services
         #region Private Methods
 
         /// <summary>
-        /// Retrieves the initial monitor list asynchronously and starts the polling timer.
+        /// Retrieves the initial monitor list and starts the polling timer.
         /// Dispatches a synchronization command for the initial state.
         /// </summary>
-        private void RetrieveInitialMonitorList()
+        private async Task RetrieveInitialMonitorListAsync()
         {
-            EventHandler<IReadOnlyList<MonitorInfo>> handler = null;
-            handler = (sender, monitors) =>
+            try
             {
-                _monitorInfoManager.MonitorListReady -= handler;
-                _lastKnownMonitors = monitors;
-                _mediator.SendAsync(new SynchronizeMonitorStateCommand([], _lastKnownMonitors));
+                var monitors = await _monitorInfoManager.GetCurrentMonitorsAsync();
+
+                lock (_lock)
+                {
+                    _lastKnownMonitors = monitors;
+                }
+
+                await _mediator.SendAsync(new SynchronizeMonitorStateCommand([], monitors));
                 _pollTimer.Start();
-            };
-            _monitorInfoManager.MonitorListReady += handler;
-            _monitorInfoManager.GetCurrentMonitorsAsync();
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Failed to retrieve the initial monitor list. Monitor state watching is not active.");
+            }
         }
 
         /// <summary>
         /// Polls for monitor changes and dispatches a synchronization command if a change is detected.
         /// </summary>
+        /// <remarks>
+        /// The lock covers only the comparison and the swap of <see cref="_lastKnownMonitors"/>. The mediator
+        /// dispatch runs outside it: <c>SynchronizeMonitorStateCommandHandler</c> reaches back into the
+        /// monitor manager and the dimming service, so holding this lock across the dispatch would reintroduce
+        /// a lock held across foreign code.
+        /// </remarks>
         private void PollTimerElapsed(object? sender, ElapsedEventArgs e)
         {
+            IReadOnlyList<MonitorInfo> oldMonitors;
+            List<MonitorInfo> currentMonitors;
+
             lock (_lock)
             {
-                var currentMonitors = _monitorInfoManager.GetLatestMonitorsBasicInfo();
-                if (!AreMonitorListsEqual(_lastKnownMonitors, currentMonitors))
-                {
-                    EnrichMonitorInfoList(currentMonitors);
-                    var oldMonitors = _lastKnownMonitors;
-                    _lastKnownMonitors = currentMonitors;
-                    _mediator.SendAsync(new SynchronizeMonitorStateCommand(oldMonitors, currentMonitors));
-                }
+                currentMonitors = _monitorInfoManager.GetLatestMonitorsBasicInfo();
+                if (AreMonitorListsEqual(_lastKnownMonitors, currentMonitors)) return;
+
+                EnrichMonitorInfoList(currentMonitors);
+                oldMonitors = _lastKnownMonitors;
+                _lastKnownMonitors = currentMonitors;
+            }
+
+            _ = DispatchSynchronizationAsync(oldMonitors, currentMonitors);
+        }
+
+        /// <summary>
+        /// Dispatches a synchronization command for a detected monitor change, logging any failure.
+        /// </summary>
+        /// <param name="oldMonitors">The previously known monitor list.</param>
+        /// <param name="currentMonitors">The newly detected monitor list.</param>
+        private async Task DispatchSynchronizationAsync(IReadOnlyList<MonitorInfo> oldMonitors, IReadOnlyList<MonitorInfo> currentMonitors)
+        {
+            try
+            {
+                await _mediator.SendAsync(new SynchronizeMonitorStateCommand(oldMonitors, currentMonitors));
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Failed to synchronize monitor state after a display change.");
             }
         }
 

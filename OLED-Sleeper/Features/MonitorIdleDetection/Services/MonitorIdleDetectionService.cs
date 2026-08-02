@@ -71,36 +71,38 @@ namespace OLED_Sleeper.Features.MonitorIdleDetection.Services
         /// Updates the settings for all managed monitors.
         /// </summary>
         /// <param name="monitorSettings">The list of monitor settings to manage.</param>
-        public void UpdateSettings(List<MonitorSettings> monitorSettings)
+        /// <remarks>
+        /// The monitor list is awaited *before* taking <see cref="_lock"/>. Acquiring this lock while the
+        /// monitor manager holds its own is what previously produced a lock-order inversion against the
+        /// idle loop; do not move the await inside the lock.
+        /// </remarks>
+        public async Task UpdateSettingsAsync(List<MonitorSettings> monitorSettings)
         {
             var activeSettings = monitorSettings.Where(s => s.IsManaged).ToList();
+            var allMonitors = await _monitorManager.GetCurrentMonitorsAsync();
 
-            void OnMonitorsReady(object? sender, IReadOnlyList<MonitorInfo> allMonitors)
+            int trackedCount;
+            lock (_lock)
             {
-                _monitorManager.MonitorListReady -= OnMonitorsReady;
+                _managedMonitors = (from setting in activeSettings
+                                    join monitorInfo in allMonitors on setting.HardwareId equals monitorInfo.HardwareId
+                                    select new ManagedMonitorState
+                                    {
+                                        Settings = setting,
+                                        Bounds = monitorInfo.Bounds,
+                                        DisplayNumber = monitorInfo.DisplayNumber
+                                    }).ToList();
 
-                lock (_lock)
+                _monitorStates.Clear();
+                foreach (var monitor in _managedMonitors)
                 {
-                    _managedMonitors = (from setting in activeSettings
-                                        join monitorInfo in allMonitors on setting.HardwareId equals monitorInfo.HardwareId
-                                        select new ManagedMonitorState
-                                        {
-                                            Settings = setting,
-                                            Bounds = monitorInfo.Bounds,
-                                            DisplayNumber = monitorInfo.DisplayNumber
-                                        }).ToList();
-
-                    _monitorStates.Clear();
-                    foreach (var monitor in _managedMonitors)
-                    {
-                        _monitorStates[monitor.Settings.HardwareId] = new MonitorTimerState();
-                    }
+                    _monitorStates[monitor.Settings.HardwareId] = new MonitorTimerState();
                 }
-                Log.Information("MonitorIdleDetectionService settings updated. Now tracking {Count} monitors.", _managedMonitors.Count);
+
+                trackedCount = _managedMonitors.Count;
             }
 
-            _monitorManager.MonitorListReady += OnMonitorsReady;
-            _monitorManager.GetCurrentMonitorsAsync();
+            Log.Information("MonitorIdleDetectionService settings updated. Now tracking {Count} monitors.", trackedCount);
         }
 
         // === Idle Detection Loop ===
