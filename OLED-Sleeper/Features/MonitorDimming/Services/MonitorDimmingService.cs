@@ -1,20 +1,31 @@
-﻿using OLED_Sleeper.Features.MonitorDimming.Services.Interfaces;
+using OLED_Sleeper.Features.MonitorDimming.Services.Interfaces;
 using OLED_Sleeper.Features.MonitorInformation.Models;
 using OLED_Sleeper.Features.MonitorInformation.Services.Interfaces;
 using OLED_Sleeper.Native;
 using Serilog;
+using System.Collections.Concurrent;
 using System.Runtime.InteropServices;
 
 namespace OLED_Sleeper.Features.MonitorDimming.Services
 {
     /// <summary>
     /// Provides services for dimming and restoring monitor brightness using DDC/CI.
+    /// Every public method is safe to call from any thread.
     /// </summary>
-    public class MonitorDimmingService : IMonitorDimmingService // Assuming the interface is also updated to async
+    public class MonitorDimmingService : IMonitorDimmingService
     {
         private readonly IMonitorInfoManager _monitorManager;
         private readonly IMonitorBrightnessStateService _brightnessStateService;
+
+        /// <summary>Guards <see cref="_originalBrightnessLevels"/> and the state file write that follows each change to it.</summary>
+        private readonly object _stateLock = new();
+
         private readonly Dictionary<string, uint> _originalBrightnessLevels;
+
+        /// <summary>
+        /// One gate per hardware ID. Dim, undim and restore for the same monitor run one at a time.
+        /// </summary>
+        private readonly ConcurrentDictionary<string, SemaphoreSlim> _monitorGates = new();
 
         /// <summary>
         /// Initializes a new instance of the <see cref="MonitorDimmingService"/> class.
@@ -29,40 +40,105 @@ namespace OLED_Sleeper.Features.MonitorDimming.Services
         }
 
         /// <inheritdoc />
-        public async Task DimMonitorAsync(string hardwareId, int dimLevel)
+        public async Task DimMonitorAsync(string? hardwareId, int dimLevel)
         {
-            await WithPhysicalMonitorAsync(hardwareId, hPhysicalMonitor =>
+            if (string.IsNullOrEmpty(hardwareId))
             {
-                var currentBrightness = GetCurrentBrightness(hPhysicalMonitor, hardwareId);
-                if (currentBrightness == uint.MaxValue) return;
-                SaveOriginalBrightness(hardwareId, currentBrightness);
-                SetMonitorBrightness(hPhysicalMonitor, hardwareId, (uint)dimLevel);
-            });
+                Log.Warning("DimMonitorAsync called without a hardware ID.");
+                return;
+            }
+
+            await WithMonitorGateAsync(hardwareId, () => DimCoreAsync(hardwareId, dimLevel));
         }
 
         /// <inheritdoc />
         public async Task UndimMonitorAsync(string hardwareId)
         {
-            if (_originalBrightnessLevels.TryGetValue(hardwareId, out var originalBrightness))
+            if (string.IsNullOrEmpty(hardwareId))
             {
-                await RestoreBrightnessAsync(hardwareId, originalBrightness);
-                RemoveOriginalBrightness(hardwareId);
+                Log.Warning("UndimMonitorAsync called without a hardware ID.");
+                return;
             }
+
+            await WithMonitorGateAsync(hardwareId, () => UndimCoreAsync(hardwareId));
         }
 
         /// <inheritdoc />
-        public async Task RestoreBrightnessAsync(string hardwareId, uint originalBrightness)
+        public Dictionary<string, uint> GetDimmedMonitors()
         {
-            await WithPhysicalMonitorAsync(hardwareId, hPhysicalMonitor =>
+            lock (_stateLock)
+            {
+                return new Dictionary<string, uint>(_originalBrightnessLevels);
+            }
+        }
+
+        #region Private Helpers
+
+        /// <summary>
+        /// Reads the current brightness, records it as the original, then sets the dim level.
+        /// </summary>
+        /// <param name="hardwareId">The hardware ID of the monitor.</param>
+        /// <param name="dimLevel">The brightness level to set.</param>
+        private Task DimCoreAsync(string hardwareId, int dimLevel)
+        {
+            return WithPhysicalMonitorAsync(hardwareId, hPhysicalMonitor =>
+            {
+                var currentBrightness = GetCurrentBrightness(hPhysicalMonitor, hardwareId);
+                if (currentBrightness == uint.MaxValue) return;
+
+                RecordOriginalBrightness(hardwareId, currentBrightness);
+                SetMonitorBrightness(hPhysicalMonitor, hardwareId, (uint)dimLevel);
+            });
+        }
+
+        /// <summary>
+        /// Sets the monitor back to its recorded original brightness and drops the recording.
+        /// Does nothing if there is no recording.
+        /// </summary>
+        /// <param name="hardwareId">The hardware ID of the monitor.</param>
+        private async Task UndimCoreAsync(string hardwareId)
+        {
+            uint originalBrightness;
+            lock (_stateLock)
+            {
+                if (!_originalBrightnessLevels.TryGetValue(hardwareId, out originalBrightness)) return;
+            }
+
+            await RestoreCoreAsync(hardwareId, originalBrightness);
+            RemoveOriginalBrightness(hardwareId);
+        }
+
+        /// <summary>
+        /// Sets the given brightness value on the monitor.
+        /// </summary>
+        /// <param name="hardwareId">The hardware ID of the monitor.</param>
+        /// <param name="originalBrightness">The brightness value to restore.</param>
+        private Task RestoreCoreAsync(string hardwareId, uint originalBrightness)
+        {
+            return WithPhysicalMonitorAsync(hardwareId, hPhysicalMonitor =>
             {
                 SetMonitorBrightness(hPhysicalMonitor, hardwareId, originalBrightness, isRestore: true);
             });
         }
 
-        /// <inheritdoc />
-        public Dictionary<string, uint> GetDimmedMonitors() => new(_originalBrightnessLevels);
-
-        #region Private Helpers
+        /// <summary>
+        /// Runs an operation while holding the monitor's gate.
+        /// </summary>
+        /// <param name="hardwareId">The hardware ID of the monitor.</param>
+        /// <param name="operation">The operation to run.</param>
+        private async Task WithMonitorGateAsync(string hardwareId, Func<Task> operation)
+        {
+            var gate = _monitorGates.GetOrAdd(hardwareId, _ => new SemaphoreSlim(1, 1));
+            await gate.WaitAsync();
+            try
+            {
+                await operation();
+            }
+            finally
+            {
+                gate.Release();
+            }
+        }
 
         /// <summary>
         /// Safely obtains and destroys a physical monitor handle, executing the provided action.
@@ -141,24 +217,37 @@ namespace OLED_Sleeper.Features.MonitorDimming.Services
         }
 
         /// <summary>
-        /// Saves the original brightness for the monitor and persists the state.
+        /// Records the original brightness for the monitor and saves the state.
+        /// An existing entry is kept, not overwritten.
         /// </summary>
         /// <param name="hardwareId">The hardware ID of the monitor.</param>
-        /// <param name="brightness">The brightness value to save.</param>
-        private void SaveOriginalBrightness(string hardwareId, uint brightness)
+        /// <param name="brightness">The brightness value to record.</param>
+        private void RecordOriginalBrightness(string hardwareId, uint brightness)
         {
-            _originalBrightnessLevels[hardwareId] = brightness;
-            _brightnessStateService.SaveState(_originalBrightnessLevels);
+            lock (_stateLock)
+            {
+                if (_originalBrightnessLevels.ContainsKey(hardwareId))
+                {
+                    Log.Debug("Monitor {HardwareId} already has a recorded original brightness of {Brightness}.", hardwareId, _originalBrightnessLevels[hardwareId]);
+                    return;
+                }
+
+                _originalBrightnessLevels[hardwareId] = brightness;
+                _brightnessStateService.SaveState(new Dictionary<string, uint>(_originalBrightnessLevels));
+            }
         }
 
         /// <summary>
-        /// Removes the original brightness entry for the monitor and persists the state.
+        /// Removes the original brightness entry for the monitor and saves the state.
         /// </summary>
         /// <param name="hardwareId">The hardware ID of the monitor.</param>
         private void RemoveOriginalBrightness(string hardwareId)
         {
-            _originalBrightnessLevels.Remove(hardwareId);
-            _brightnessStateService.SaveState(_originalBrightnessLevels);
+            lock (_stateLock)
+            {
+                if (!_originalBrightnessLevels.Remove(hardwareId)) return;
+                _brightnessStateService.SaveState(new Dictionary<string, uint>(_originalBrightnessLevels));
+            }
         }
 
         /// <summary>

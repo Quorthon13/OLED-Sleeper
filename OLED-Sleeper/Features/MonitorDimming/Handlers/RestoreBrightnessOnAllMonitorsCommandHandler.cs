@@ -6,25 +6,24 @@ using Serilog;
 namespace OLED_Sleeper.Features.MonitorDimming.Handlers
 {
     /// <summary>
-    /// Handles the RestoreBrightnessOnStartupCommand to restore brightness for all monitors left dimmed from a previous session.
+    /// Handles the RestoreBrightnessOnAllMonitorsCommand to restore brightness for all monitors left dimmed.
     /// </summary>
-    public class RestoreBrightnessOnAllMonitorsCommandHandler(
-        IMonitorBrightnessStateService monitorBrightnessStateService,
-        IMonitorDimmingService monitorDimmingService)
+    public class RestoreBrightnessOnAllMonitorsCommandHandler(IMonitorDimmingService monitorDimmingService)
         : ICommandHandler<RestoreBrightnessOnAllMonitorsCommand>
     {
         public async Task HandleAsync(RestoreBrightnessOnAllMonitorsCommand command)
         {
             Log.Information("Checking for monitors with unrestored brightness...");
-            var state = monitorBrightnessStateService.LoadState();
-            if (state.Any())
+
+            // The dimming service owns the dimmed-monitor list and writes the state file. Going through it here
+            // keeps both in step; clearing the file directly leaves its list populated and the next save rewrites it.
+            var dimmedMonitors = monitorDimmingService.GetDimmedMonitors();
+            if (dimmedMonitors.Count == 0) return;
+
+            Log.Warning("Found {Count} monitors that were left dimmed. Attempting to restore.", dimmedMonitors.Count);
+            foreach (var hardwareId in dimmedMonitors.Keys)
             {
-                Log.Warning("Found {Count} monitors that were left dimmed from a previous session. Attempting to restore.", state.Count);
-                foreach (var entry in state)
-                {
-                    await monitorDimmingService.RestoreBrightnessAsync(entry.Key, entry.Value);
-                }
-                monitorBrightnessStateService.SaveState(new Dictionary<string, uint>());
+                await monitorDimmingService.UndimMonitorAsync(hardwareId);
             }
         }
     }
