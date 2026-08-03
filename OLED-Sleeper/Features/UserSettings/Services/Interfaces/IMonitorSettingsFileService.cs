@@ -22,7 +22,7 @@ namespace OLED_Sleeper.Features.UserSettings.Services.Interfaces
         /// <summary>
         /// Saves the provided monitor settings to persistent storage. Stored settings for monitors that are
         /// not in <paramref name="settings"/> are kept. <see cref="SettingsChanged"/> is raised only when the
-        /// save succeeded.
+        /// save succeeded. Never throws: a failed write and a subscriber that throws are both caught and logged.
         /// </summary>
         /// <param name="settings">The list of monitor settings to save.</param>
         void SaveSettings(List<MonitorSettings> settings);
