@@ -59,7 +59,7 @@ namespace OLED_Sleeper.Core
         /// </summary>
         public void Start()
         {
-            RestoreAllMonitors();
+            _ = RestoreAllMonitorsAsync();
             SubscribeToEvents();
             InitializeStateWatcher();
         }
@@ -84,21 +84,19 @@ namespace OLED_Sleeper.Core
         #region Event Subscriptions
 
         /// <summary>
-        /// Subscribes to user settings and application notifications for monitor management.
+        /// Subscribes to user settings changes.
         /// </summary>
         private void SubscribeToEvents()
         {
             _monitorSettingsFileService.SettingsChanged += OnSettingsChanged;
-            ApplicationNotifications.RestoreAllMonitorsRequested += RestoreAllMonitors;
         }
 
         /// <summary>
-        /// Unsubscribes from user settings and application notifications.
+        /// Unsubscribes from user settings changes.
         /// </summary>
         private void UnsubscribeFromEvents()
         {
             _monitorSettingsFileService.SettingsChanged -= OnSettingsChanged;
-            ApplicationNotifications.RestoreAllMonitorsRequested -= RestoreAllMonitors;
         }
 
         #endregion Event Subscriptions
@@ -111,14 +109,6 @@ namespace OLED_Sleeper.Core
         private void InitializeStateWatcher()
         {
             _monitorStateWatcher.Start();
-        }
-
-        /// <summary>
-        /// Restores all monitors' brightness levels to their normal state, without waiting for completion.
-        /// </summary>
-        public void RestoreAllMonitors()
-        {
-            _ = RestoreAllMonitorsAsync();
         }
 
         /// <summary>
