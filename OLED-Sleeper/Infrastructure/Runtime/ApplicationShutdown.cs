@@ -1,8 +1,8 @@
-using OLED_Sleeper.Core.Interfaces;
+using OLED_Sleeper.Infrastructure.Runtime.Interfaces;
 using System.Diagnostics.CodeAnalysis;
 using System.Windows;
 
-namespace OLED_Sleeper.Infrastructure
+namespace OLED_Sleeper.Infrastructure.Runtime
 {
     /// <summary>
     /// Ends the process by shutting down the running <see cref="Application"/>.

@@ -1,4 +1,4 @@
-using OLED_Sleeper.Core.Interfaces;
+using OLED_Sleeper.Infrastructure.Runtime.Interfaces;
 
 namespace OLED_Sleeper.Tests.TestDoubles
 {

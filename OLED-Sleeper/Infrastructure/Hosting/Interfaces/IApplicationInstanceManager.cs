@@ -1,4 +1,4 @@
-namespace OLED_Sleeper.Core.Interfaces
+namespace OLED_Sleeper.Infrastructure.Hosting.Interfaces
 {
     /// <summary>
     /// Defines the contract for managing single-instance enforcement and inter-process signaling.
@@ -14,5 +14,12 @@ namespace OLED_Sleeper.Core.Interfaces
         /// Initializes the single-instance check and event signaling.
         /// </summary>
         void Initialize();
+
+        /// <summary>
+        /// Sets the delegate to show the main window when signaled by a second instance.
+        /// Should be called after DI and services are initialized.
+        /// </summary>
+        /// <param name="showMainWindowAction">Action to show the main window.</param>
+        void SetShowMainWindowAction(Action showMainWindowAction);
     }
 }

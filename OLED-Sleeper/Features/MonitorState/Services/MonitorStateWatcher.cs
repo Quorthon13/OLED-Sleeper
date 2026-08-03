@@ -1,8 +1,8 @@
-using OLED_Sleeper.Core.Interfaces;
 using OLED_Sleeper.Features.MonitorInformation.Models;
 using OLED_Sleeper.Features.MonitorInformation.Services.Interfaces;
 using OLED_Sleeper.Features.MonitorState.Commands;
 using OLED_Sleeper.Features.MonitorState.Services.Interfaces;
+using OLED_Sleeper.Messaging.Interfaces;
 using Serilog;
 using System.Timers;
 using Timer = System.Timers.Timer;

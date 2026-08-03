@@ -1,4 +1,4 @@
-﻿namespace OLED_Sleeper.Core.Interfaces
+﻿namespace OLED_Sleeper.Infrastructure.Hosting.Interfaces
 {
     /// <summary>
     /// Defines the contract for the application orchestrator, which coordinates monitor management and application lifecycle.

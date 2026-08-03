@@ -1,7 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
-using OLED_Sleeper.Core;
-using OLED_Sleeper.Core.Interfaces;
 using OLED_Sleeper.Features.MonitorBehavior.Commands;
 using OLED_Sleeper.Features.MonitorBehavior.Handlers;
 using OLED_Sleeper.Features.MonitorBlackout.Commands;
@@ -20,15 +18,22 @@ using OLED_Sleeper.Features.MonitorState.Commands;
 using OLED_Sleeper.Features.MonitorState.Handlers;
 using OLED_Sleeper.Features.MonitorState.Services;
 using OLED_Sleeper.Features.MonitorState.Services.Interfaces;
+using OLED_Sleeper.Features.UserSettings.Commands;
+using OLED_Sleeper.Features.UserSettings.Handlers;
 using OLED_Sleeper.Features.UserSettings.Services;
 using OLED_Sleeper.Features.UserSettings.Services.Interfaces;
+using OLED_Sleeper.Infrastructure.Hosting.Interfaces;
+using OLED_Sleeper.Infrastructure.Runtime;
+using OLED_Sleeper.Infrastructure.Runtime.Interfaces;
+using OLED_Sleeper.Messaging;
+using OLED_Sleeper.Messaging.Interfaces;
 using OLED_Sleeper.Storage;
 using OLED_Sleeper.Storage.Interfaces;
 using OLED_Sleeper.UI.Services;
 using OLED_Sleeper.UI.Services.Interfaces;
 using OLED_Sleeper.UI.ViewModels;
 
-namespace OLED_Sleeper.Infrastructure
+namespace OLED_Sleeper.Infrastructure.Hosting
 {
     /// <summary>
     /// Configures and builds the application's dependency injection service provider.
@@ -38,9 +43,9 @@ namespace OLED_Sleeper.Infrastructure
         /// <summary>
         /// Registers all application services and builds the service provider.
         /// </summary>
-        /// <param name="instanceManager">The application instance manager to register as a singleton.</param>
+        /// <param name="applicationOptions">The parsed command-line options to register.</param>
         /// <returns>The built <see cref="IServiceProvider"/>.</returns>
-        public static IServiceProvider ConfigureServices(ApplicationInstanceManager instanceManager, ApplicationOptions applicationOptions)
+        public static IServiceProvider ConfigureServices(ApplicationOptions applicationOptions)
         {
             var services = new ServiceCollection();
             services.AddSingleton<IMediator, Mediator>();
@@ -56,6 +61,7 @@ namespace OLED_Sleeper.Infrastructure
             services.AddTransient<ICommandHandler<RestoreBrightnessOnAllMonitorsCommand>, RestoreBrightnessOnAllMonitorsCommandHandler>();
             services.AddTransient<ICommandHandler<SynchronizeMonitorStateCommand>, SynchronizeMonitorStateCommandHandler>();
             services.AddTransient<ICommandHandler<RestoreMonitorStateCommand>, RestoreMonitorStateCommandHandler>();
+            services.AddTransient<ICommandHandler<ApplySettingsChangeCommand>, ApplySettingsChangeCommandHandler>();
 
             services.AddSingleton(Options.Create(applicationOptions));
 
@@ -80,7 +86,6 @@ namespace OLED_Sleeper.Infrastructure
             services.AddSingleton<ITrayIconService, TrayIconService>();
             services.AddSingleton<IMainWindowService, MainWindowService>();
             services.AddSingleton<IDialogService, MessageBoxDialogService>();
-            services.AddSingleton<IApplicationInstanceManager>(_ => instanceManager);
 
             return services.BuildServiceProvider();
         }

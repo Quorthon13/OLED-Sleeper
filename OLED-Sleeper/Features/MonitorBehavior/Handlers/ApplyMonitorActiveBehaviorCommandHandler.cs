@@ -1,7 +1,7 @@
-using OLED_Sleeper.Core.Interfaces;
 using OLED_Sleeper.Features.MonitorBehavior.Commands;
 using OLED_Sleeper.Features.MonitorBlackout.Services.Interfaces;
 using OLED_Sleeper.Features.MonitorIdleDetection.Models;
+using OLED_Sleeper.Messaging.Interfaces;
 using Serilog;
 
 namespace OLED_Sleeper.Features.MonitorBehavior.Handlers

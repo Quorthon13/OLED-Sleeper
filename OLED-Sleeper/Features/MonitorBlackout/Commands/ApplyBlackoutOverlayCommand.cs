@@ -1,4 +1,4 @@
-﻿using OLED_Sleeper.Core.Interfaces;
+﻿using OLED_Sleeper.Messaging.Interfaces;
 
 namespace OLED_Sleeper.Features.MonitorBlackout.Commands
 {

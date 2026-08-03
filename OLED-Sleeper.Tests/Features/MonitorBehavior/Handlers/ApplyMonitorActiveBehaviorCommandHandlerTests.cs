@@ -1,10 +1,10 @@
 using Moq;
-using OLED_Sleeper.Core.Interfaces;
 using OLED_Sleeper.Features.MonitorBehavior.Commands;
 using OLED_Sleeper.Features.MonitorBehavior.Handlers;
 using OLED_Sleeper.Features.MonitorBlackout.Services.Interfaces;
 using OLED_Sleeper.Features.MonitorIdleDetection.Models;
 using OLED_Sleeper.Features.UserSettings.Models;
+using OLED_Sleeper.Messaging.Interfaces;
 using System.Windows;
 
 namespace OLED_Sleeper.Tests.Features.MonitorBehavior.Handlers

@@ -1,6 +1,7 @@
-﻿using OLED_Sleeper.Core.Interfaces;
+﻿using OLED_Sleeper.Infrastructure.Hosting.Interfaces;
+using OLED_Sleeper.Infrastructure.Runtime.Interfaces;
 
-namespace OLED_Sleeper.Core
+namespace OLED_Sleeper.Infrastructure.Hosting
 {
     /// <summary>
     /// Enforces a single running instance of the application.
@@ -53,11 +54,7 @@ namespace OLED_Sleeper.Core
             CreateEventAndListen();
         }
 
-        /// <summary>
-        /// Sets the delegate to show the main window when signaled by a second instance.
-        /// Should be called after DI and services are initialized.
-        /// </summary>
-        /// <param name="showMainWindowAction">Action to show the main window.</param>
+        /// <inheritdoc />
         public void SetShowMainWindowAction(Action showMainWindowAction)
         {
             _showMainWindowAction = showMainWindowAction ?? throw new ArgumentNullException(nameof(showMainWindowAction));

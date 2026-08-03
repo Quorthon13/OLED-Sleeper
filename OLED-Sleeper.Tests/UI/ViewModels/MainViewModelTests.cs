@@ -1,8 +1,8 @@
 using Moq;
-using OLED_Sleeper.Core.Interfaces;
 using OLED_Sleeper.Features.MonitorInformation.Models;
 using OLED_Sleeper.Features.UserSettings.Models;
 using OLED_Sleeper.Features.UserSettings.Services.Interfaces;
+using OLED_Sleeper.Messaging.Interfaces;
 using OLED_Sleeper.Tests.TestDoubles;
 using OLED_Sleeper.UI.Services.Interfaces;
 using OLED_Sleeper.UI.ViewModels;
@@ -17,6 +17,7 @@ namespace OLED_Sleeper.Tests.UI.ViewModels
         private readonly Mock<IMonitorSettingsFileService> _settingsServiceMock;
         private readonly Mock<IMainWindowAccessor> _mainWindowAccessorMock;
         private readonly Mock<IDialogService> _dialogServiceMock;
+        private readonly Mock<IMediator> _mediatorMock;
         private readonly ImmediateDispatcher _dispatcher;
         private readonly MainViewModel _viewModel;
 
@@ -26,6 +27,7 @@ namespace OLED_Sleeper.Tests.UI.ViewModels
             _settingsServiceMock = new Mock<IMonitorSettingsFileService>();
             _mainWindowAccessorMock = new Mock<IMainWindowAccessor>();
             _dialogServiceMock = new Mock<IDialogService>();
+            _mediatorMock = new Mock<IMediator>();
             _dispatcher = new ImmediateDispatcher();
 
             _workspaceServiceMock
@@ -40,7 +42,8 @@ namespace OLED_Sleeper.Tests.UI.ViewModels
                 _settingsServiceMock.Object,
                 _dispatcher,
                 _mainWindowAccessorMock.Object,
-                _dialogServiceMock.Object);
+                _dialogServiceMock.Object,
+                _mediatorMock.Object);
         }
 
         [Fact]

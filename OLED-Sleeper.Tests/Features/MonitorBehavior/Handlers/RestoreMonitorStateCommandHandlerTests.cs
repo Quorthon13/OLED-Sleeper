@@ -1,9 +1,9 @@
 using Moq;
-using OLED_Sleeper.Core.Interfaces;
 using OLED_Sleeper.Features.MonitorBehavior.Commands;
 using OLED_Sleeper.Features.MonitorBehavior.Handlers;
 using OLED_Sleeper.Features.MonitorBlackout.Commands;
 using OLED_Sleeper.Features.MonitorDimming.Commands;
+using OLED_Sleeper.Messaging.Interfaces;
 
 namespace OLED_Sleeper.Tests.Features.MonitorBehavior.Handlers
 {

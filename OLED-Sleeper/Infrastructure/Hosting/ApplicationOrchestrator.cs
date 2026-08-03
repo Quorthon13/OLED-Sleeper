@@ -1,14 +1,14 @@
-﻿using OLED_Sleeper.Core.Interfaces;
-using OLED_Sleeper.Features.MonitorBehavior.Commands;
-using OLED_Sleeper.Features.MonitorDimming.Commands;
+﻿using OLED_Sleeper.Features.MonitorDimming.Commands;
 using OLED_Sleeper.Features.MonitorIdleDetection.Services.Interfaces;
-using OLED_Sleeper.Features.MonitorInformation.Services.Interfaces;
 using OLED_Sleeper.Features.MonitorState.Services.Interfaces;
+using OLED_Sleeper.Features.UserSettings.Commands;
 using OLED_Sleeper.Features.UserSettings.Models;
 using OLED_Sleeper.Features.UserSettings.Services.Interfaces;
+using OLED_Sleeper.Infrastructure.Hosting.Interfaces;
+using OLED_Sleeper.Messaging.Interfaces;
 using Serilog;
 
-namespace OLED_Sleeper.Core
+namespace OLED_Sleeper.Infrastructure.Hosting
 {
     /// <summary>
     /// Central application orchestrator for monitor management in OLED-Sleeper.
@@ -30,7 +30,6 @@ namespace OLED_Sleeper.Core
     {
         private readonly IMediator _mediator;
         private readonly IMonitorIdleDetectionService _monitorIdleDetectionService;
-        private readonly IMonitorInfoManager _monitorInfoManager;
         private readonly IMonitorSettingsFileService _monitorSettingsFileService;
         private readonly IMonitorStateWatcher _monitorStateWatcher;
 
@@ -39,13 +38,11 @@ namespace OLED_Sleeper.Core
         public ApplicationOrchestrator(
             IMediator mediator,
             IMonitorIdleDetectionService monitorIdleDetectionService,
-            IMonitorInfoManager monitorInfoManager,
             IMonitorSettingsFileService monitorSettingsFileService,
             IMonitorStateWatcher monitorStateWatcher)
         {
             _mediator = mediator;
             _monitorIdleDetectionService = monitorIdleDetectionService;
-            _monitorInfoManager = monitorInfoManager;
             _monitorSettingsFileService = monitorSettingsFileService;
             _monitorStateWatcher = monitorStateWatcher;
         }
@@ -59,7 +56,7 @@ namespace OLED_Sleeper.Core
         /// </summary>
         public void Start()
         {
-            RestoreAllMonitors();
+            _ = RestoreAllMonitorsAsync();
             SubscribeToEvents();
             InitializeStateWatcher();
         }
@@ -84,21 +81,19 @@ namespace OLED_Sleeper.Core
         #region Event Subscriptions
 
         /// <summary>
-        /// Subscribes to user settings and application notifications for monitor management.
+        /// Subscribes to user settings changes.
         /// </summary>
         private void SubscribeToEvents()
         {
             _monitorSettingsFileService.SettingsChanged += OnSettingsChanged;
-            ApplicationNotifications.RestoreAllMonitorsRequested += RestoreAllMonitors;
         }
 
         /// <summary>
-        /// Unsubscribes from user settings and application notifications.
+        /// Unsubscribes from user settings changes.
         /// </summary>
         private void UnsubscribeFromEvents()
         {
             _monitorSettingsFileService.SettingsChanged -= OnSettingsChanged;
-            ApplicationNotifications.RestoreAllMonitorsRequested -= RestoreAllMonitors;
         }
 
         #endregion Event Subscriptions
@@ -111,14 +106,6 @@ namespace OLED_Sleeper.Core
         private void InitializeStateWatcher()
         {
             _monitorStateWatcher.Start();
-        }
-
-        /// <summary>
-        /// Restores all monitors' brightness levels to their normal state, without waiting for completion.
-        /// </summary>
-        public void RestoreAllMonitors()
-        {
-            _ = RestoreAllMonitorsAsync();
         }
 
         /// <summary>
@@ -144,53 +131,13 @@ namespace OLED_Sleeper.Core
         #region Monitor State Event Handlers
 
         /// <summary>
-        /// Handles user settings changes and updates the monitor idle detection service and restores monitor state as needed.
+        /// Sends an <see cref="ApplySettingsChangeCommand"/> for the settings that changed.
         /// </summary>
         private void OnSettingsChanged(List<MonitorSettings> settings)
         {
-            _ = ApplyChangedSettingsAsync(settings);
-        }
-
-        /// <summary>
-        /// Applies changed settings to idle detection, then restores each affected monitor.
-        /// </summary>
-        /// <remarks>
-        /// The restore commands are issued only after the new settings are in effect. The geometry comes from
-        /// the cached monitor list; the display-change path passes its own freshly scanned list instead.
-        /// </remarks>
-        private async Task ApplyChangedSettingsAsync(List<MonitorSettings> settings)
-        {
-            try
-            {
-                var monitors = await _monitorInfoManager.GetCurrentMonitorsAsync();
-                await _monitorIdleDetectionService.UpdateSettingsAsync(settings, monitors);
-
-                foreach (var setting in settings)
-                {
-                    SendRestoreMonitorStateCommand(setting.HardwareId);
-                }
-            }
-            catch (Exception ex)
-            {
-                Log.Error(ex, "Failed to apply changed monitor settings.");
-            }
+            _mediator.SendAsync(new ApplySettingsChangeCommand { Settings = settings });
         }
 
         #endregion Monitor State Event Handlers
-
-        #region Command Senders
-
-        /// <summary>
-        /// Sends a command to restore a monitor's state by undimming it and hiding any blackout overlay.
-        /// </summary>
-        /// <param name="hardwareId">The unique hardware ID of the monitor to restore.</param>
-        private void SendRestoreMonitorStateCommand(string hardwareId)
-        {
-            var command = new RestoreMonitorStateCommand { HardwareId = hardwareId };
-            _mediator.SendAsync(command);
-            Log.Information("RestoreMonitorStateCommand sent for monitor {HardwareId}.", hardwareId);
-        }
-
-        #endregion Command Senders
     }
 }

@@ -1,4 +1,4 @@
-﻿using OLED_Sleeper.Infrastructure;
+﻿using OLED_Sleeper.Infrastructure.Hosting;
 using System.Windows;
 
 namespace OLED_Sleeper
