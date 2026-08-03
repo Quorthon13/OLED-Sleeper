@@ -94,6 +94,21 @@ namespace OLED_Sleeper.Tests.Features.MonitorDimming.Services
         }
 
         [Fact]
+        public async Task DimMonitorAsync_WhenTheWriteIsRejected_KeepsTheRecordingWithoutRetrying()
+        {
+            // Arrange
+            _panel.WritesAreRejected = true;
+
+            // Act
+            await _service.DimMonitorAsync(HardwareId, 15);
+
+            // Assert
+            _store.Verify(s => s.RecordOriginal(HardwareId, 80u), Times.Once);
+            Assert.Equal(new[] { 38u }, _panel.WrittenBrightnessLevels);
+            Assert.Single(_ddcCiAccess.OpenAttempts);
+        }
+
+        [Fact]
         public async Task DimMonitorAsync_WhenMonitorIsNotAttached_OpensNoChannel()
         {
             // Act
@@ -101,6 +116,33 @@ namespace OLED_Sleeper.Tests.Features.MonitorDimming.Services
 
             // Assert
             Assert.Empty(_ddcCiAccess.OpenAttempts);
+        }
+
+        [Theory]
+        [InlineData(null)]
+        [InlineData("")]
+        public async Task UndimMonitorAsync_WhenHardwareIdIsMissing_OpensNoChannel(string? hardwareId)
+        {
+            // Act
+            await _service.UndimMonitorAsync(hardwareId!);
+
+            // Assert
+            Assert.Empty(_ddcCiAccess.OpenAttempts);
+        }
+
+        [Fact]
+        public async Task UndimMonitorAsync_WhenTheReadBackIsUnanswered_RetriesAndKeepsTheRecording()
+        {
+            // Arrange
+            SetupRecording(HardwareId, 80);
+            _panel.ReadsFail = true;
+
+            // Act
+            await _service.UndimMonitorAsync(HardwareId);
+
+            // Assert
+            Assert.Equal(new[] { 80u, 80u, 80u }, _panel.WrittenBrightnessLevels);
+            _store.Verify(s => s.RemoveOriginal(It.IsAny<string>()), Times.Never);
         }
 
         [Fact]
