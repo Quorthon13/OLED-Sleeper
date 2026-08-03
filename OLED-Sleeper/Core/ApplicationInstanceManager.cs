@@ -53,11 +53,7 @@ namespace OLED_Sleeper.Core
             CreateEventAndListen();
         }
 
-        /// <summary>
-        /// Sets the delegate to show the main window when signaled by a second instance.
-        /// Should be called after DI and services are initialized.
-        /// </summary>
-        /// <param name="showMainWindowAction">Action to show the main window.</param>
+        /// <inheritdoc />
         public void SetShowMainWindowAction(Action showMainWindowAction)
         {
             _showMainWindowAction = showMainWindowAction ?? throw new ArgumentNullException(nameof(showMainWindowAction));

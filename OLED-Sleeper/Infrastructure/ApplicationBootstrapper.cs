@@ -32,7 +32,7 @@ namespace OLED_Sleeper.Infrastructure
         private IServiceProvider? _serviceProvider;
         private ITrayIconService? _trayIconService;
         private IMainWindowService? _mainWindowService;
-        private ApplicationInstanceManager? _instanceManager;
+        private IApplicationInstanceManager? _instanceManager;
         private IApplicationOrchestrator? _orchestrator;
         private bool _isExiting = false;
 
@@ -74,7 +74,7 @@ namespace OLED_Sleeper.Infrastructure
         /// </summary>
         private void ConfigureServices()
         {
-            _serviceProvider = ServiceConfigurator.ConfigureServices(_instanceManager!, _applicationOptions);
+            _serviceProvider = ServiceConfigurator.ConfigureServices(_applicationOptions);
         }
 
         /// <summary>

@@ -40,9 +40,9 @@ namespace OLED_Sleeper.Infrastructure
         /// <summary>
         /// Registers all application services and builds the service provider.
         /// </summary>
-        /// <param name="instanceManager">The application instance manager to register as a singleton.</param>
+        /// <param name="applicationOptions">The parsed command-line options to register.</param>
         /// <returns>The built <see cref="IServiceProvider"/>.</returns>
-        public static IServiceProvider ConfigureServices(ApplicationInstanceManager instanceManager, ApplicationOptions applicationOptions)
+        public static IServiceProvider ConfigureServices(ApplicationOptions applicationOptions)
         {
             var services = new ServiceCollection();
             services.AddSingleton<IMediator, Mediator>();
@@ -83,7 +83,6 @@ namespace OLED_Sleeper.Infrastructure
             services.AddSingleton<ITrayIconService, TrayIconService>();
             services.AddSingleton<IMainWindowService, MainWindowService>();
             services.AddSingleton<IDialogService, MessageBoxDialogService>();
-            services.AddSingleton<IApplicationInstanceManager>(_ => instanceManager);
 
             return services.BuildServiceProvider();
         }
