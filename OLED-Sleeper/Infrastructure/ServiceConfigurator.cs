@@ -73,6 +73,7 @@ namespace OLED_Sleeper.Infrastructure
             services.AddSingleton<MainWindow>();
             services.AddSingleton<ITrayIconService, TrayIconService>();
             services.AddSingleton<IMainWindowService, MainWindowService>();
+            services.AddSingleton<IDialogService, MessageBoxDialogService>();
             services.AddSingleton<IApplicationInstanceManager>(_ => instanceManager);
 
             return services.BuildServiceProvider();

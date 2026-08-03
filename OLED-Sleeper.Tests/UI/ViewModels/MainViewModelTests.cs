@@ -16,6 +16,7 @@ namespace OLED_Sleeper.Tests.UI.ViewModels
         private readonly Mock<IWorkspaceService> _workspaceServiceMock;
         private readonly Mock<IMonitorSettingsFileService> _settingsServiceMock;
         private readonly Mock<IMainWindowAccessor> _mainWindowAccessorMock;
+        private readonly Mock<IDialogService> _dialogServiceMock;
         private readonly ImmediateDispatcher _dispatcher;
         private readonly MainViewModel _viewModel;
 
@@ -24,6 +25,7 @@ namespace OLED_Sleeper.Tests.UI.ViewModels
             _workspaceServiceMock = new Mock<IWorkspaceService>();
             _settingsServiceMock = new Mock<IMonitorSettingsFileService>();
             _mainWindowAccessorMock = new Mock<IMainWindowAccessor>();
+            _dialogServiceMock = new Mock<IDialogService>();
             _dispatcher = new ImmediateDispatcher();
 
             _workspaceServiceMock
@@ -37,7 +39,8 @@ namespace OLED_Sleeper.Tests.UI.ViewModels
                 _workspaceServiceMock.Object,
                 _settingsServiceMock.Object,
                 _dispatcher,
-                _mainWindowAccessorMock.Object);
+                _mainWindowAccessorMock.Object,
+                _dialogServiceMock.Object);
         }
 
         [Fact]
@@ -306,6 +309,57 @@ namespace OLED_Sleeper.Tests.UI.ViewModels
             // Assert
             Assert.False(shouldClose);
             _mainWindowAccessorMock.Verify(x => x.HideMainWindow(), Times.Once);
+            _dialogServiceMock.Verify(x => x.AskYesNoCancel(It.IsAny<string>(), It.IsAny<string>()), Times.Never);
+        }
+
+        [Fact]
+        public void OnWindowClosing_WhenDirtyAndUserCancels_KeepsWindowVisible()
+        {
+            // Arrange
+            _viewModel.IsDirty = true;
+            SetupUnsavedChangesAnswer(MessageBoxResult.Cancel);
+
+            // Act
+            var shouldClose = _viewModel.OnWindowClosing();
+
+            // Assert
+            Assert.False(shouldClose);
+            _mainWindowAccessorMock.Verify(x => x.HideMainWindow(), Times.Never);
+            _settingsServiceMock.Verify(x => x.SaveSettings(It.IsAny<List<MonitorSettings>>()), Times.Never);
+        }
+
+        [Fact]
+        public void OnWindowClosing_WhenDirtyAndUserSaves_SavesThenHides()
+        {
+            // Arrange
+            var monitor = CreateMonitor("MON-1");
+            RaiseWorkspaceReady(monitor);
+            monitor.Configuration.DimLevel = 50;
+            SetupUnsavedChangesAnswer(MessageBoxResult.Yes);
+
+            // Act
+            var shouldClose = _viewModel.OnWindowClosing();
+
+            // Assert
+            Assert.False(shouldClose);
+            _settingsServiceMock.Verify(x => x.SaveSettings(It.IsAny<List<MonitorSettings>>()), Times.Once);
+            _mainWindowAccessorMock.Verify(x => x.HideMainWindow(), Times.Once);
+        }
+
+        [Fact]
+        public void OnWindowClosing_WhenDirtyAndUserDiscards_HidesWithoutSaving()
+        {
+            // Arrange
+            _viewModel.IsDirty = true;
+            SetupUnsavedChangesAnswer(MessageBoxResult.No);
+
+            // Act
+            var shouldClose = _viewModel.OnWindowClosing();
+
+            // Assert
+            Assert.False(shouldClose);
+            _settingsServiceMock.Verify(x => x.SaveSettings(It.IsAny<List<MonitorSettings>>()), Times.Never);
+            _mainWindowAccessorMock.Verify(x => x.HideMainWindow(), Times.Once);
         }
 
         [Fact]
@@ -332,6 +386,64 @@ namespace OLED_Sleeper.Tests.UI.ViewModels
             Assert.Equal(50, entry.DimLevel);
             Assert.False(_viewModel.IsDirty);
             Assert.Equal("Saved!", _viewModel.SaveButtonText);
+        }
+
+        [Fact]
+        public void SaveSettingsCommand_WhenSettingsInvalid_ShowsErrorAndDoesNotSave()
+        {
+            // Arrange
+            var monitor = CreateMonitor("MON-1");
+            RaiseWorkspaceReady(monitor);
+            monitor.Configuration.IsManaged = true;
+
+            // Act
+            _viewModel.SaveSettingsCommand.Execute(null);
+
+            // Assert
+            _dialogServiceMock.Verify(x => x.ShowError(It.IsAny<string>(), "Monitor Configuration Error"), Times.Once);
+            _settingsServiceMock.Verify(x => x.SaveSettings(It.IsAny<List<MonitorSettings>>()), Times.Never);
+            Assert.Equal("Save Settings", _viewModel.SaveButtonText);
+            Assert.True(_viewModel.IsDirty);
+        }
+
+        [Fact]
+        public void SaveAndDiscardCommands_WhenNothingIsDirty_CannotExecute()
+        {
+            // Arrange
+            RaiseWorkspaceReady(CreateMonitor("MON-1"));
+
+            // Act
+            var canSave = _viewModel.SaveSettingsCommand.CanExecute(null);
+            var canDiscard = _viewModel.DiscardChangesCommand.CanExecute(null);
+
+            // Assert
+            Assert.False(canSave);
+            Assert.False(canDiscard);
+        }
+
+        [Fact]
+        public void SaveAndDiscardCommands_WhenAMonitorIsDirty_CanExecute()
+        {
+            // Arrange
+            var monitor = CreateMonitor("MON-1");
+            RaiseWorkspaceReady(monitor);
+
+            // Act
+            monitor.Configuration.DimLevel = 50;
+
+            // Assert
+            Assert.True(_viewModel.SaveSettingsCommand.CanExecute(null));
+            Assert.True(_viewModel.DiscardChangesCommand.CanExecute(null));
+        }
+
+        /// <summary>
+        /// Makes the unsaved-changes prompt return the supplied answer.
+        /// </summary>
+        private void SetupUnsavedChangesAnswer(MessageBoxResult answer)
+        {
+            _dialogServiceMock
+                .Setup(x => x.AskYesNoCancel(It.IsAny<string>(), "Unsaved Changes"))
+                .Returns(answer);
         }
 
         /// <summary>

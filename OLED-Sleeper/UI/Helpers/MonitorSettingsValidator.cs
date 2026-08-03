@@ -1,31 +1,24 @@
 ﻿using OLED_Sleeper.UI.ViewModels;
 using System.Text;
-using System.Windows;
 
 namespace OLED_Sleeper.UI.Helpers
 {
     /// <summary>
-    /// Provides validation logic for monitor settings and displays errors to the user.
+    /// Provides validation logic for monitor settings.
     /// This is a static helper class and does not hold any state.
     /// </summary>
     public static class MonitorSettingsValidator
     {
         /// <summary>
-        /// Validates the provided monitor settings and displays a message box if there are invalid monitors.
+        /// Validates the provided monitor settings.
         /// </summary>
         /// <param name="monitors">The collection of monitor layout view models to validate.</param>
-        /// <returns>True if all monitors are valid; otherwise, false.</returns>
-        public static bool ValidateAndNotify(IEnumerable<MonitorLayoutViewModel> monitors)
+        /// <returns>An error message describing every invalid monitor, or null when all are valid.</returns>
+        public static string? BuildValidationError(IEnumerable<MonitorLayoutViewModel> monitors)
         {
             var invalidMonitors = GetInvalidMonitors(monitors);
 
-            if (invalidMonitors.Any())
-            {
-                ShowValidationError(invalidMonitors);
-                return false;
-            }
-
-            return true;
+            return invalidMonitors.Count > 0 ? BuildMessage(invalidMonitors) : null;
         }
 
         /// <summary>
@@ -41,10 +34,11 @@ namespace OLED_Sleeper.UI.Helpers
         }
 
         /// <summary>
-        /// Displays a validation error message for the provided invalid monitors.
+        /// Builds the validation error message for the provided invalid monitors.
         /// </summary>
         /// <param name="invalidMonitors">The list of invalid monitor view models.</param>
-        private static void ShowValidationError(List<MonitorLayoutViewModel> invalidMonitors)
+        /// <returns>The assembled error message.</returns>
+        private static string BuildMessage(List<MonitorLayoutViewModel> invalidMonitors)
         {
             var errorBuilder = new StringBuilder();
             errorBuilder.AppendLine("One or more monitors have configuration issues and cannot be saved:");
@@ -60,7 +54,8 @@ namespace OLED_Sleeper.UI.Helpers
                     errorBuilder.AppendLine($"     • {config.ActiveConditionsError}");
             }
             errorBuilder.AppendLine("\nTo resolve these issues, either update the highlighted fields or uncheck 'Manage' for the affected monitor(s).");
-            MessageBox.Show(errorBuilder.ToString(), "Monitor Configuration Error", MessageBoxButton.OK, MessageBoxImage.Error);
+
+            return errorBuilder.ToString();
         }
     }
 }
