@@ -24,6 +24,8 @@ using OLED_Sleeper.Features.UserSettings.Commands;
 using OLED_Sleeper.Features.UserSettings.Handlers;
 using OLED_Sleeper.Features.UserSettings.Services;
 using OLED_Sleeper.Features.UserSettings.Services.Interfaces;
+using OLED_Sleeper.Messaging;
+using OLED_Sleeper.Messaging.Interfaces;
 using OLED_Sleeper.Storage;
 using OLED_Sleeper.Storage.Interfaces;
 using OLED_Sleeper.UI.Services;

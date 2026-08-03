@@ -1,4 +1,4 @@
-namespace OLED_Sleeper.Core.Interfaces
+namespace OLED_Sleeper.Messaging.Interfaces
 {
     /// <summary>
     /// Marker interface for all command DTOs handled by the mediator.

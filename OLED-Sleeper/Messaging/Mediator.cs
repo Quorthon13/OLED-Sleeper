@@ -1,7 +1,7 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
-using OLED_Sleeper.Core.Interfaces;
+using OLED_Sleeper.Messaging.Interfaces;
 
-namespace OLED_Sleeper.Core
+namespace OLED_Sleeper.Messaging
 {
     public class Mediator(IServiceProvider serviceProvider) : IMediator
     {

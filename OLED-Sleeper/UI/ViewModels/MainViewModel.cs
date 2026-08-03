@@ -1,6 +1,7 @@
 ﻿using OLED_Sleeper.Core.Interfaces;
 using OLED_Sleeper.Features.MonitorDimming.Commands;
 using OLED_Sleeper.Features.UserSettings.Services.Interfaces;
+using OLED_Sleeper.Messaging.Interfaces;
 using OLED_Sleeper.UI.Commands;
 using OLED_Sleeper.UI.Helpers;
 using OLED_Sleeper.UI.Services.Interfaces;

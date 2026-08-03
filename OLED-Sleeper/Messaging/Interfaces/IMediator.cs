@@ -1,4 +1,4 @@
-﻿namespace OLED_Sleeper.Core.Interfaces
+﻿namespace OLED_Sleeper.Messaging.Interfaces
 {
     /// <summary>
     /// Defines a mediator to decouple command senders from their handlers.
