@@ -1,5 +1,6 @@
 using OLED_Sleeper.Features.MonitorDimming.Services.Interfaces;
 using OLED_Sleeper.Native;
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.InteropServices;
 
 namespace OLED_Sleeper.Features.MonitorDimming.Services
@@ -8,6 +9,7 @@ namespace OLED_Sleeper.Features.MonitorDimming.Services
     /// Opens DDC/CI channels by matching a display device name against the enumerated monitors.
     /// Holds every native call the dimming feature makes.
     /// </summary>
+    [ExcludeFromCodeCoverage]
     public class DdcCiAccess : IDdcCiAccess
     {
         /// <inheritdoc />

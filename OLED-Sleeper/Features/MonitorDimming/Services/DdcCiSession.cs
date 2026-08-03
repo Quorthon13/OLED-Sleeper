@@ -1,11 +1,13 @@
 using OLED_Sleeper.Features.MonitorDimming.Services.Interfaces;
 using OLED_Sleeper.Native;
+using System.Diagnostics.CodeAnalysis;
 
 namespace OLED_Sleeper.Features.MonitorDimming.Services
 {
     /// <summary>
     /// A DDC/CI channel backed by a physical monitor handle from dxva2.
     /// </summary>
+    [ExcludeFromCodeCoverage]
     internal sealed class DdcCiSession : IDdcCiSession
     {
         private readonly NativeMethods.PHYSICAL_MONITOR[] _physicalMonitors;
