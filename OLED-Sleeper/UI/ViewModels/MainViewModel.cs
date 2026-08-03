@@ -40,6 +40,11 @@ namespace OLED_Sleeper.UI.ViewModels
         private readonly IMainWindowAccessor _mainWindowAccessor;
 
         /// <summary>
+        /// Shows modal dialogs to the user.
+        /// </summary>
+        private readonly IDialogService _dialogService;
+
+        /// <summary>
         /// The width of the container used for monitor layout calculations.
         /// </summary>
         private double _containerWidth;
@@ -184,12 +189,14 @@ namespace OLED_Sleeper.UI.ViewModels
             IWorkspaceService workspaceService,
             IMonitorSettingsFileService settingsService,
             IDispatcher dispatcher,
-            IMainWindowAccessor mainWindowAccessor)
+            IMainWindowAccessor mainWindowAccessor,
+            IDialogService dialogService)
         {
             _workspaceService = workspaceService;
             _settingsService = settingsService;
             _dispatcher = dispatcher;
             _mainWindowAccessor = mainWindowAccessor;
+            _dialogService = dialogService;
 
             SelectMonitorCommand = new RelayCommand(ExecuteSelectMonitor);
             ReloadMonitorsCommand = new RelayCommand(() => RefreshMonitors(false));
@@ -231,7 +238,7 @@ namespace OLED_Sleeper.UI.ViewModels
         private static void ObserveWorkspaceTask(Task task)
         {
             _ = task.ContinueWith(
-                faulted => Log.Error(faulted.Exception?.GetBaseException(), "Failed to build the monitor workspace."),
+                faulted => Log.Error(faulted.Exception!.GetBaseException(), "Failed to build the monitor workspace."),
                 CancellationToken.None,
                 TaskContinuationOptions.OnlyOnFaulted,
                 TaskScheduler.Default);
@@ -245,11 +252,9 @@ namespace OLED_Sleeper.UI.ViewModels
         {
             if (IsDirty)
             {
-                var result = MessageBox.Show(
+                var result = _dialogService.AskYesNoCancel(
                     "You have unsaved changes. Would you like to save them before hiding the window?",
-                    "Unsaved Changes",
-                    MessageBoxButton.YesNoCancel,
-                    MessageBoxImage.Warning);
+                    "Unsaved Changes");
 
                 if (result == MessageBoxResult.Cancel)
                 {
@@ -311,12 +316,16 @@ namespace OLED_Sleeper.UI.ViewModels
         // --- Save Process Helpers ---
 
         /// <summary>
-        /// Validates all monitor settings using the save validation service.
+        /// Validates all monitor settings, telling the user about any that cannot be saved.
         /// </summary>
         /// <returns>True if all monitors are valid; otherwise, false.</returns>
         private bool ValidateSettings()
         {
-            return MonitorSettingsValidator.ValidateAndNotify(Monitors);
+            var error = MonitorSettingsValidator.BuildValidationError(Monitors);
+            if (error == null) return true;
+
+            _dialogService.ShowError(error, "Monitor Configuration Error");
+            return false;
         }
 
         /// <summary>
