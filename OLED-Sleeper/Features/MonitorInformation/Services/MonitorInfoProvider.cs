@@ -90,12 +90,12 @@ namespace OLED_Sleeper.Features.MonitorInformation.Services
         }
 
         /// <summary>
-        /// Returns the hardware ID for the given monitor.
+        /// Returns the hardware ID for the given monitor, or null when no attached display device matched it.
         /// </summary>
-        public string GetHardwareId(MonitorInfo monitor)
+        public string? GetHardwareId(MonitorInfo monitor)
         {
             string deviceName = monitor.DeviceName;
-            string hardwareId = null;
+            string? hardwareId = null;
             var displayDevice = new NativeMethods.DISPLAY_DEVICE { cb = Marshal.SizeOf(typeof(NativeMethods.DISPLAY_DEVICE)) };
             for (uint adapterIndex = 0; NativeMethods.EnumDisplayDevices(null, adapterIndex, ref displayDevice, 0); adapterIndex++)
             {

@@ -11,12 +11,13 @@ namespace OLED_Sleeper.Features.MonitorInformation.Models
         /// <summary>
         /// Gets or sets the device name (e.g., \\.\DISPLAY1).
         /// </summary>
-        public string? DeviceName { get; set; }
+        public string DeviceName { get; set; } = string.Empty;
 
         /// <summary>
         /// Gets or sets the unique hardware ID for the monitor.
+        /// Empty until the monitor is enriched; an enriched list never contains an empty one.
         /// </summary>
-        public string? HardwareId { get; set; }
+        public string HardwareId { get; set; } = string.Empty;
 
         /// <summary>
         /// Gets or sets the bounding rectangle of the monitor in screen coordinates.
