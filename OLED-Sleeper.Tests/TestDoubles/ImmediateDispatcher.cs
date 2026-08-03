@@ -9,6 +9,13 @@ namespace OLED_Sleeper.Tests.TestDoubles
     public class ImmediateDispatcher : IDispatcher
     {
         /// <summary>
+        /// How deep invokes may nest before <see cref="Run"/> throws.
+        /// </summary>
+        private const int MaxNestedInvokes = 8;
+
+        private int _nestedInvokes;
+
+        /// <summary>
         /// How many actions have been run through <see cref="Invoke"/>.
         /// </summary>
         public int InvokeCount { get; private set; }
@@ -18,22 +25,52 @@ namespace OLED_Sleeper.Tests.TestDoubles
         /// </summary>
         public int InvokeAsyncCount { get; private set; }
 
-        /// <inheritdoc />
-        public bool IsOnUiThread => true;
+        /// <summary>
+        /// Whether the caller counts as being on the UI thread. Starts true; set it to false to make a
+        /// class under test take its marshalling branch. Reads true while an action is running.
+        /// </summary>
+        public bool IsOnUiThread { get; set; } = true;
 
         /// <inheritdoc />
         public void Invoke(Action action)
         {
             InvokeCount++;
-            action();
+            Run(action);
         }
 
         /// <inheritdoc />
         public Task InvokeAsync(Action action)
         {
             InvokeAsyncCount++;
-            action();
+            Run(action);
             return Task.CompletedTask;
+        }
+
+        /// <summary>
+        /// Runs the action as if on the UI thread. Throws when invokes nest more than
+        /// <see cref="MaxNestedInvokes"/> deep, which fails the test instead of overflowing the stack.
+        /// </summary>
+        /// <param name="action">The action to run.</param>
+        private void Run(Action action)
+        {
+            if (_nestedInvokes >= MaxNestedInvokes)
+            {
+                throw new InvalidOperationException($"Dispatcher invokes nested more than {MaxNestedInvokes} deep.");
+            }
+
+            bool wasOnUiThread = IsOnUiThread;
+            _nestedInvokes++;
+            IsOnUiThread = true;
+
+            try
+            {
+                action();
+            }
+            finally
+            {
+                _nestedInvokes--;
+                IsOnUiThread = wasOnUiThread;
+            }
         }
     }
 }

@@ -1,5 +1,4 @@
 ﻿using OLED_Sleeper.Core.Interfaces;
-using System.Windows;
 
 namespace OLED_Sleeper.Core
 {
@@ -7,7 +6,8 @@ namespace OLED_Sleeper.Core
     /// Enforces a single running instance of the application.
     /// If a second instance is launched, it signals the first instance to show its main window and exits silently.
     /// </summary>
-    public class ApplicationInstanceManager : IApplicationInstanceManager
+    public class ApplicationInstanceManager(IDispatcher dispatcher, IApplicationShutdown applicationShutdown)
+        : IApplicationInstanceManager
     {
         #region Constants
 
@@ -32,13 +32,6 @@ namespace OLED_Sleeper.Core
         public bool IsFirstInstance { get; private set; }
 
         #endregion Properties
-
-        #region Constructors
-
-        public ApplicationInstanceManager()
-        { }
-
-        #endregion Constructors
 
         #region Public Methods
 
@@ -88,7 +81,7 @@ namespace OLED_Sleeper.Core
             {
                 // If first instance hasn't created the event yet, just exit silently
             }
-            Application.Current.Shutdown();
+            applicationShutdown.Shutdown();
         }
 
         /// <summary>
@@ -114,7 +107,7 @@ namespace OLED_Sleeper.Core
                     _showWindowEvent.WaitOne();
                     if (_showMainWindowAction != null)
                     {
-                        Application.Current.Dispatcher.Invoke(_showMainWindowAction);
+                        dispatcher.Invoke(_showMainWindowAction);
                     }
                 }
                 catch

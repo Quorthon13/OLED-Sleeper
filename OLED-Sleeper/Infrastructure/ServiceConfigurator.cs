@@ -43,6 +43,7 @@ namespace OLED_Sleeper.Infrastructure
             var services = new ServiceCollection();
             services.AddSingleton<IMediator, Mediator>();
             services.AddSingleton<IDispatcher, ApplicationDispatcher>();
+            services.AddSingleton<IMainWindowAccessor, MainWindowAccessor>();
 
             services.AddTransient<ICommandHandler<ApplyMonitorActiveBehaviorCommand>, ApplyMonitorActiveBehaviorCommandHandler>();
             services.AddTransient<ICommandHandler<ApplyMonitorIdleBehaviorCommand>, ApplyMonitorIdleBehaviorCommandHandler>();

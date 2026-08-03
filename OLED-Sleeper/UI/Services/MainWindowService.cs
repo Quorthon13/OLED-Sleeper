@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Options;
+using OLED_Sleeper.Core.Interfaces;
 using OLED_Sleeper.Infrastructure;
 using OLED_Sleeper.UI.Services.Interfaces;
 using OLED_Sleeper.UI.ViewModels;
@@ -9,10 +10,11 @@ namespace OLED_Sleeper.UI.Services
     /// <summary>
     /// Provides methods to set up, show, and activate the main window.
     /// </summary>
-    /// <param name="mainWindow">The main application window.</param>
-    /// <param name="mainViewModel">The main view model for the window.</param>
-    /// <param name="options">The application configuration options.</param>
-    public class MainWindowService(MainWindow mainWindow, MainViewModel mainViewModel, IOptions<ApplicationOptions> options) : IMainWindowService
+    public class MainWindowService(
+        MainWindow mainWindow,
+        MainViewModel mainViewModel,
+        IOptions<ApplicationOptions> options,
+        IMainWindowAccessor mainWindowAccessor) : IMainWindowService
     {
         private readonly ApplicationOptions _options = options.Value;
 
@@ -22,7 +24,7 @@ namespace OLED_Sleeper.UI.Services
         /// </summary>
         public void SetupMainWindow()
         {
-            Application.Current.MainWindow = mainWindow;
+            mainWindowAccessor.SetMainWindow(mainWindow);
             mainWindow.DataContext = mainViewModel;
 
             if (_options.StartHidden)
