@@ -20,12 +20,6 @@ namespace OLED_Sleeper.UI.Services
 
         public event EventHandler<ObservableCollection<MonitorLayoutViewModel>> WorkspaceReady;
 
-        /// <summary>
-        /// Initializes a new instance of the <see cref="WorkspaceService"/> class.
-        /// </summary>
-        /// <param name="monitorManager">Service for monitor enumeration.</param>
-        /// <param name="settingsService">Service for loading and saving monitor settings.</param>
-        /// <param name="monitorLayoutService">Service for creating monitor layout view models.</param>
         public WorkspaceService(
             IMonitorInfoManager monitorManager,
             IMonitorSettingsFileService settingsService,

@@ -15,11 +15,6 @@ namespace OLED_Sleeper.Features.MonitorBehavior.Handlers
         private readonly IMonitorBlackoutService _monitorBlackoutService;
         private readonly IMediator _mediator;
 
-        /// <summary>
-        /// Initializes a new instance of the <see cref="ApplyMonitorActiveBehaviorCommandHandler"/> class.
-        /// </summary>
-        /// <param name="monitorBlackoutService">The service responsible for blackout overlays.</param>
-        /// <param name="mediator">The mediator for dispatching further commands.</param>
         public ApplyMonitorActiveBehaviorCommandHandler(
             IMonitorBlackoutService monitorBlackoutService,
             IMediator mediator)

@@ -29,7 +29,6 @@ namespace OLED_Sleeper.UI.ViewModels
         /// </summary>
         public string MonitorTitle => _monitorInfo.IsPrimary ? $"Monitor {_monitorInfo.DisplayNumber} (Primary)" : $"Monitor {_monitorInfo.DisplayNumber}";
 
-        // --- Updated: Added explicit error properties for robust UI binding ---
         public string IdleValueError => this["IdleValue"];
 
         public string ActiveConditionsError => this["IsActiveOnInput"];
@@ -142,7 +141,6 @@ namespace OLED_Sleeper.UI.ViewModels
         public int? IdleValue
         {
             get => _idleValue;
-            // --- Updated: Notifies error property when changed ---
             set
             {
                 _idleValue = value;
@@ -175,7 +173,6 @@ namespace OLED_Sleeper.UI.ViewModels
         public bool IsActiveOnInput
         {
             get => _isActiveOnInput;
-            // --- Updated: Notifies error property when changed ---
             set
             {
                 _isActiveOnInput = value;
@@ -194,7 +191,6 @@ namespace OLED_Sleeper.UI.ViewModels
         public bool IsActiveOnMousePosition
         {
             get => _isActiveOnMousePosition;
-            // --- Updated: Notifies error property when changed ---
             set
             {
                 _isActiveOnMousePosition = value;
@@ -213,7 +209,6 @@ namespace OLED_Sleeper.UI.ViewModels
         public bool IsActiveOnActiveWindow
         {
             get => _isActiveOnActiveWindow;
-            // --- Updated: Notifies error property when changed ---
             set
             {
                 _isActiveOnActiveWindow = value;
@@ -225,18 +220,12 @@ namespace OLED_Sleeper.UI.ViewModels
 
         #endregion Properties
 
-        /// <summary>
-        /// Initializes a new instance of the MonitorConfigurationViewModel class for a specific monitor.
-        /// </summary>
         /// <param name="monitorInfo">The monitor information model.</param>
-        /// <param name="displayNumber">The display number for the monitor.</param>
         public MonitorConfigurationViewModel(MonitorInfo monitorInfo)
         {
             _monitorInfo = monitorInfo;
 
-            // Initialize properties from the model's defaults
             ApplySettings(new MonitorSettings());
-            // Set the initial state for dirty checking
             MarkAsSaved();
         }
 
@@ -332,7 +321,6 @@ namespace OLED_Sleeper.UI.ViewModels
             {
                 if (!IsManaged) return true; // Unmanaged monitors are always "valid"
 
-                // Check all validation rules
                 return ValidateIdleValue() == null && ValidateActiveConditions() == null && ValidateBehavior() == null;
             }
         }

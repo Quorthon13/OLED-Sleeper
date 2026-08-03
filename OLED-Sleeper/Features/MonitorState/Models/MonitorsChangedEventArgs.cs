@@ -17,9 +17,6 @@ namespace OLED_Sleeper.Features.MonitorState.Models
         /// </summary>
         public IReadOnlyList<MonitorInfo> NewMonitors { get; }
 
-        /// <summary>
-        /// Initializes a new instance of the <see cref="MonitorsChangedEventArgs"/> class.
-        /// </summary>
         /// <param name="oldMonitors">The list of monitors before the change.</param>
         /// <param name="newMonitors">The list of monitors after the change.</param>
         public MonitorsChangedEventArgs(IReadOnlyList<MonitorInfo> oldMonitors, IReadOnlyList<MonitorInfo> newMonitors)

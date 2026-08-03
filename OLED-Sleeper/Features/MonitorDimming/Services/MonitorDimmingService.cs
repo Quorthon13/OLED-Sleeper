@@ -43,10 +43,8 @@ namespace OLED_Sleeper.Features.MonitorDimming.Services
         private readonly ConcurrentDictionary<string, SemaphoreSlim> _monitorGates = new();
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="MonitorDimmingService"/> class.
+        /// Loads the recorded original brightness levels from disk.
         /// </summary>
-        /// <param name="monitorManager">The monitor info manager.</param>
-        /// <param name="brightnessStateService">The brightness state service.</param>
         public MonitorDimmingService(IMonitorInfoManager monitorManager, IMonitorBrightnessStateService brightnessStateService)
         {
             _monitorManager = monitorManager;

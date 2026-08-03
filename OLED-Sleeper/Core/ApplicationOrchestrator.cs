@@ -36,14 +36,6 @@ namespace OLED_Sleeper.Core
 
         #region Constructor
 
-        /// <summary>
-        /// Initializes a new instance of the <see cref="ApplicationOrchestrator"/> class.
-        /// </summary>
-        /// <param name="mediator">Mediator for dispatching monitor-related commands.</param>
-        /// <param name="monitorIdleDetectionService">Service for detecting monitor idle state and applying idle/active behaviors.</param>
-        /// <param name="monitorInfoManager">Service for querying current monitor information.</param>
-        /// <param name="monitorSettingsFileService">Service for loading and saving monitor settings.</param>
-        /// <param name="monitorStateWatcher">Service for monitoring system monitor connection/disconnection.</param>
         public ApplicationOrchestrator(
             IMediator mediator,
             IMonitorIdleDetectionService monitorIdleDetectionService,
@@ -163,13 +155,8 @@ namespace OLED_Sleeper.Core
         /// Applies changed settings to idle detection, then restores each affected monitor.
         /// </summary>
         /// <remarks>
-        /// The restore commands are issued only after the new settings are in effect, so a monitor cannot be
-        /// restored and then immediately re-dimmed by the previous settings still being live.
-        /// <para>
-        /// This path is driven by the settings window, not by a display change, so the cached monitor list is
-        /// the right source for the geometry to join against — the display-change path passes its own freshly
-        /// scanned list instead.
-        /// </para>
+        /// The restore commands are issued only after the new settings are in effect. The geometry comes from
+        /// the cached monitor list; the display-change path passes its own freshly scanned list instead.
         /// </remarks>
         private async Task ApplyChangedSettingsAsync(List<MonitorSettings> settings)
         {

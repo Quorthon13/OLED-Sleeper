@@ -138,9 +138,9 @@ namespace OLED_Sleeper.Infrastructure
         /// <see cref="RestoreOnShutdownTimeoutMs"/> elapses.
         /// </summary>
         /// <remarks>
-        /// The restore runs on the thread pool: by the time <c>OnExit</c> reaches this, the UI thread is no
-        /// longer processing dispatcher messages. On timeout the brightness state file is left unchanged and
-        /// the next launch restores the monitor.
+        /// The restore runs on the thread pool, since the UI thread is no longer processing dispatcher
+        /// messages by the time <c>OnExit</c> reaches this. On timeout the brightness state file is left
+        /// unchanged and the next launch restores the monitor.
         /// </remarks>
         private void StopOrchestrator()
         {

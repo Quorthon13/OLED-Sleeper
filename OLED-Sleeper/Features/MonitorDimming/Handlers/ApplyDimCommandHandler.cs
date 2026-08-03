@@ -13,10 +13,6 @@ namespace OLED_Sleeper.Features.MonitorDimming.Handlers
     {
         private readonly IMonitorDimmingService _monitorDimmingService;
 
-        /// <summary>
-        /// Initializes a new instance of the <see cref="ApplyDimCommandHandler"/> class.
-        /// </summary>
-        /// <param name="monitorDimmingService">The service responsible for controlling monitor brightness.</param>
         public ApplyDimCommandHandler(
             IMonitorDimmingService monitorDimmingService)
         {

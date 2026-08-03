@@ -44,9 +44,7 @@ public class SynchronizeMonitorStateCommandHandler(
         var savedSettings = settingsFileService.LoadSettings();
         UpdateManagedSettings(savedSettings, command.NewMonitors);
 
-        // Awaited so idle detection restarts against the new settings rather than racing them. The command's
-        // monitor list is passed through rather than letting the service re-read the cache: this list is the
-        // freshly enriched one the watcher built for the change that triggered this handler.
+        // Awaited so idle detection restarts against the new settings rather than racing them.
         await idleDetectionService.UpdateSettingsAsync(savedSettings, command.NewMonitors);
         idleDetectionService.Start();
 

@@ -35,9 +35,6 @@ namespace OLED_Sleeper.Core
 
         #region Constructors
 
-        /// <summary>
-        /// Initializes a new instance of the <see cref="ApplicationInstanceManager"/> class.
-        /// </summary>
         public ApplicationInstanceManager()
         { }
 

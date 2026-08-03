@@ -7,15 +7,12 @@ namespace OLED_Sleeper.Features.MonitorBehavior.Commands
     /// Command to apply the active behavior to a specific monitor.
     /// This is a data-transfer object that carries the necessary information for the handler to perform the action.
     /// </summary>
-    /// <remarks>
-    /// Initializes a new instance of the <see cref="ApplyMonitorActiveBehaviorCommand"/> class.
-    /// </remarks>
     /// <param name="eventArgs">The event arguments for the monitor activation event.</param>
     public class ApplyMonitorActiveBehaviorCommand(MonitorIdleStateEventArgs eventArgs) : ICommand
     {
         /// <summary>
         /// The event arguments containing monitor state and context for the activation event.
-        /// </summary>cfx
+        /// </summary>
         public MonitorIdleStateEventArgs EventArgs { get; init; } = eventArgs;
     }
 }

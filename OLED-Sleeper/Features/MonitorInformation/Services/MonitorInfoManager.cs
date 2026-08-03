@@ -20,10 +20,6 @@ namespace OLED_Sleeper.Features.MonitorInformation.Services
 
         #region Constructor
 
-        /// <summary>
-        /// Initializes a new instance of the <see cref="MonitorInfoManager"/> class.
-        /// </summary>
-        /// <param name="monitorInfoProvider">The monitor info provider dependency.</param>
         public MonitorInfoManager(IMonitorInfoProvider monitorInfoProvider)
         {
             _monitorInfoProvider = monitorInfoProvider;
@@ -44,10 +40,7 @@ namespace OLED_Sleeper.Features.MonitorInformation.Services
 
         /// <inheritdoc />
         /// <remarks>
-        /// Callers that can fire repeatedly — the display-change watcher polls every 2s and a full scan can
-        /// take longer than that — share a single in-flight scan rather than each starting their own. Every
-        /// scan serialises DDC/CI probes on the same I²C bus, so concurrent scans do not just waste work,
-        /// they slow each other down.
+        /// Callers arriving while a scan is running share that scan rather than starting another.
         /// </remarks>
         public Task<IReadOnlyList<MonitorInfo>> RefreshMonitorsAsync()
         {
@@ -89,13 +82,8 @@ namespace OLED_Sleeper.Features.MonitorInformation.Services
 
         /// <summary>
         /// Starts a background scan of the system's monitors. Must be called while holding <see cref="_lock"/>.
+        /// A faulted scan is dropped from the cache so the next caller retries.
         /// </summary>
-        /// <remarks>
-        /// A faulted scan is evicted from the cache rather than retained. Caching a faulted task would make
-        /// every later call rethrow the original failure forever; dropping it lets the next caller retry the
-        /// native enumeration. The fault continuation also observes the exception so it is logged rather than
-        /// disappearing as an unobserved task exception.
-        /// </remarks>
         private Task<IReadOnlyList<MonitorInfo>> StartScan()
         {
             var scan = Task.Run<IReadOnlyList<MonitorInfo>>(() =>

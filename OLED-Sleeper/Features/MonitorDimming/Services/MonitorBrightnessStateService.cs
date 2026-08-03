@@ -15,7 +15,6 @@ namespace OLED_Sleeper.Features.MonitorDimming.Services
         private readonly string _backupFilePath;
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="MonitorBrightnessStateService"/> class.
         /// Sets up the file path for storing brightness state in the user's AppData directory.
         /// </summary>
         public MonitorBrightnessStateService()

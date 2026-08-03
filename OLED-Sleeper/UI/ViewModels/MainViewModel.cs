@@ -169,11 +169,6 @@ namespace OLED_Sleeper.UI.ViewModels
 
         #region Constructor
 
-        /// <summary>
-        /// Initializes a new instance of the MainViewModel class, wiring up services and commands.
-        /// </summary>
-        /// <param name="workspaceService">Service for monitor workspace management.</param>
-        /// <param name="settingsService">Service for settings persistence.</param>
         public MainViewModel(IWorkspaceService workspaceService, IMonitorSettingsFileService settingsService)
         {
             _workspaceService = workspaceService;
@@ -249,7 +244,6 @@ namespace OLED_Sleeper.UI.ViewModels
                     SaveSettingsCommand.Execute(null);
                 }
             }
-            // Hide the window instead of closing
             Application.Current.MainWindow?.Hide();
 
             return false;

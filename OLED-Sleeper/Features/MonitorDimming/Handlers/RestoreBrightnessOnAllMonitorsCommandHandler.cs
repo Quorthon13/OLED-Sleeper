@@ -15,8 +15,7 @@ namespace OLED_Sleeper.Features.MonitorDimming.Handlers
         {
             Log.Information("Checking for monitors with unrestored brightness...");
 
-            // The dimming service owns the dimmed-monitor list and writes the state file. Going through it here
-            // keeps both in step; clearing the file directly leaves its list populated and the next save rewrites it.
+            // The dimming service owns the dimmed-monitor list and writes the state file.
             var dimmedMonitors = monitorDimmingService.GetDimmedMonitors();
             if (dimmedMonitors.Count == 0) return;
 

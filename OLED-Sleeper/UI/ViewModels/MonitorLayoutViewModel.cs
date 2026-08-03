@@ -95,9 +95,6 @@ namespace OLED_Sleeper.UI.ViewModels
         #endregion
 
         #region Constructor
-        /// <summary>
-        /// Initializes a new instance of the <see cref="MonitorLayoutViewModel"/> class.
-        /// </summary>
         /// <param name="monitor">The monitor information model.</param>
         /// <param name="scale">The scale factor for layout display.</param>
         /// <param name="totalBounds">The total bounds of all monitors for layout calculations.</param>

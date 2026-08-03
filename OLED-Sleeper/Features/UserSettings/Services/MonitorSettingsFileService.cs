@@ -20,7 +20,6 @@ namespace OLED_Sleeper.Features.UserSettings.Services
         public event Action<List<MonitorSettings>>? SettingsChanged;
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="MonitorSettingsFileService"/> class.
         /// Ensures the settings directory exists and sets the file path.
         /// </summary>
         public MonitorSettingsFileService()

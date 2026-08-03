@@ -14,10 +14,6 @@ namespace OLED_Sleeper.Features.MonitorBehavior.Handlers
     {
         private readonly IMediator _mediator;
 
-        /// <summary>
-        /// Initializes a new instance of the <see cref="RestoreMonitorStateCommandHandler"/> class.
-        /// </summary>
-        /// <param name="mediator">The mediator for dispatching further commands.</param>
         public RestoreMonitorStateCommandHandler(IMediator mediator)
         {
             _mediator = mediator;

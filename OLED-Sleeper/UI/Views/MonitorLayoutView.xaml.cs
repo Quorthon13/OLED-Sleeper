@@ -11,9 +11,6 @@ namespace OLED_Sleeper.UI.Views
     /// </summary>
     public partial class MonitorLayoutView : UserControl
     {
-        /// <summary>
-        /// Initializes a new instance of the <see cref="MonitorLayoutView"/> class.
-        /// </summary>
         public MonitorLayoutView()
         {
             InitializeComponent();
@@ -29,7 +26,6 @@ namespace OLED_Sleeper.UI.Views
         {
             if (DataContext is MainViewModel viewModel && e.NewSize.Height > 0)
             {
-                // Call the method to recalculate the monitor layout with the new size.
                 viewModel.RecalculateLayout(e.NewSize.Width, e.NewSize.Height);
             }
         }

@@ -57,9 +57,6 @@ namespace OLED_Sleeper.UI.Commands
 
         #region Constructor
 
-        /// <summary>
-        /// Initializes a new instance of the <see cref="AsyncRelayCommand"/> class.
-        /// </summary>
         /// <param name="execute">The asynchronous action to execute.</param>
         /// <param name="canExecute">Predicate to determine if the command can execute.</param>
         public AsyncRelayCommand(Func<Task> execute, Func<bool>? canExecute = null)

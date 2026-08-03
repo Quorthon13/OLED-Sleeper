@@ -8,11 +8,6 @@ namespace OLED_Sleeper
     /// Handles WPF lifecycle events and delegates application initialization
     /// and shutdown to <see cref="ApplicationBootstrapper"/>.
     /// </summary>
-    /// <remarks>
-    /// This class intentionally contains minimal logic. All application
-    /// initialization, dependency setup, and runtime orchestration are handled
-    /// by <see cref="ApplicationBootstrapper"/>.
-    /// </remarks>
     public partial class App : Application
     {
         private ApplicationBootstrapper? _bootstrapper;

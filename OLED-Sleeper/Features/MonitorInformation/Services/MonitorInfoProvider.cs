@@ -22,7 +22,6 @@ namespace OLED_Sleeper.Features.MonitorInformation.Services
         {
             var monitors = new List<MonitorInfo>();
 
-            // Callback for EnumDisplayMonitors to collect monitor info
             NativeMethods.MonitorEnumProc callback = (IntPtr hMonitor, IntPtr hdcMonitor, ref NativeMethods.Rect lprcMonitor, IntPtr dwData) =>
             {
                 var mi = new NativeMethods.MonitorInfoEx { cbSize = Marshal.SizeOf(typeof(NativeMethods.MonitorInfoEx)) };

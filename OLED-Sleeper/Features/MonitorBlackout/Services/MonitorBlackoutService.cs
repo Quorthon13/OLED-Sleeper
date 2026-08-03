@@ -83,8 +83,8 @@ namespace OLED_Sleeper.Features.MonitorBlackout.Services
                 {
                     if (!_overlayWindows.Remove(hardwareId, out registration)) return;
 
-                    // The stored handle is used rather than reading it back from the window, which
-                    // returns zero once the window is closed and would leave the handle in the set.
+                    // WindowInteropHelper.Handle returns zero once the window is closed, so the handle
+                    // recorded at creation is used here.
                     if (registration.Handle != nint.Zero)
                     {
                         _overlayHandles.Remove(registration.Handle);

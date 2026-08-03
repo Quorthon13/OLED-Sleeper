@@ -45,9 +45,6 @@ namespace OLED_Sleeper.Features.MonitorIdleDetection.Models
         /// </summary>
         public bool IsIgnored { get; set; } = false;
 
-        /// <summary>
-        /// Initializes a new instance of the <see cref="MonitorIdleStateEventArgs"/> class.
-        /// </summary>
         /// <param name="hardwareId">The unique hardware ID of the monitor.</param>
         /// <param name="displayNumber">The display number of the monitor.</param>
         /// <param name="bounds">The bounds of the monitor in screen coordinates.</param>

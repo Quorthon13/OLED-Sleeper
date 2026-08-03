@@ -19,12 +19,6 @@ namespace OLED_Sleeper.Features.MonitorBlackout.Handlers
         private readonly IMonitorBlackoutService _monitorBlackoutService;
         private readonly IMonitorDimmingService _monitorDimmingService;
 
-        /// <summary>
-        /// Initializes a new instance of the <see cref="ApplyBlackoutOverlayCommandHandler"/> class.
-        /// </summary>
-        /// <param name="monitorInfoManager"></param>
-        /// <param name="monitorBlackoutService">The service responsible for showing/hiding blackout overlays.</param>
-        /// <param name="monitorDimmingService">The service responsible for controlling monitor brightness.</param>
         public ApplyBlackoutOverlayCommandHandler(
             IMonitorInfoManager monitorInfoManager,
             IMonitorBlackoutService monitorBlackoutService,
@@ -56,22 +50,17 @@ namespace OLED_Sleeper.Features.MonitorBlackout.Handlers
                     return;
                 }
 
-                // Task 1: Show the software blackout overlay.
-                // We start this task but don't await it immediately.
                 var showOverlayTask = _monitorBlackoutService.ShowBlackoutOverlayAsync(monitorInfo.HardwareId, monitorInfo.Bounds);
 
-                // Task 2: If supported, also set the hardware brightness to 0 via DDC/CI.
                 if (monitorInfo.IsDdcCiSupported)
                 {
                     Log.Information("Monitor {HardwareId} supports DDC/CI. Setting brightness to 0 for blackout.", monitorInfo.HardwareId);
                     var dimTask = _monitorDimmingService.DimMonitorAsync(monitorInfo.HardwareId, 0);
 
-                    // Await both the overlay and dimming tasks to complete concurrently.
                     await Task.WhenAll(showOverlayTask, dimTask);
                 }
                 else
                 {
-                    // If DDC/CI is not supported, just wait for the overlay task to complete.
                     await showOverlayTask;
                 }
             }

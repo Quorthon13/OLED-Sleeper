@@ -6,11 +6,6 @@ namespace OLED_Sleeper.Infrastructure.Helpers
     /// Provides helper functionality for parsing command-line arguments
     /// passed to the OLED Sleeper application.
     /// </summary>
-    /// <remarks>
-    /// This class uses the CommandLineParser library to convert raw command-line
-    /// arguments into a strongly typed <see cref="ApplicationOptions"/> instance
-    /// used by the application during startup.
-    /// </remarks>
     public static class CommandLineHelper
     {
         /// <summary>

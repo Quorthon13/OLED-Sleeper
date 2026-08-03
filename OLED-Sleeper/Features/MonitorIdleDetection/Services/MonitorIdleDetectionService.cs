@@ -13,11 +13,6 @@ namespace OLED_Sleeper.Features.MonitorIdleDetection.Services
 {
     /// <summary>
     /// Monitors user activity and determines when managed monitors become idle or active.
-    /// Manages a timer for each monitor, raising events on state transitions.
-    /// </summary>
-
-    /// <summary>
-    /// Service that monitors user activity and determines when managed monitors become idle or active.
     /// Handles per-monitor state machines and dispatches commands to apply idle/active behaviors.
     /// </summary>
     public class MonitorIdleDetectionService : IMonitorIdleDetectionService
@@ -32,10 +27,6 @@ namespace OLED_Sleeper.Features.MonitorIdleDetection.Services
 
         // === Construction ===
 
-        /// <summary>
-        /// Initializes a new instance of the <see cref="MonitorIdleDetectionService"/> class.
-        /// </summary>
-        /// <param name="mediator">Mediator for dispatching monitor behavior commands.</param>
         public MonitorIdleDetectionService(IMediator mediator)
         {
             _mediator = mediator;
@@ -75,14 +66,8 @@ namespace OLED_Sleeper.Features.MonitorIdleDetection.Services
         /// <param name="monitorSettings">The list of monitor settings to manage.</param>
         /// <param name="monitors">The monitors to join the settings against, supplying bounds and display numbers.</param>
         /// <remarks>
-        /// The monitor list is supplied by the caller rather than re-read here. The display-change watcher
-        /// already holds a freshly enriched list when it triggers this path; re-deriving it from the shared
-        /// cache discarded that and rebuilt hit-testing against whatever geometry the cache happened to hold,
-        /// which — since nothing invalidated the cache on a display change — was typically the startup scan.
-        /// <para>
-        /// This also keeps the monitor manager off this class's dependency list, so no lock it owns can ever
-        /// be taken while <see cref="_lock"/> is held. That ordering previously deadlocked against the idle loop.
-        /// </para>
+        /// Callers supply the monitor list; this class never reads the shared cache and does not depend on
+        /// the monitor manager, so no lock that manager owns can be taken while <see cref="_lock"/> is held.
         /// </remarks>
         public Task UpdateSettingsAsync(List<MonitorSettings> monitorSettings, IReadOnlyList<MonitorInfo> monitors)
         {
