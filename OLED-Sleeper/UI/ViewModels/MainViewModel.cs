@@ -79,9 +79,10 @@ namespace OLED_Sleeper.UI.ViewModels
         private bool _isLoading;
 
         /// <summary>
-        /// The hardware ID of the monitor to be restored upon workspace update.
+        /// Incremented for every workspace build. A build whose number is no longer current has been
+        /// superseded and its result is discarded.
         /// </summary>
-        private string? _selectedMonitorIdToRestore;
+        private int _buildGeneration;
 
         #endregion Private Fields
 
@@ -201,8 +202,6 @@ namespace OLED_Sleeper.UI.ViewModels
             ReloadMonitorsCommand = new RelayCommand(() => RefreshMonitors(false));
             SaveSettingsCommand = new AsyncRelayCommand(ExecuteSaveSettings, () => IsDirty);
             DiscardChangesCommand = new RelayCommand(ExecuteDiscardChanges, () => IsDirty);
-
-            _workspaceService.WorkspaceReady += OnWorkspaceReady;
         }
 
         #endregion Constructor
@@ -210,12 +209,12 @@ namespace OLED_Sleeper.UI.ViewModels
         #region Public Methods (for View Interaction)
 
         /// <summary>
-        /// Initiates a full refresh of the monitor list, clearing any current selection and reloading from the workspace service.
+        /// Initiates a full refresh of the monitor list, re-scanning the display set before rebuilding the layout.
         /// </summary>
+        /// <param name="preserveSelection">Whether to reselect the current monitor once the rebuild finishes.</param>
         public void RefreshMonitors(bool preserveSelection)
         {
-            UpdateMonitorsInternal(_containerWidth, _containerHeight, preserveSelection);
-            ObserveWorkspaceTask(_workspaceService.RefreshWorkspaceAsync(_containerWidth, _containerHeight));
+            ApplyWorkspace(_workspaceService.RefreshWorkspaceAsync, _containerWidth, _containerHeight, preserveSelection);
         }
 
         /// <summary>
@@ -225,22 +224,7 @@ namespace OLED_Sleeper.UI.ViewModels
         /// <param name="height">The new height of the container.</param>
         public void RecalculateLayout(double width, double height)
         {
-            UpdateMonitorsInternal(width, height, preserveSelection: true);
-            ObserveWorkspaceTask(_workspaceService.BuildWorkspaceAsync(width, height));
-        }
-
-        /// <summary>
-        /// Observes a fire-and-forget workspace task so a failure is logged instead of being lost
-        /// as an unobserved task exception.
-        /// </summary>
-        /// <param name="task">The workspace task to observe.</param>
-        private static void ObserveWorkspaceTask(Task task)
-        {
-            _ = task.ContinueWith(
-                faulted => Log.Error(faulted.Exception!.GetBaseException(), "Failed to build the monitor workspace."),
-                CancellationToken.None,
-                TaskContinuationOptions.OnlyOnFaulted,
-                TaskScheduler.Default);
+            ApplyWorkspace(_workspaceService.BuildWorkspaceAsync, width, height, preserveSelection: true);
         }
 
         /// <summary>
@@ -353,27 +337,42 @@ namespace OLED_Sleeper.UI.ViewModels
         // --- Monitor Update Helpers ---
 
         /// <summary>
-        /// The core worker method for updating the monitor list and layout.
+        /// Builds the workspace and applies the result to the UI. A build superseded by a later one
+        /// leaves the monitor list untouched. Failures are logged; nothing is thrown to the caller.
         /// </summary>
+        /// <param name="build">Produces the layout view models for the given container size.</param>
         /// <param name="width">The width of the container for layout.</param>
         /// <param name="height">The height of the container for layout.</param>
-        /// <param name="preserveSelection">Whether to preserve the current monitor selection.</param>
-        private void UpdateMonitorsInternal(double width, double height, bool preserveSelection)
+        /// <param name="preserveSelection">Whether to reselect the current monitor once the build finishes.</param>
+        private async void ApplyWorkspace(
+            Func<double, double, Task<ObservableCollection<MonitorLayoutViewModel>>> build,
+            double width,
+            double height,
+            bool preserveSelection)
         {
             if (width <= 0 || height <= 0) return;
             _containerWidth = width;
             _containerHeight = height;
 
-            _selectedMonitorIdToRestore = preserveSelection ? SelectedMonitor?.HardwareId : null;
+            var generation = ++_buildGeneration;
+            var monitorIdToRestore = preserveSelection ? SelectedMonitor?.HardwareId : null;
             IsLoading = true;
-        }
 
-        private void OnWorkspaceReady(object? sender, ObservableCollection<MonitorLayoutViewModel> newMonitorLayoutViewModels)
-        {
-            PopulateMonitors(newMonitorLayoutViewModels);
-            RestoreSelection();
-            CheckDirtyState();
-            IsLoading = false;
+            try
+            {
+                var newMonitorLayoutViewModels = await build(width, height);
+                if (generation != _buildGeneration) return;
+
+                PopulateMonitors(newMonitorLayoutViewModels);
+                RestoreSelection(monitorIdToRestore);
+                CheckDirtyState();
+                IsLoading = false;
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Failed to build the monitor workspace.");
+                if (generation == _buildGeneration) { IsLoading = false; }
+            }
         }
 
         /// <summary>
@@ -397,12 +396,13 @@ namespace OLED_Sleeper.UI.ViewModels
         }
 
         /// <summary>
-        /// Restores the monitor selection based on a hardware ID, if available.
+        /// Restores the monitor selection based on a hardware ID.
         /// </summary>
-        private void RestoreSelection()
+        /// <param name="hardwareId">The monitor to reselect, or null to clear the selection.</param>
+        private void RestoreSelection(string? hardwareId)
         {
-            SelectedMonitor = _selectedMonitorIdToRestore != null
-                ? Monitors.FirstOrDefault(m => m.HardwareId == _selectedMonitorIdToRestore)
+            SelectedMonitor = hardwareId != null
+                ? Monitors.FirstOrDefault(m => m.HardwareId == hardwareId)
                 : null;
         }
 
