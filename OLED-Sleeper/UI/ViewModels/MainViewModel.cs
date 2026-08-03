@@ -1,4 +1,5 @@
 ﻿using OLED_Sleeper.Core;
+using OLED_Sleeper.Core.Interfaces;
 using OLED_Sleeper.Features.UserSettings.Services.Interfaces;
 using OLED_Sleeper.UI.Commands;
 using OLED_Sleeper.UI.Helpers;
@@ -6,7 +7,7 @@ using OLED_Sleeper.UI.Services.Interfaces;
 using Serilog;
 using System.Collections.ObjectModel;
 using System.Windows;
-using System.Windows.Input;
+using ICommand = System.Windows.Input.ICommand;
 
 namespace OLED_Sleeper.UI.ViewModels
 {
@@ -27,6 +28,16 @@ namespace OLED_Sleeper.UI.ViewModels
         /// Service for loading and saving monitor settings.
         /// </summary>
         private readonly IMonitorSettingsFileService _settingsService;
+
+        /// <summary>
+        /// Runs actions on the UI thread.
+        /// </summary>
+        private readonly IDispatcher _dispatcher;
+
+        /// <summary>
+        /// Reaches the application's main window.
+        /// </summary>
+        private readonly IMainWindowAccessor _mainWindowAccessor;
 
         /// <summary>
         /// The width of the container used for monitor layout calculations.
@@ -169,10 +180,16 @@ namespace OLED_Sleeper.UI.ViewModels
 
         #region Constructor
 
-        public MainViewModel(IWorkspaceService workspaceService, IMonitorSettingsFileService settingsService)
+        public MainViewModel(
+            IWorkspaceService workspaceService,
+            IMonitorSettingsFileService settingsService,
+            IDispatcher dispatcher,
+            IMainWindowAccessor mainWindowAccessor)
         {
             _workspaceService = workspaceService;
             _settingsService = settingsService;
+            _dispatcher = dispatcher;
+            _mainWindowAccessor = mainWindowAccessor;
 
             SelectMonitorCommand = new RelayCommand(ExecuteSelectMonitor);
             ReloadMonitorsCommand = new RelayCommand(() => RefreshMonitors(false));
@@ -244,7 +261,7 @@ namespace OLED_Sleeper.UI.ViewModels
                     SaveSettingsCommand.Execute(null);
                 }
             }
-            Application.Current.MainWindow?.Hide();
+            _mainWindowAccessor.HideMainWindow();
 
             return false;
         }
@@ -359,9 +376,9 @@ namespace OLED_Sleeper.UI.ViewModels
         /// <param name="newViewModels">The new monitor layout view models.</param>
         private void PopulateMonitors(ObservableCollection<MonitorLayoutViewModel> newViewModels)
         {
-            if (!Application.Current.Dispatcher.CheckAccess())
+            if (!_dispatcher.IsOnUiThread)
             {
-                Application.Current.Dispatcher.Invoke(() => PopulateMonitors(newViewModels));
+                _dispatcher.Invoke(() => PopulateMonitors(newViewModels));
                 return;
             }
 

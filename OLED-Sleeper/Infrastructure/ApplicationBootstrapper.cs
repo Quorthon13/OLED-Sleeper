@@ -23,6 +23,12 @@ namespace OLED_Sleeper.Infrastructure
 
         private readonly ApplicationOptions _applicationOptions = CommandLineHelper.ParseArguments(args);
 
+        /// <summary>
+        /// Ends the process. Created here rather than resolved, since shutdown has to work both
+        /// before the container is built and after it has been disposed.
+        /// </summary>
+        private readonly IApplicationShutdown _applicationShutdown = new ApplicationShutdown();
+
         private IServiceProvider? _serviceProvider;
         private ITrayIconService? _trayIconService;
         private IMainWindowService? _mainWindowService;
@@ -55,10 +61,11 @@ namespace OLED_Sleeper.Infrastructure
 
         /// <summary>
         /// Initializes the single-instance manager before any other services.
+        /// Its seams are constructed here because the check runs before the container exists.
         /// </summary>
         private void InitializeInstanceManager()
         {
-            _instanceManager = new ApplicationInstanceManager();
+            _instanceManager = new ApplicationInstanceManager(new ApplicationDispatcher(), _applicationShutdown);
             _instanceManager.Initialize();
         }
 
@@ -130,7 +137,7 @@ namespace OLED_Sleeper.Infrastructure
             Log.Information("--- Application Exiting ---");
             Log.CloseAndFlush();
 
-            Application.Current?.Shutdown();
+            _applicationShutdown.Shutdown();
         }
 
         /// <summary>
