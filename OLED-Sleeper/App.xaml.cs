@@ -1,5 +1,5 @@
-﻿using System.Windows;
-using OLED_Sleeper.Infrastructure;
+﻿using OLED_Sleeper.Infrastructure;
+using System.Windows;
 
 namespace OLED_Sleeper
 {
