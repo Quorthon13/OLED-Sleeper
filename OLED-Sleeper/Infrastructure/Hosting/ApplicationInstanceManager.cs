@@ -1,6 +1,7 @@
-﻿using OLED_Sleeper.Core.Interfaces;
+﻿using OLED_Sleeper.Infrastructure.Hosting.Interfaces;
+using OLED_Sleeper.Infrastructure.Runtime.Interfaces;
 
-namespace OLED_Sleeper.Core
+namespace OLED_Sleeper.Infrastructure.Hosting
 {
     /// <summary>
     /// Enforces a single running instance of the application.

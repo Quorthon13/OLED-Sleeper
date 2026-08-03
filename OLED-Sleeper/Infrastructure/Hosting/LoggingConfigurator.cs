@@ -1,6 +1,6 @@
 using Serilog;
 
-namespace OLED_Sleeper.Infrastructure
+namespace OLED_Sleeper.Infrastructure.Hosting
 {
     /// <summary>
     /// Configures Serilog logging for the application and performs log file cleanup.

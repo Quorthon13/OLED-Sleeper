@@ -1,6 +1,6 @@
 ﻿using CommandLine;
 
-namespace OLED_Sleeper.Infrastructure
+namespace OLED_Sleeper.Infrastructure.Hosting
 {
     /// <summary>
     /// Represents command-line options supported by the application.

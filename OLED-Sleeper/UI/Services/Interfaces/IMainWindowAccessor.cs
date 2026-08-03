@@ -1,6 +1,6 @@
 using System.Windows;
 
-namespace OLED_Sleeper.Core.Interfaces
+namespace OLED_Sleeper.UI.Services.Interfaces
 {
     /// <summary>
     /// Defines the contract for reaching the window the application treats as its main window.

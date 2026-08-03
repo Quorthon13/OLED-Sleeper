@@ -1,7 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
-using OLED_Sleeper.Core;
-using OLED_Sleeper.Core.Interfaces;
 using OLED_Sleeper.Features.MonitorBehavior.Commands;
 using OLED_Sleeper.Features.MonitorBehavior.Handlers;
 using OLED_Sleeper.Features.MonitorBlackout.Commands;
@@ -24,6 +22,9 @@ using OLED_Sleeper.Features.UserSettings.Commands;
 using OLED_Sleeper.Features.UserSettings.Handlers;
 using OLED_Sleeper.Features.UserSettings.Services;
 using OLED_Sleeper.Features.UserSettings.Services.Interfaces;
+using OLED_Sleeper.Infrastructure.Hosting.Interfaces;
+using OLED_Sleeper.Infrastructure.Runtime;
+using OLED_Sleeper.Infrastructure.Runtime.Interfaces;
 using OLED_Sleeper.Messaging;
 using OLED_Sleeper.Messaging.Interfaces;
 using OLED_Sleeper.Storage;
@@ -32,7 +33,7 @@ using OLED_Sleeper.UI.Services;
 using OLED_Sleeper.UI.Services.Interfaces;
 using OLED_Sleeper.UI.ViewModels;
 
-namespace OLED_Sleeper.Infrastructure
+namespace OLED_Sleeper.Infrastructure.Hosting
 {
     /// <summary>
     /// Configures and builds the application's dependency injection service provider.

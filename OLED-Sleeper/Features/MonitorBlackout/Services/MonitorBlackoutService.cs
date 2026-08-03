@@ -1,5 +1,5 @@
-using OLED_Sleeper.Core.Interfaces;
 using OLED_Sleeper.Features.MonitorBlackout.Services.Interfaces;
+using OLED_Sleeper.Infrastructure.Runtime.Interfaces;
 using System.Windows;
 
 namespace OLED_Sleeper.Features.MonitorBlackout.Services

@@ -1,6 +1,5 @@
 using Microsoft.Extensions.Options;
-using OLED_Sleeper.Core.Interfaces;
-using OLED_Sleeper.Infrastructure;
+using OLED_Sleeper.Infrastructure.Hosting;
 using OLED_Sleeper.UI.Services.Interfaces;
 using OLED_Sleeper.UI.ViewModels;
 using System.Windows;

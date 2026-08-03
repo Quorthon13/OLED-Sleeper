@@ -1,4 +1,4 @@
-namespace OLED_Sleeper.Core.Interfaces
+namespace OLED_Sleeper.Infrastructure.Runtime.Interfaces
 {
     /// <summary>
     /// Defines the contract for running an action on the UI thread from any thread.

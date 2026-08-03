@@ -1,4 +1,5 @@
 ﻿using CommandLine;
+using OLED_Sleeper.Infrastructure.Hosting;
 
 namespace OLED_Sleeper.Infrastructure.Helpers
 {

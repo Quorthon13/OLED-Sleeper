@@ -1,14 +1,14 @@
-﻿using OLED_Sleeper.Core.Interfaces;
-using OLED_Sleeper.Features.MonitorDimming.Commands;
+﻿using OLED_Sleeper.Features.MonitorDimming.Commands;
 using OLED_Sleeper.Features.MonitorIdleDetection.Services.Interfaces;
 using OLED_Sleeper.Features.MonitorState.Services.Interfaces;
 using OLED_Sleeper.Features.UserSettings.Commands;
 using OLED_Sleeper.Features.UserSettings.Models;
 using OLED_Sleeper.Features.UserSettings.Services.Interfaces;
+using OLED_Sleeper.Infrastructure.Hosting.Interfaces;
 using OLED_Sleeper.Messaging.Interfaces;
 using Serilog;
 
-namespace OLED_Sleeper.Core
+namespace OLED_Sleeper.Infrastructure.Hosting
 {
     /// <summary>
     /// Central application orchestrator for monitor management in OLED-Sleeper.
