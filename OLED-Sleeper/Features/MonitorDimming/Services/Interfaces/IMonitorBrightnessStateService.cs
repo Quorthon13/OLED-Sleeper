@@ -8,7 +8,9 @@
         /// <summary>
         /// Loads the brightness state for all monitors from persistent storage.
         /// </summary>
-        /// <returns>A dictionary mapping monitor hardware IDs to their brightness values.</returns>
+        /// <returns>
+        /// A dictionary mapping monitor hardware IDs to their brightness values, empty when no state could be read.
+        /// </returns>
         Dictionary<string, uint> LoadState();
 
         /// <summary>

@@ -1,89 +1,57 @@
-﻿using OLED_Sleeper.Features.UserSettings.Models;
+using OLED_Sleeper.Features.UserSettings.Models;
 using OLED_Sleeper.Features.UserSettings.Services.Interfaces;
+using OLED_Sleeper.Storage.Interfaces;
 using Serilog;
-using System.IO;
-using System.Text.Json;
 
 namespace OLED_Sleeper.Features.UserSettings.Services
 {
     /// <summary>
-    /// Service for loading and saving user settings to a JSON file in the user's AppData directory.
+    /// Keeps the monitor settings in <c>settings.json</c> under the application's data directory.
     /// </summary>
     public class MonitorSettingsFileService : IMonitorSettingsFileService
     {
-        // Fields
-        private readonly string _settingsFilePath;
+        /// <summary>The name of the file the settings are kept in.</summary>
+        private const string SettingsFileName = "settings.json";
 
-        /// <summary>
-        /// Occurs when monitor settings are changed and saved.
-        /// </summary>
+        private readonly IAppDataFileStore _fileStore;
+
+        /// <inheritdoc />
         public event Action<List<MonitorSettings>>? SettingsChanged;
 
-        /// <summary>
-        /// Ensures the settings directory exists and sets the file path.
-        /// </summary>
-        public MonitorSettingsFileService()
+        public MonitorSettingsFileService(IAppDataFileStore fileStore)
         {
-            var appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-            var settingsDir = Path.Combine(appDataPath, "OLED-Sleeper");
-            Directory.CreateDirectory(settingsDir);
-            _settingsFilePath = Path.Combine(settingsDir, "settings.json");
+            _fileStore = fileStore;
         }
 
-        /// <summary>
-        /// Loads monitor settings from the settings file.
-        /// Returns an empty list if the file does not exist or cannot be read.
-        /// </summary>
-        /// <returns>A list of <see cref="MonitorSettings"/> objects.</returns>
+        /// <inheritdoc />
         public List<MonitorSettings> LoadSettings()
         {
-            if (!File.Exists(_settingsFilePath))
-            {
-                Log.Information("Settings file not found. Returning default settings.");
-                return new List<MonitorSettings>();
-            }
-
-            try
-            {
-                var json = File.ReadAllText(_settingsFilePath);
-                var settings = JsonSerializer.Deserialize<List<MonitorSettings>>(json);
-                Log.Information("Successfully loaded {Count} monitor settings.", settings?.Count ?? 0);
-                return settings ?? new List<MonitorSettings>();
-            }
-            catch (Exception ex)
-            {
-                Log.Error(ex, "Failed to load settings from {FilePath}.", _settingsFilePath);
-                return new List<MonitorSettings>();
-            }
+            var settings = _fileStore.Read<List<MonitorSettings>>(SettingsFileName) ?? new List<MonitorSettings>();
+            Log.Information("Loaded {Count} monitor settings.", settings.Count);
+            return settings;
         }
 
-        /// <summary>
-        /// Saves the specified monitor settings to the settings file, keeping stored entries for monitors
-        /// the caller did not supply.
-        /// Invokes the <see cref="SettingsChanged"/> event with the supplied settings after a successful save.
-        /// </summary>
-        /// <param name="settings">The list of <see cref="MonitorSettings"/> to save.</param>
+        /// <inheritdoc />
         public void SaveSettings(List<MonitorSettings> settings)
         {
             try
             {
                 var merged = MergeWithStoredSettings(settings);
-                var options = new JsonSerializerOptions { WriteIndented = true };
-                var json = JsonSerializer.Serialize(merged, options);
-                File.WriteAllText(_settingsFilePath, json);
-                Log.Information("Successfully saved {Count} monitor settings to {FilePath}.", merged.Count, _settingsFilePath);
+
+                if (!_fileStore.TryWrite(SettingsFileName, merged)) return;
+
+                Log.Information("Saved {Count} monitor settings.", merged.Count);
                 SettingsChanged?.Invoke(settings);
             }
             catch (Exception ex)
             {
-                Log.Error(ex, "Failed to save settings to {FilePath}.", _settingsFilePath);
+                Log.Error(ex, "Failed to save monitor settings.");
             }
         }
 
         /// <summary>
         /// Appends the stored settings whose hardware ID is absent from <paramref name="settings"/> to the
-        /// supplied list. The caller only ever builds settings for connected monitors, so without this the
-        /// write would drop the configuration of every disconnected one.
+        /// supplied list, so the configuration of monitors that are not connected is kept.
         /// </summary>
         /// <param name="settings">The settings supplied by the caller.</param>
         /// <returns>The supplied settings followed by the stored settings that were kept.</returns>

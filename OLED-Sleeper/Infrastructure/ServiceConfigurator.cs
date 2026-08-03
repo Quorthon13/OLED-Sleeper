@@ -22,6 +22,8 @@ using OLED_Sleeper.Features.MonitorState.Services;
 using OLED_Sleeper.Features.MonitorState.Services.Interfaces;
 using OLED_Sleeper.Features.UserSettings.Services;
 using OLED_Sleeper.Features.UserSettings.Services.Interfaces;
+using OLED_Sleeper.Storage;
+using OLED_Sleeper.Storage.Interfaces;
 using OLED_Sleeper.UI.Services;
 using OLED_Sleeper.UI.Services.Interfaces;
 using OLED_Sleeper.UI.ViewModels;
@@ -57,6 +59,8 @@ namespace OLED_Sleeper.Infrastructure
 
             services.AddSingleton(Options.Create(applicationOptions));
 
+            services.AddSingleton<IFileSystem, FileSystem>();
+            services.AddSingleton<IAppDataFileStore, AppDataFileStore>();
             services.AddSingleton<IMonitorInfoManager, MonitorInfoManager>();
             services.AddSingleton<IMonitorStateWatcher, MonitorStateWatcher>();
             services.AddSingleton<IMonitorBrightnessStateService, MonitorBrightnessStateService>();
