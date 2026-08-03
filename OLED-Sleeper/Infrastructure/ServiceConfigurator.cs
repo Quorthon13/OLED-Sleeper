@@ -20,6 +20,8 @@ using OLED_Sleeper.Features.MonitorState.Commands;
 using OLED_Sleeper.Features.MonitorState.Handlers;
 using OLED_Sleeper.Features.MonitorState.Services;
 using OLED_Sleeper.Features.MonitorState.Services.Interfaces;
+using OLED_Sleeper.Features.UserSettings.Commands;
+using OLED_Sleeper.Features.UserSettings.Handlers;
 using OLED_Sleeper.Features.UserSettings.Services;
 using OLED_Sleeper.Features.UserSettings.Services.Interfaces;
 using OLED_Sleeper.Storage;
@@ -56,6 +58,7 @@ namespace OLED_Sleeper.Infrastructure
             services.AddTransient<ICommandHandler<RestoreBrightnessOnAllMonitorsCommand>, RestoreBrightnessOnAllMonitorsCommandHandler>();
             services.AddTransient<ICommandHandler<SynchronizeMonitorStateCommand>, SynchronizeMonitorStateCommandHandler>();
             services.AddTransient<ICommandHandler<RestoreMonitorStateCommand>, RestoreMonitorStateCommandHandler>();
+            services.AddTransient<ICommandHandler<ApplySettingsChangeCommand>, ApplySettingsChangeCommandHandler>();
 
             services.AddSingleton(Options.Create(applicationOptions));
 
