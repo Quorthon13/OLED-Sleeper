@@ -1,7 +1,5 @@
-﻿using OLED_Sleeper.Features.MonitorDimming.Commands;
-using OLED_Sleeper.Features.UserSettings.Services.Interfaces;
+﻿using OLED_Sleeper.Features.UserSettings.Services.Interfaces;
 using OLED_Sleeper.Infrastructure.Runtime.Interfaces;
-using OLED_Sleeper.Messaging.Interfaces;
 using OLED_Sleeper.UI.Commands;
 using OLED_Sleeper.UI.Helpers;
 using OLED_Sleeper.UI.Services.Interfaces;
@@ -44,11 +42,6 @@ namespace OLED_Sleeper.UI.ViewModels
         /// Shows modal dialogs to the user.
         /// </summary>
         private readonly IDialogService _dialogService;
-
-        /// <summary>
-        /// Sends commands to their handlers.
-        /// </summary>
-        private readonly IMediator _mediator;
 
         /// <summary>
         /// The width of the container used for monitor layout calculations.
@@ -196,15 +189,13 @@ namespace OLED_Sleeper.UI.ViewModels
             IMonitorSettingsFileService settingsService,
             IDispatcher dispatcher,
             IMainWindowAccessor mainWindowAccessor,
-            IDialogService dialogService,
-            IMediator mediator)
+            IDialogService dialogService)
         {
             _workspaceService = workspaceService;
             _settingsService = settingsService;
             _dispatcher = dispatcher;
             _mainWindowAccessor = mainWindowAccessor;
             _dialogService = dialogService;
-            _mediator = mediator;
 
             SelectMonitorCommand = new RelayCommand(ExecuteSelectMonitor);
             ReloadMonitorsCommand = new RelayCommand(() => RefreshMonitors(false));
@@ -305,8 +296,6 @@ namespace OLED_Sleeper.UI.ViewModels
         /// </summary>
         private async Task ExecuteSaveSettings()
         {
-            _ = _mediator.SendAsync(new RestoreBrightnessOnAllMonitorsCommand());
-
             if (!ValidateSettings())
             {
                 return; // Stop if invalid
