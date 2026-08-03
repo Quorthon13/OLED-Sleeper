@@ -11,7 +11,7 @@ namespace OLED_Sleeper.Features.MonitorDimming.Commands
         /// <summary>
         /// The unique hardware identifier of the target monitor.
         /// </summary>
-        public string? HardwareId { get; init; }
+        public required string HardwareId { get; init; }
 
         /// <summary>
         /// The brightness level to set (0-100).

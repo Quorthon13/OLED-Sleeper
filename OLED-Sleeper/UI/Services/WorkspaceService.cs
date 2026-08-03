@@ -18,7 +18,7 @@ namespace OLED_Sleeper.UI.Services
         private readonly IMonitorSettingsFileService _settingsService;
         private readonly IMonitorLayoutService _monitorLayoutService;
 
-        public event EventHandler<ObservableCollection<MonitorLayoutViewModel>> WorkspaceReady;
+        public event EventHandler<ObservableCollection<MonitorLayoutViewModel>>? WorkspaceReady;
 
         public WorkspaceService(
             IMonitorInfoManager monitorManager,

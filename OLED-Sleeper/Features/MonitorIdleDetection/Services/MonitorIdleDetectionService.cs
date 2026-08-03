@@ -346,7 +346,7 @@ namespace OLED_Sleeper.Features.MonitorIdleDetection.Services
         private class ManagedMonitorState
         {
             public int DisplayNumber { get; set; }
-            public MonitorSettings Settings { get; set; }
+            public required MonitorSettings Settings { get; set; }
             public Rect Bounds { get; set; }
         }
 

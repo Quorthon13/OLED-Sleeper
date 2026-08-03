@@ -64,15 +64,30 @@ namespace OLED_Sleeper.Features.MonitorInformation.Services
         }
 
         /// <inheritdoc />
+        /// <remarks>
+        /// A monitor whose hardware ID cannot be resolved is removed from the list.
+        /// </remarks>
         public void EnrichMonitorInfoList(List<MonitorInfo>? monitors)
         {
             if (monitors == null) return;
-            foreach (var monitor in monitors)
+            for (int index = monitors.Count - 1; index >= 0; index--)
             {
+                var monitor = monitors[index];
+
                 var capabilities = _monitorInfoProvider.GetDdcCiCapabilities(monitor);
                 monitor.IsDdcCiSupported = capabilities.IsSupported;
                 monitor.MaxBrightness = capabilities.MaxBrightness;
-                monitor.HardwareId = _monitorInfoProvider.GetHardwareId(monitor);
+
+                var hardwareId = _monitorInfoProvider.GetHardwareId(monitor);
+                if (string.IsNullOrEmpty(hardwareId))
+                {
+                    Log.Warning("No hardware ID resolved for {DeviceName}. The monitor is dropped and will not be managed.",
+                        monitor.DeviceName);
+                    monitors.RemoveAt(index);
+                    continue;
+                }
+
+                monitor.HardwareId = hardwareId;
             }
         }
 

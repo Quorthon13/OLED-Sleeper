@@ -24,7 +24,7 @@ namespace OLED_Sleeper.Features.MonitorInformation.Services.Interfaces
         /// Returns the hardware ID for the given monitor.
         /// </summary>
         /// <param name="monitor">The monitor to get the hardware ID for.</param>
-        /// <returns>The hardware ID string.</returns>
-        string GetHardwareId(MonitorInfo monitor);
+        /// <returns>The hardware ID string, or null when no attached display device matched the monitor.</returns>
+        string? GetHardwareId(MonitorInfo monitor);
     }
 }

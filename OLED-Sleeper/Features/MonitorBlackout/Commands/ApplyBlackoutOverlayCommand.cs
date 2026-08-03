@@ -12,6 +12,6 @@ namespace OLED_Sleeper.Features.MonitorBlackout.Commands
         /// <summary>
         /// The unique hardware identifier of the target monitor.
         /// </summary>
-        public string? HardwareId { get; init; }
+        public required string HardwareId { get; init; }
     }
 }
