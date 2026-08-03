@@ -42,6 +42,7 @@ namespace OLED_Sleeper.Infrastructure
         {
             var services = new ServiceCollection();
             services.AddSingleton<IMediator, Mediator>();
+            services.AddSingleton<IDispatcher, ApplicationDispatcher>();
 
             services.AddTransient<ICommandHandler<ApplyMonitorActiveBehaviorCommand>, ApplyMonitorActiveBehaviorCommandHandler>();
             services.AddTransient<ICommandHandler<ApplyMonitorIdleBehaviorCommand>, ApplyMonitorIdleBehaviorCommandHandler>();
@@ -59,6 +60,7 @@ namespace OLED_Sleeper.Infrastructure
             services.AddSingleton<IMonitorStateWatcher, MonitorStateWatcher>();
             services.AddSingleton<IMonitorBrightnessStateService, MonitorBrightnessStateService>();
             services.AddSingleton<IMonitorDimmingService, MonitorDimmingService>();
+            services.AddSingleton<IOverlayWindowFactory, OverlayWindowFactory>();
             services.AddSingleton<IMonitorBlackoutService, MonitorBlackoutService>();
             services.AddSingleton<IApplicationOrchestrator, ApplicationOrchestrator>();
             services.AddSingleton<IWorkspaceService, WorkspaceService>();
