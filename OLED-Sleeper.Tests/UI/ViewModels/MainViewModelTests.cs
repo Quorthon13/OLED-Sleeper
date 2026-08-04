@@ -13,7 +13,7 @@ namespace OLED_Sleeper.Tests.UI.ViewModels
     public class MainViewModelTests
     {
         private readonly Mock<IWorkspaceService> _workspaceServiceMock;
-        private readonly Mock<IMonitorSettingsFileService> _settingsServiceMock;
+        private readonly Mock<IMonitorSettingsSaveService> _saveServiceMock;
         private readonly Mock<IMainWindowAccessor> _mainWindowAccessorMock;
         private readonly Mock<IDialogService> _dialogServiceMock;
         private readonly ImmediateDispatcher _dispatcher;
@@ -22,16 +22,17 @@ namespace OLED_Sleeper.Tests.UI.ViewModels
         public MainViewModelTests()
         {
             _workspaceServiceMock = new Mock<IWorkspaceService>();
-            _settingsServiceMock = new Mock<IMonitorSettingsFileService>();
+            _saveServiceMock = new Mock<IMonitorSettingsSaveService>();
             _mainWindowAccessorMock = new Mock<IMainWindowAccessor>();
             _dialogServiceMock = new Mock<IDialogService>();
             _dispatcher = new ImmediateDispatcher();
 
             SetupWorkspace();
+            SetupSaveOutcome(true);
 
             _viewModel = new MainViewModel(
                 _workspaceServiceMock.Object,
-                _settingsServiceMock.Object,
+                _saveServiceMock.Object,
                 _dispatcher,
                 _mainWindowAccessorMock.Object,
                 _dialogServiceMock.Object);
@@ -341,7 +342,7 @@ namespace OLED_Sleeper.Tests.UI.ViewModels
             // Assert
             Assert.False(shouldClose);
             _mainWindowAccessorMock.Verify(x => x.HideMainWindow(), Times.Never);
-            _settingsServiceMock.Verify(x => x.SaveSettings(It.IsAny<List<MonitorSettings>>()), Times.Never);
+            _saveServiceMock.Verify(x => x.TrySave(It.IsAny<IReadOnlyList<MonitorLayoutViewModel>>()), Times.Never);
         }
 
         [Fact]
@@ -358,7 +359,7 @@ namespace OLED_Sleeper.Tests.UI.ViewModels
 
             // Assert
             Assert.False(shouldClose);
-            _settingsServiceMock.Verify(x => x.SaveSettings(It.IsAny<List<MonitorSettings>>()), Times.Once);
+            _saveServiceMock.Verify(x => x.TrySave(It.IsAny<IReadOnlyList<MonitorLayoutViewModel>>()), Times.Once);
             _mainWindowAccessorMock.Verify(x => x.HideMainWindow(), Times.Once);
         }
 
@@ -374,12 +375,12 @@ namespace OLED_Sleeper.Tests.UI.ViewModels
 
             // Assert
             Assert.False(shouldClose);
-            _settingsServiceMock.Verify(x => x.SaveSettings(It.IsAny<List<MonitorSettings>>()), Times.Never);
+            _saveServiceMock.Verify(x => x.TrySave(It.IsAny<IReadOnlyList<MonitorLayoutViewModel>>()), Times.Never);
             _mainWindowAccessorMock.Verify(x => x.HideMainWindow(), Times.Once);
         }
 
         [Fact]
-        public void SaveSettingsCommand_WhenSettingsValid_SavesAndClearsDirtyState()
+        public void SaveSettingsCommand_WhenSaveSucceeds_ClearsDirtyStateAndConfirmsOnTheButton()
         {
             // Arrange
             var monitor = CreateMonitor("MON-1");
@@ -387,37 +388,28 @@ namespace OLED_Sleeper.Tests.UI.ViewModels
             monitor.Configuration.DimLevel = 50;
             Assert.True(_viewModel.IsDirty);
 
-            List<MonitorSettings>? saved = null;
-            _settingsServiceMock
-                .Setup(x => x.SaveSettings(It.IsAny<List<MonitorSettings>>()))
-                .Callback<List<MonitorSettings>>(settings => saved = settings);
-
             // Act
             _viewModel.SaveSettingsCommand.Execute(null);
 
             // Assert
-            Assert.NotNull(saved);
-            var entry = Assert.Single(saved!);
-            Assert.Equal("MON-1", entry.HardwareId);
-            Assert.Equal(50, entry.DimLevel);
+            _saveServiceMock.Verify(x => x.TrySave(_viewModel.Monitors), Times.Once);
             Assert.False(_viewModel.IsDirty);
             Assert.Equal("Saved!", _viewModel.SaveButtonText);
         }
 
         [Fact]
-        public void SaveSettingsCommand_WhenSettingsInvalid_ShowsErrorAndDoesNotSave()
+        public void SaveSettingsCommand_WhenSaveIsRejected_KeepsDirtyStateAndLeavesTheButtonAlone()
         {
             // Arrange
             var monitor = CreateMonitor("MON-1");
             LoadMonitors(monitor);
-            monitor.Configuration.IsManaged = true;
+            monitor.Configuration.DimLevel = 50;
+            SetupSaveOutcome(false);
 
             // Act
             _viewModel.SaveSettingsCommand.Execute(null);
 
             // Assert
-            _dialogServiceMock.Verify(x => x.ShowError(It.IsAny<string>(), "Monitor Configuration Error"), Times.Once);
-            _settingsServiceMock.Verify(x => x.SaveSettings(It.IsAny<List<MonitorSettings>>()), Times.Never);
             Assert.Equal("Save Settings", _viewModel.SaveButtonText);
             Assert.True(_viewModel.IsDirty);
         }
@@ -489,6 +481,28 @@ namespace OLED_Sleeper.Tests.UI.ViewModels
         {
             SetupWorkspace(monitors);
             _viewModel.RecalculateLayout(800, 600);
+        }
+
+        /// <summary>
+        /// Makes the save service accept or reject the settings. A successful save marks each monitor
+        /// as saved, as the real service does.
+        /// </summary>
+        /// <param name="succeeds">Whether the save service should report the settings as written.</param>
+        private void SetupSaveOutcome(bool succeeds)
+        {
+            _saveServiceMock
+                .Setup(x => x.TrySave(It.IsAny<IReadOnlyList<MonitorLayoutViewModel>>()))
+                .Returns<IReadOnlyList<MonitorLayoutViewModel>>(monitors =>
+                {
+                    if (!succeeds) return false;
+
+                    foreach (var monitor in monitors)
+                    {
+                        monitor.Configuration.MarkAsSaved();
+                    }
+
+                    return true;
+                });
         }
 
         /// <summary>

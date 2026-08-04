@@ -1,7 +1,5 @@
-﻿using OLED_Sleeper.Features.UserSettings.Services.Interfaces;
-using OLED_Sleeper.Infrastructure.Runtime.Interfaces;
+﻿using OLED_Sleeper.Infrastructure.Runtime.Interfaces;
 using OLED_Sleeper.UI.Commands;
-using OLED_Sleeper.UI.Helpers;
 using OLED_Sleeper.UI.Services.Interfaces;
 using Serilog;
 using System.Collections.ObjectModel;
@@ -24,9 +22,9 @@ namespace OLED_Sleeper.UI.ViewModels
         private readonly IWorkspaceService _workspaceService;
 
         /// <summary>
-        /// Service for loading and saving monitor settings.
+        /// Validates and saves the monitor settings.
         /// </summary>
-        private readonly IMonitorSettingsFileService _settingsService;
+        private readonly IMonitorSettingsSaveService _saveService;
 
         /// <summary>
         /// Runs actions on the UI thread.
@@ -187,13 +185,13 @@ namespace OLED_Sleeper.UI.ViewModels
 
         public MainViewModel(
             IWorkspaceService workspaceService,
-            IMonitorSettingsFileService settingsService,
+            IMonitorSettingsSaveService saveService,
             IDispatcher dispatcher,
             IMainWindowAccessor mainWindowAccessor,
             IDialogService dialogService)
         {
             _workspaceService = workspaceService;
-            _settingsService = settingsService;
+            _saveService = saveService;
             _dispatcher = dispatcher;
             _mainWindowAccessor = mainWindowAccessor;
             _dialogService = dialogService;
@@ -276,16 +274,16 @@ namespace OLED_Sleeper.UI.ViewModels
         }
 
         /// <summary>
-        /// Orchestrates the three steps of the save process: validation, action, and feedback.
+        /// Saves the monitor settings and reports the outcome on the save button.
         /// </summary>
         private async Task ExecuteSaveSettings()
         {
-            if (!ValidateSettings())
+            if (!_saveService.TrySave(Monitors))
             {
                 return; // Stop if invalid
             }
 
-            PerformSaveActions();
+            CheckDirtyState();
 
             await ProvideSaveFeedbackAsync();
         }
@@ -295,34 +293,6 @@ namespace OLED_Sleeper.UI.ViewModels
         #region Private Helper Methods
 
         // --- Save Process Helpers ---
-
-        /// <summary>
-        /// Validates all monitor settings, telling the user about any that cannot be saved.
-        /// </summary>
-        /// <returns>True if all monitors are valid; otherwise, false.</returns>
-        private bool ValidateSettings()
-        {
-            var error = MonitorSettingsValidator.BuildValidationError(Monitors);
-            if (error == null) return true;
-
-            _dialogService.ShowError(error, "Monitor Configuration Error");
-            return false;
-        }
-
-        /// <summary>
-        /// Saves all monitor settings and updates the idle activity service. Marks all monitors as saved.
-        /// </summary>
-        private void PerformSaveActions()
-        {
-            var allSettings = Monitors.Select(m => m.Configuration.ToSettings()).ToList();
-            _settingsService.SaveSettings(allSettings);
-
-            foreach (var monitorVM in Monitors)
-            {
-                monitorVM.Configuration.MarkAsSaved();
-            }
-            CheckDirtyState();
-        }
 
         /// <summary>
         /// Provides user feedback after saving settings by updating the save button text temporarily.
