@@ -19,11 +19,6 @@ namespace OLED_Sleeper.UI.ViewModels
 
         #region Properties
         /// <summary>
-        /// Action to notify the MainViewModel that this specific monitor's dirty state has changed.
-        /// </summary>
-        public Action? OnMonitorDirtyStateChanged { get; set; }
-
-        /// <summary>
         /// The configuration ViewModel for this monitor.
         /// </summary>
         public MonitorConfigurationViewModel Configuration { get; }
@@ -38,15 +33,10 @@ namespace OLED_Sleeper.UI.ViewModels
             set { _isSelected = value; OnPropertyChanged(); }
         }
 
-        private bool _isDirty;
         /// <summary>
-        /// Gets or sets whether this monitor has unsaved changes in its configuration.
+        /// Whether this monitor has unsaved changes in its configuration.
         /// </summary>
-        public bool IsDirty
-        {
-            get => _isDirty;
-            set { _isDirty = value; OnPropertyChanged(); }
-        }
+        public bool IsDirty => Configuration.IsDirty;
 
         /// <summary>
         /// The display title for the monitor, including primary indicator if applicable.
@@ -114,14 +104,16 @@ namespace OLED_Sleeper.UI.ViewModels
 
         #region Private Methods
         /// <summary>
-        /// Subscribes to the configuration's dirty state changes and updates this ViewModel accordingly.
+        /// Re-raises the configuration's dirty state changes as this ViewModel's own.
         /// </summary>
         private void SubscribeToConfigurationDirtyState()
         {
-            Configuration.OnDirtyStateChanged = () =>
+            Configuration.PropertyChanged += (_, e) =>
             {
-                IsDirty = Configuration.IsDirty;
-                OnMonitorDirtyStateChanged?.Invoke();
+                if (e.PropertyName == nameof(MonitorConfigurationViewModel.IsDirty))
+                {
+                    OnPropertyChanged(nameof(IsDirty));
+                }
             };
         }
         #endregion

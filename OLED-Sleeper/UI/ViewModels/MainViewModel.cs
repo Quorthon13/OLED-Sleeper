@@ -3,6 +3,7 @@ using OLED_Sleeper.UI.Commands;
 using OLED_Sleeper.UI.Services.Interfaces;
 using Serilog;
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Windows;
 using ICommand = System.Windows.Input.ICommand;
 
@@ -357,11 +358,27 @@ namespace OLED_Sleeper.UI.ViewModels
                 return;
             }
 
+            foreach (var viewModel in Monitors)
+            {
+                viewModel.PropertyChanged -= OnMonitorPropertyChanged;
+            }
+
             Monitors.Clear();
             foreach (var viewModel in newViewModels)
             {
-                viewModel.OnMonitorDirtyStateChanged = CheckDirtyState;
+                viewModel.PropertyChanged += OnMonitorPropertyChanged;
                 Monitors.Add(viewModel);
+            }
+        }
+
+        /// <summary>
+        /// Re-evaluates the overall dirty state whenever one monitor's changes.
+        /// </summary>
+        private void OnMonitorPropertyChanged(object? sender, PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName == nameof(MonitorLayoutViewModel.IsDirty))
+            {
+                CheckDirtyState();
             }
         }
 

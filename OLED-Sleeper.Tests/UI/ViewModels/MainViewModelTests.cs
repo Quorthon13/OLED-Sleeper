@@ -182,6 +182,21 @@ namespace OLED_Sleeper.Tests.UI.ViewModels
         }
 
         [Fact]
+        public void RecalculateLayout_WhenAReplacedMonitorChanges_LeavesTheViewModelClean()
+        {
+            // Arrange
+            var replaced = CreateMonitor("MON-1");
+            LoadMonitors(replaced);
+            LoadMonitors(CreateMonitor("MON-2", 2));
+
+            // Act
+            replaced.Configuration.DimLevel = 50;
+
+            // Assert
+            Assert.False(_viewModel.IsDirty);
+        }
+
+        [Fact]
         public void IsDirty_WhenSetToSameValue_RaisesNoFurtherNotification()
         {
             // Arrange

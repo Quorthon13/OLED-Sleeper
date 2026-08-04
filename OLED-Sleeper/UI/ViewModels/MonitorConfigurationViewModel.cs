@@ -17,11 +17,6 @@ namespace OLED_Sleeper.UI.ViewModels
         /// </summary>
         private readonly MonitorInfo _monitorInfo;
 
-        /// <summary>
-        /// Callback invoked when the dirty state changes.
-        /// </summary>
-        public Action? OnDirtyStateChanged { get; set; }
-
         #region Properties
 
         /// <summary>
@@ -253,7 +248,6 @@ namespace OLED_Sleeper.UI.ViewModels
                        IsActiveOnActiveWindow != _initialIsActiveOnActiveWindow;
 
             OnPropertyChanged(nameof(IsDirty));
-            OnDirtyStateChanged?.Invoke();
         }
 
         /// <summary>
