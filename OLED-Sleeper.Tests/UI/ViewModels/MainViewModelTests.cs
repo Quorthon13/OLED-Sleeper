@@ -2,7 +2,6 @@ using Moq;
 using OLED_Sleeper.Features.MonitorInformation.Models;
 using OLED_Sleeper.Features.UserSettings.Models;
 using OLED_Sleeper.Features.UserSettings.Services.Interfaces;
-using OLED_Sleeper.Messaging.Interfaces;
 using OLED_Sleeper.Tests.TestDoubles;
 using OLED_Sleeper.UI.Services.Interfaces;
 using OLED_Sleeper.UI.ViewModels;
@@ -14,75 +13,68 @@ namespace OLED_Sleeper.Tests.UI.ViewModels
     public class MainViewModelTests
     {
         private readonly Mock<IWorkspaceService> _workspaceServiceMock;
-        private readonly Mock<IMonitorSettingsFileService> _settingsServiceMock;
+        private readonly Mock<IMonitorSettingsSaveService> _saveServiceMock;
         private readonly Mock<IMainWindowAccessor> _mainWindowAccessorMock;
         private readonly Mock<IDialogService> _dialogServiceMock;
-        private readonly Mock<IMediator> _mediatorMock;
         private readonly ImmediateDispatcher _dispatcher;
         private readonly MainViewModel _viewModel;
 
         public MainViewModelTests()
         {
             _workspaceServiceMock = new Mock<IWorkspaceService>();
-            _settingsServiceMock = new Mock<IMonitorSettingsFileService>();
+            _saveServiceMock = new Mock<IMonitorSettingsSaveService>();
             _mainWindowAccessorMock = new Mock<IMainWindowAccessor>();
             _dialogServiceMock = new Mock<IDialogService>();
-            _mediatorMock = new Mock<IMediator>();
             _dispatcher = new ImmediateDispatcher();
 
-            _workspaceServiceMock
-                .Setup(x => x.BuildWorkspaceAsync(It.IsAny<double>(), It.IsAny<double>()))
-                .Returns(Task.CompletedTask);
-            _workspaceServiceMock
-                .Setup(x => x.RefreshWorkspaceAsync(It.IsAny<double>(), It.IsAny<double>()))
-                .Returns(Task.CompletedTask);
+            SetupWorkspace();
+            SetupSaveOutcome(true);
 
             _viewModel = new MainViewModel(
                 _workspaceServiceMock.Object,
-                _settingsServiceMock.Object,
+                _saveServiceMock.Object,
                 _dispatcher,
                 _mainWindowAccessorMock.Object,
-                _dialogServiceMock.Object,
-                _mediatorMock.Object);
+                _dialogServiceMock.Object);
         }
 
         [Fact]
-        public void WorkspaceReady_PopulatesMonitors()
+        public void RecalculateLayout_PopulatesMonitors()
         {
             // Arrange
             var first = CreateMonitor("MON-1");
             var second = CreateMonitor("MON-2", 2);
 
             // Act
-            RaiseWorkspaceReady(first, second);
+            LoadMonitors(first, second);
 
             // Assert
             Assert.Equal(new[] { first, second }, _viewModel.Monitors);
         }
 
         [Fact]
-        public void WorkspaceReady_WhenRaisedAgain_ReplacesPreviousMonitors()
+        public void RecalculateLayout_WhenBuiltAgain_ReplacesPreviousMonitors()
         {
             // Arrange
-            RaiseWorkspaceReady(CreateMonitor("MON-1"), CreateMonitor("MON-2", 2));
+            LoadMonitors(CreateMonitor("MON-1"), CreateMonitor("MON-2", 2));
             var replacement = CreateMonitor("MON-3", 3);
 
             // Act
-            RaiseWorkspaceReady(replacement);
+            LoadMonitors(replacement);
 
             // Assert
             Assert.Equal(new[] { replacement }, _viewModel.Monitors);
         }
 
         [Fact]
-        public void WorkspaceReady_WhenNotOnUiThread_MarshalsOnceAndStillPopulates()
+        public void RecalculateLayout_WhenNotOnUiThread_MarshalsOnceAndStillPopulates()
         {
             // Arrange
             _dispatcher.IsOnUiThread = false;
             var monitor = CreateMonitor("MON-1");
 
             // Act
-            RaiseWorkspaceReady(monitor);
+            LoadMonitors(monitor);
 
             // Assert
             Assert.Equal(new[] { monitor }, _viewModel.Monitors);
@@ -90,13 +82,13 @@ namespace OLED_Sleeper.Tests.UI.ViewModels
         }
 
         [Fact]
-        public void WorkspaceReady_WhenOnUiThread_DoesNotUseDispatcher()
+        public void RecalculateLayout_WhenOnUiThread_DoesNotUseDispatcher()
         {
             // Arrange
             var monitor = CreateMonitor("MON-1");
 
             // Act
-            RaiseWorkspaceReady(monitor);
+            LoadMonitors(monitor);
 
             // Assert
             Assert.Equal(new[] { monitor }, _viewModel.Monitors);
@@ -104,31 +96,53 @@ namespace OLED_Sleeper.Tests.UI.ViewModels
         }
 
         [Fact]
-        public void WorkspaceReady_ClearsLoadingFlag()
+        public async Task RecalculateLayout_SetsLoadingWhileBuildingAndClearsItWhenDone()
         {
             // Arrange
-            _viewModel.RecalculateLayout(800, 600);
-            Assert.True(_viewModel.IsLoading);
+            var pendingBuild = SetupPendingBuild();
 
             // Act
-            RaiseWorkspaceReady(CreateMonitor("MON-1"));
+            _viewModel.RecalculateLayout(800, 600);
+            var loadingWhileBuilding = _viewModel.IsLoading;
+            pendingBuild.SetResult(Collect(CreateMonitor("MON-1")));
+            await pendingBuild.Task;
 
             // Assert
+            Assert.True(loadingWhileBuilding);
             Assert.False(_viewModel.IsLoading);
         }
 
         [Fact]
-        public void WorkspaceReady_WhenSelectionPreserved_RestoresSelectedMonitorByHardwareId()
+        public async Task RecalculateLayout_WhenSupersededByANewerBuild_DiscardsTheStaleResult()
+        {
+            // Arrange
+            var stale = CreateMonitor("STALE");
+            var current = CreateMonitor("CURRENT");
+            var pendingBuild = SetupPendingBuild();
+            _viewModel.RecalculateLayout(800, 600);
+
+            // Act
+            SetupWorkspace(current);
+            _viewModel.RecalculateLayout(1024, 768);
+            pendingBuild.SetResult(Collect(stale));
+            await pendingBuild.Task;
+
+            // Assert
+            Assert.Equal(new[] { current }, _viewModel.Monitors);
+            Assert.False(_viewModel.IsLoading);
+        }
+
+        [Fact]
+        public void RecalculateLayout_WhenSelectionPreserved_RestoresSelectedMonitorByHardwareId()
         {
             // Arrange
             var original = CreateMonitor("MON-1");
-            RaiseWorkspaceReady(original, CreateMonitor("MON-2", 2));
+            LoadMonitors(original, CreateMonitor("MON-2", 2));
             _viewModel.SelectMonitorCommand.Execute(original);
-            _viewModel.RecalculateLayout(800, 600);
             var rebuilt = CreateMonitor("MON-1");
 
             // Act
-            RaiseWorkspaceReady(CreateMonitor("MON-2", 2), rebuilt);
+            LoadMonitors(CreateMonitor("MON-2", 2), rebuilt);
 
             // Assert
             Assert.Same(rebuilt, _viewModel.SelectedMonitor);
@@ -136,17 +150,16 @@ namespace OLED_Sleeper.Tests.UI.ViewModels
         }
 
         [Fact]
-        public void WorkspaceReady_WhenSelectionNotPreserved_ClearsSelection()
+        public void RefreshMonitors_WhenSelectionNotPreserved_ClearsSelection()
         {
             // Arrange
             var original = CreateMonitor("MON-1");
-            RaiseWorkspaceReady(original);
+            LoadMonitors(original);
             _viewModel.SelectMonitorCommand.Execute(original);
-            _viewModel.RecalculateLayout(800, 600);
-            _viewModel.RefreshMonitors(false);
+            SetupWorkspace(CreateMonitor("MON-1"));
 
             // Act
-            RaiseWorkspaceReady(CreateMonitor("MON-1"));
+            _viewModel.RefreshMonitors(false);
 
             // Assert
             Assert.Null(_viewModel.SelectedMonitor);
@@ -154,11 +167,11 @@ namespace OLED_Sleeper.Tests.UI.ViewModels
         }
 
         [Fact]
-        public void WorkspaceReady_WhenMonitorConfigurationChanges_MarksViewModelDirty()
+        public void RecalculateLayout_WhenMonitorConfigurationChanges_MarksViewModelDirty()
         {
             // Arrange
             var monitor = CreateMonitor("MON-1");
-            RaiseWorkspaceReady(monitor);
+            LoadMonitors(monitor);
 
             // Act
             monitor.Configuration.DimLevel = 50;
@@ -166,6 +179,21 @@ namespace OLED_Sleeper.Tests.UI.ViewModels
             // Assert
             Assert.True(_viewModel.IsDirty);
             Assert.Equal("OLED Sleeper Settings*", _viewModel.WindowTitle);
+        }
+
+        [Fact]
+        public void RecalculateLayout_WhenAReplacedMonitorChanges_LeavesTheViewModelClean()
+        {
+            // Arrange
+            var replaced = CreateMonitor("MON-1");
+            LoadMonitors(replaced);
+            LoadMonitors(CreateMonitor("MON-2", 2));
+
+            // Act
+            replaced.Configuration.DimLevel = 50;
+
+            // Assert
+            Assert.False(_viewModel.IsDirty);
         }
 
         [Fact]
@@ -192,7 +220,7 @@ namespace OLED_Sleeper.Tests.UI.ViewModels
             // Arrange
             var first = CreateMonitor("MON-1");
             var second = CreateMonitor("MON-2", 2);
-            RaiseWorkspaceReady(first, second);
+            LoadMonitors(first, second);
 
             // Act
             _viewModel.SelectMonitorCommand.Execute(first);
@@ -210,7 +238,7 @@ namespace OLED_Sleeper.Tests.UI.ViewModels
         {
             // Arrange
             var monitor = CreateMonitor("MON-1");
-            RaiseWorkspaceReady(monitor);
+            LoadMonitors(monitor);
             _viewModel.SelectMonitorCommand.Execute(monitor);
 
             // Act
@@ -228,33 +256,36 @@ namespace OLED_Sleeper.Tests.UI.ViewModels
 
             // Assert
             _workspaceServiceMock.Verify(x => x.BuildWorkspaceAsync(800, 600), Times.Once);
-            Assert.True(_viewModel.IsLoading);
         }
 
         [Fact]
-        public void RecalculateLayout_WithNonPositiveSize_LeavesLoadingUntouched()
+        public void RecalculateLayout_WithNonPositiveSize_RequestsNoBuild()
         {
             // Act
             _viewModel.RecalculateLayout(0, 600);
 
             // Assert
             Assert.False(_viewModel.IsLoading);
-            _workspaceServiceMock.Verify(x => x.BuildWorkspaceAsync(0, 600), Times.Once);
+            _workspaceServiceMock.Verify(
+                x => x.BuildWorkspaceAsync(It.IsAny<double>(), It.IsAny<double>()),
+                Times.Never);
         }
 
         [Fact]
-        public void RecalculateLayout_WhenWorkspaceTaskFaults_DoesNotThrow()
+        public void RecalculateLayout_WhenWorkspaceTaskFaults_DoesNotThrowAndClearsLoading()
         {
             // Arrange
             _workspaceServiceMock
                 .Setup(x => x.BuildWorkspaceAsync(It.IsAny<double>(), It.IsAny<double>()))
-                .Returns(Task.FromException(new InvalidOperationException("Simulated workspace failure.")));
+                .Returns(Task.FromException<ObservableCollection<MonitorLayoutViewModel>>(
+                    new InvalidOperationException("Simulated workspace failure.")));
 
             // Act
             var exception = Record.Exception(() => _viewModel.RecalculateLayout(800, 600));
 
             // Assert
             Assert.Null(exception);
+            Assert.False(_viewModel.IsLoading);
         }
 
         [Fact]
@@ -268,7 +299,6 @@ namespace OLED_Sleeper.Tests.UI.ViewModels
 
             // Assert
             _workspaceServiceMock.Verify(x => x.RefreshWorkspaceAsync(800, 600), Times.Once);
-            Assert.True(_viewModel.IsLoading);
         }
 
         [Fact]
@@ -289,14 +319,13 @@ namespace OLED_Sleeper.Tests.UI.ViewModels
         {
             // Arrange
             var monitor = CreateMonitor("MON-1");
-            RaiseWorkspaceReady(monitor);
+            LoadMonitors(monitor);
             _viewModel.SelectMonitorCommand.Execute(monitor);
-            _viewModel.RecalculateLayout(800, 600);
+            var rebuilt = CreateMonitor("MON-1");
+            SetupWorkspace(rebuilt);
 
             // Act
             _viewModel.DiscardChangesCommand.Execute(null);
-            var rebuilt = CreateMonitor("MON-1");
-            RaiseWorkspaceReady(rebuilt);
 
             // Assert
             _workspaceServiceMock.Verify(x => x.RefreshWorkspaceAsync(800, 600), Times.Once);
@@ -328,7 +357,7 @@ namespace OLED_Sleeper.Tests.UI.ViewModels
             // Assert
             Assert.False(shouldClose);
             _mainWindowAccessorMock.Verify(x => x.HideMainWindow(), Times.Never);
-            _settingsServiceMock.Verify(x => x.SaveSettings(It.IsAny<List<MonitorSettings>>()), Times.Never);
+            _saveServiceMock.Verify(x => x.TrySave(It.IsAny<IReadOnlyList<MonitorLayoutViewModel>>()), Times.Never);
         }
 
         [Fact]
@@ -336,7 +365,7 @@ namespace OLED_Sleeper.Tests.UI.ViewModels
         {
             // Arrange
             var monitor = CreateMonitor("MON-1");
-            RaiseWorkspaceReady(monitor);
+            LoadMonitors(monitor);
             monitor.Configuration.DimLevel = 50;
             SetupUnsavedChangesAnswer(MessageBoxResult.Yes);
 
@@ -345,7 +374,7 @@ namespace OLED_Sleeper.Tests.UI.ViewModels
 
             // Assert
             Assert.False(shouldClose);
-            _settingsServiceMock.Verify(x => x.SaveSettings(It.IsAny<List<MonitorSettings>>()), Times.Once);
+            _saveServiceMock.Verify(x => x.TrySave(It.IsAny<IReadOnlyList<MonitorLayoutViewModel>>()), Times.Once);
             _mainWindowAccessorMock.Verify(x => x.HideMainWindow(), Times.Once);
         }
 
@@ -361,50 +390,41 @@ namespace OLED_Sleeper.Tests.UI.ViewModels
 
             // Assert
             Assert.False(shouldClose);
-            _settingsServiceMock.Verify(x => x.SaveSettings(It.IsAny<List<MonitorSettings>>()), Times.Never);
+            _saveServiceMock.Verify(x => x.TrySave(It.IsAny<IReadOnlyList<MonitorLayoutViewModel>>()), Times.Never);
             _mainWindowAccessorMock.Verify(x => x.HideMainWindow(), Times.Once);
         }
 
         [Fact]
-        public void SaveSettingsCommand_WhenSettingsValid_SavesAndClearsDirtyState()
+        public void SaveSettingsCommand_WhenSaveSucceeds_ClearsDirtyStateAndConfirmsOnTheButton()
         {
             // Arrange
             var monitor = CreateMonitor("MON-1");
-            RaiseWorkspaceReady(monitor);
+            LoadMonitors(monitor);
             monitor.Configuration.DimLevel = 50;
             Assert.True(_viewModel.IsDirty);
-
-            List<MonitorSettings>? saved = null;
-            _settingsServiceMock
-                .Setup(x => x.SaveSettings(It.IsAny<List<MonitorSettings>>()))
-                .Callback<List<MonitorSettings>>(settings => saved = settings);
 
             // Act
             _viewModel.SaveSettingsCommand.Execute(null);
 
             // Assert
-            Assert.NotNull(saved);
-            var entry = Assert.Single(saved!);
-            Assert.Equal("MON-1", entry.HardwareId);
-            Assert.Equal(50, entry.DimLevel);
+            _saveServiceMock.Verify(x => x.TrySave(_viewModel.Monitors), Times.Once);
             Assert.False(_viewModel.IsDirty);
             Assert.Equal("Saved!", _viewModel.SaveButtonText);
         }
 
         [Fact]
-        public void SaveSettingsCommand_WhenSettingsInvalid_ShowsErrorAndDoesNotSave()
+        public void SaveSettingsCommand_WhenSaveIsRejected_KeepsDirtyStateAndLeavesTheButtonAlone()
         {
             // Arrange
             var monitor = CreateMonitor("MON-1");
-            RaiseWorkspaceReady(monitor);
-            monitor.Configuration.IsManaged = true;
+            LoadMonitors(monitor);
+            monitor.Configuration.DimLevel = 50;
+            SetupSaveOutcome(false);
 
             // Act
             _viewModel.SaveSettingsCommand.Execute(null);
 
             // Assert
-            _dialogServiceMock.Verify(x => x.ShowError(It.IsAny<string>(), "Monitor Configuration Error"), Times.Once);
-            _settingsServiceMock.Verify(x => x.SaveSettings(It.IsAny<List<MonitorSettings>>()), Times.Never);
             Assert.Equal("Save Settings", _viewModel.SaveButtonText);
             Assert.True(_viewModel.IsDirty);
         }
@@ -413,7 +433,7 @@ namespace OLED_Sleeper.Tests.UI.ViewModels
         public void SaveAndDiscardCommands_WhenNothingIsDirty_CannotExecute()
         {
             // Arrange
-            RaiseWorkspaceReady(CreateMonitor("MON-1"));
+            LoadMonitors(CreateMonitor("MON-1"));
 
             // Act
             var canSave = _viewModel.SaveSettingsCommand.CanExecute(null);
@@ -429,7 +449,7 @@ namespace OLED_Sleeper.Tests.UI.ViewModels
         {
             // Arrange
             var monitor = CreateMonitor("MON-1");
-            RaiseWorkspaceReady(monitor);
+            LoadMonitors(monitor);
 
             // Act
             monitor.Configuration.DimLevel = 50;
@@ -440,8 +460,70 @@ namespace OLED_Sleeper.Tests.UI.ViewModels
         }
 
         /// <summary>
+        /// Makes both workspace builds return the supplied monitors as soon as they are awaited.
+        /// </summary>
+        /// <param name="monitors">The monitors each build should produce.</param>
+        private void SetupWorkspace(params MonitorLayoutViewModel[] monitors)
+        {
+            _workspaceServiceMock
+                .Setup(x => x.BuildWorkspaceAsync(It.IsAny<double>(), It.IsAny<double>()))
+                .ReturnsAsync(() => Collect(monitors));
+            _workspaceServiceMock
+                .Setup(x => x.RefreshWorkspaceAsync(It.IsAny<double>(), It.IsAny<double>()))
+                .ReturnsAsync(() => Collect(monitors));
+        }
+
+        /// <summary>
+        /// Makes the next build hang until the returned source is completed, so a second build can
+        /// be started while the first is still in flight.
+        /// </summary>
+        /// <returns>The source that completes the pending build.</returns>
+        private TaskCompletionSource<ObservableCollection<MonitorLayoutViewModel>> SetupPendingBuild()
+        {
+            var pending = new TaskCompletionSource<ObservableCollection<MonitorLayoutViewModel>>();
+            _workspaceServiceMock
+                .Setup(x => x.BuildWorkspaceAsync(It.IsAny<double>(), It.IsAny<double>()))
+                .Returns(pending.Task);
+
+            return pending;
+        }
+
+        /// <summary>
+        /// Builds the workspace with the supplied monitors and applies the result, as a resize does.
+        /// </summary>
+        /// <param name="monitors">The monitors the build should produce.</param>
+        private void LoadMonitors(params MonitorLayoutViewModel[] monitors)
+        {
+            SetupWorkspace(monitors);
+            _viewModel.RecalculateLayout(800, 600);
+        }
+
+        /// <summary>
+        /// Makes the save service accept or reject the settings. A successful save marks each monitor
+        /// as saved, as the real service does.
+        /// </summary>
+        /// <param name="succeeds">Whether the save service should report the settings as written.</param>
+        private void SetupSaveOutcome(bool succeeds)
+        {
+            _saveServiceMock
+                .Setup(x => x.TrySave(It.IsAny<IReadOnlyList<MonitorLayoutViewModel>>()))
+                .Returns<IReadOnlyList<MonitorLayoutViewModel>>(monitors =>
+                {
+                    if (!succeeds) return false;
+
+                    foreach (var monitor in monitors)
+                    {
+                        monitor.Configuration.MarkAsSaved();
+                    }
+
+                    return true;
+                });
+        }
+
+        /// <summary>
         /// Makes the unsaved-changes prompt return the supplied answer.
         /// </summary>
+        /// <param name="answer">The answer the prompt should return.</param>
         private void SetupUnsavedChangesAnswer(MessageBoxResult answer)
         {
             _dialogServiceMock
@@ -450,8 +532,21 @@ namespace OLED_Sleeper.Tests.UI.ViewModels
         }
 
         /// <summary>
+        /// Wraps the supplied monitors in the collection type a workspace build returns.
+        /// </summary>
+        /// <param name="monitors">The monitors to wrap.</param>
+        /// <returns>A new collection holding the supplied monitors.</returns>
+        private static ObservableCollection<MonitorLayoutViewModel> Collect(params MonitorLayoutViewModel[] monitors)
+        {
+            return new ObservableCollection<MonitorLayoutViewModel>(monitors);
+        }
+
+        /// <summary>
         /// Builds a layout view model over a 1920x1080 monitor with the supplied hardware ID.
         /// </summary>
+        /// <param name="hardwareId">The hardware ID for the monitor.</param>
+        /// <param name="displayNumber">The display number for the monitor.</param>
+        /// <returns>A layout view model over the described monitor.</returns>
         private static MonitorLayoutViewModel CreateMonitor(string hardwareId, int displayNumber = 1)
         {
             var bounds = new Rect(0, 0, 1920, 1080);
@@ -464,17 +559,6 @@ namespace OLED_Sleeper.Tests.UI.ViewModels
             };
 
             return new MonitorLayoutViewModel(monitorInfo, 1.0, bounds, 0, 0);
-        }
-
-        /// <summary>
-        /// Raises WorkspaceReady with the supplied monitors, as the workspace service does once a build finishes.
-        /// </summary>
-        private void RaiseWorkspaceReady(params MonitorLayoutViewModel[] monitors)
-        {
-            _workspaceServiceMock.Raise(
-                x => x.WorkspaceReady += null,
-                this,
-                new ObservableCollection<MonitorLayoutViewModel>(monitors));
         }
     }
 }

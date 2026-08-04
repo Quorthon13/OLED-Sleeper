@@ -1,12 +1,9 @@
-﻿using OLED_Sleeper.Features.MonitorDimming.Commands;
-using OLED_Sleeper.Features.UserSettings.Services.Interfaces;
-using OLED_Sleeper.Infrastructure.Runtime.Interfaces;
-using OLED_Sleeper.Messaging.Interfaces;
+﻿using OLED_Sleeper.Infrastructure.Runtime.Interfaces;
 using OLED_Sleeper.UI.Commands;
-using OLED_Sleeper.UI.Helpers;
 using OLED_Sleeper.UI.Services.Interfaces;
 using Serilog;
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Windows;
 using ICommand = System.Windows.Input.ICommand;
 
@@ -26,9 +23,9 @@ namespace OLED_Sleeper.UI.ViewModels
         private readonly IWorkspaceService _workspaceService;
 
         /// <summary>
-        /// Service for loading and saving monitor settings.
+        /// Validates and saves the monitor settings.
         /// </summary>
-        private readonly IMonitorSettingsFileService _settingsService;
+        private readonly IMonitorSettingsSaveService _saveService;
 
         /// <summary>
         /// Runs actions on the UI thread.
@@ -44,11 +41,6 @@ namespace OLED_Sleeper.UI.ViewModels
         /// Shows modal dialogs to the user.
         /// </summary>
         private readonly IDialogService _dialogService;
-
-        /// <summary>
-        /// Sends commands to their handlers.
-        /// </summary>
-        private readonly IMediator _mediator;
 
         /// <summary>
         /// The width of the container used for monitor layout calculations.
@@ -86,9 +78,10 @@ namespace OLED_Sleeper.UI.ViewModels
         private bool _isLoading;
 
         /// <summary>
-        /// The hardware ID of the monitor to be restored upon workspace update.
+        /// Incremented for every workspace build. A build whose number is no longer current has been
+        /// superseded and its result is discarded.
         /// </summary>
-        private string? _selectedMonitorIdToRestore;
+        private int _buildGeneration;
 
         #endregion Private Fields
 
@@ -193,25 +186,21 @@ namespace OLED_Sleeper.UI.ViewModels
 
         public MainViewModel(
             IWorkspaceService workspaceService,
-            IMonitorSettingsFileService settingsService,
+            IMonitorSettingsSaveService saveService,
             IDispatcher dispatcher,
             IMainWindowAccessor mainWindowAccessor,
-            IDialogService dialogService,
-            IMediator mediator)
+            IDialogService dialogService)
         {
             _workspaceService = workspaceService;
-            _settingsService = settingsService;
+            _saveService = saveService;
             _dispatcher = dispatcher;
             _mainWindowAccessor = mainWindowAccessor;
             _dialogService = dialogService;
-            _mediator = mediator;
 
             SelectMonitorCommand = new RelayCommand(ExecuteSelectMonitor);
             ReloadMonitorsCommand = new RelayCommand(() => RefreshMonitors(false));
             SaveSettingsCommand = new AsyncRelayCommand(ExecuteSaveSettings, () => IsDirty);
             DiscardChangesCommand = new RelayCommand(ExecuteDiscardChanges, () => IsDirty);
-
-            _workspaceService.WorkspaceReady += OnWorkspaceReady;
         }
 
         #endregion Constructor
@@ -219,12 +208,12 @@ namespace OLED_Sleeper.UI.ViewModels
         #region Public Methods (for View Interaction)
 
         /// <summary>
-        /// Initiates a full refresh of the monitor list, clearing any current selection and reloading from the workspace service.
+        /// Initiates a full refresh of the monitor list, re-scanning the display set before rebuilding the layout.
         /// </summary>
+        /// <param name="preserveSelection">Whether to reselect the current monitor once the rebuild finishes.</param>
         public void RefreshMonitors(bool preserveSelection)
         {
-            UpdateMonitorsInternal(_containerWidth, _containerHeight, preserveSelection);
-            ObserveWorkspaceTask(_workspaceService.RefreshWorkspaceAsync(_containerWidth, _containerHeight));
+            ApplyWorkspace(_workspaceService.RefreshWorkspaceAsync, _containerWidth, _containerHeight, preserveSelection);
         }
 
         /// <summary>
@@ -234,22 +223,7 @@ namespace OLED_Sleeper.UI.ViewModels
         /// <param name="height">The new height of the container.</param>
         public void RecalculateLayout(double width, double height)
         {
-            UpdateMonitorsInternal(width, height, preserveSelection: true);
-            ObserveWorkspaceTask(_workspaceService.BuildWorkspaceAsync(width, height));
-        }
-
-        /// <summary>
-        /// Observes a fire-and-forget workspace task so a failure is logged instead of being lost
-        /// as an unobserved task exception.
-        /// </summary>
-        /// <param name="task">The workspace task to observe.</param>
-        private static void ObserveWorkspaceTask(Task task)
-        {
-            _ = task.ContinueWith(
-                faulted => Log.Error(faulted.Exception!.GetBaseException(), "Failed to build the monitor workspace."),
-                CancellationToken.None,
-                TaskContinuationOptions.OnlyOnFaulted,
-                TaskScheduler.Default);
+            ApplyWorkspace(_workspaceService.BuildWorkspaceAsync, width, height, preserveSelection: true);
         }
 
         /// <summary>
@@ -301,18 +275,16 @@ namespace OLED_Sleeper.UI.ViewModels
         }
 
         /// <summary>
-        /// Orchestrates the three steps of the save process: validation, action, and feedback.
+        /// Saves the monitor settings and reports the outcome on the save button.
         /// </summary>
         private async Task ExecuteSaveSettings()
         {
-            _ = _mediator.SendAsync(new RestoreBrightnessOnAllMonitorsCommand());
-
-            if (!ValidateSettings())
+            if (!_saveService.TrySave(Monitors))
             {
                 return; // Stop if invalid
             }
 
-            PerformSaveActions();
+            CheckDirtyState();
 
             await ProvideSaveFeedbackAsync();
         }
@@ -322,34 +294,6 @@ namespace OLED_Sleeper.UI.ViewModels
         #region Private Helper Methods
 
         // --- Save Process Helpers ---
-
-        /// <summary>
-        /// Validates all monitor settings, telling the user about any that cannot be saved.
-        /// </summary>
-        /// <returns>True if all monitors are valid; otherwise, false.</returns>
-        private bool ValidateSettings()
-        {
-            var error = MonitorSettingsValidator.BuildValidationError(Monitors);
-            if (error == null) return true;
-
-            _dialogService.ShowError(error, "Monitor Configuration Error");
-            return false;
-        }
-
-        /// <summary>
-        /// Saves all monitor settings and updates the idle activity service. Marks all monitors as saved.
-        /// </summary>
-        private void PerformSaveActions()
-        {
-            var allSettings = Monitors.Select(m => m.Configuration.ToSettings()).ToList();
-            _settingsService.SaveSettings(allSettings);
-
-            foreach (var monitorVM in Monitors)
-            {
-                monitorVM.Configuration.MarkAsSaved();
-            }
-            CheckDirtyState();
-        }
 
         /// <summary>
         /// Provides user feedback after saving settings by updating the save button text temporarily.
@@ -364,27 +308,42 @@ namespace OLED_Sleeper.UI.ViewModels
         // --- Monitor Update Helpers ---
 
         /// <summary>
-        /// The core worker method for updating the monitor list and layout.
+        /// Builds the workspace and applies the result to the UI. A build superseded by a later one
+        /// leaves the monitor list untouched. Failures are logged; nothing is thrown to the caller.
         /// </summary>
+        /// <param name="build">Produces the layout view models for the given container size.</param>
         /// <param name="width">The width of the container for layout.</param>
         /// <param name="height">The height of the container for layout.</param>
-        /// <param name="preserveSelection">Whether to preserve the current monitor selection.</param>
-        private void UpdateMonitorsInternal(double width, double height, bool preserveSelection)
+        /// <param name="preserveSelection">Whether to reselect the current monitor once the build finishes.</param>
+        private async void ApplyWorkspace(
+            Func<double, double, Task<ObservableCollection<MonitorLayoutViewModel>>> build,
+            double width,
+            double height,
+            bool preserveSelection)
         {
             if (width <= 0 || height <= 0) return;
             _containerWidth = width;
             _containerHeight = height;
 
-            _selectedMonitorIdToRestore = preserveSelection ? SelectedMonitor?.HardwareId : null;
+            var generation = ++_buildGeneration;
+            var monitorIdToRestore = preserveSelection ? SelectedMonitor?.HardwareId : null;
             IsLoading = true;
-        }
 
-        private void OnWorkspaceReady(object? sender, ObservableCollection<MonitorLayoutViewModel> newMonitorLayoutViewModels)
-        {
-            PopulateMonitors(newMonitorLayoutViewModels);
-            RestoreSelection();
-            CheckDirtyState();
-            IsLoading = false;
+            try
+            {
+                var newMonitorLayoutViewModels = await build(width, height);
+                if (generation != _buildGeneration) return;
+
+                PopulateMonitors(newMonitorLayoutViewModels);
+                RestoreSelection(monitorIdToRestore);
+                CheckDirtyState();
+                IsLoading = false;
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Failed to build the monitor workspace.");
+                if (generation == _buildGeneration) { IsLoading = false; }
+            }
         }
 
         /// <summary>
@@ -399,21 +358,38 @@ namespace OLED_Sleeper.UI.ViewModels
                 return;
             }
 
+            foreach (var viewModel in Monitors)
+            {
+                viewModel.PropertyChanged -= OnMonitorPropertyChanged;
+            }
+
             Monitors.Clear();
             foreach (var viewModel in newViewModels)
             {
-                viewModel.OnMonitorDirtyStateChanged = CheckDirtyState;
+                viewModel.PropertyChanged += OnMonitorPropertyChanged;
                 Monitors.Add(viewModel);
             }
         }
 
         /// <summary>
-        /// Restores the monitor selection based on a hardware ID, if available.
+        /// Re-evaluates the overall dirty state whenever one monitor's changes.
         /// </summary>
-        private void RestoreSelection()
+        private void OnMonitorPropertyChanged(object? sender, PropertyChangedEventArgs e)
         {
-            SelectedMonitor = _selectedMonitorIdToRestore != null
-                ? Monitors.FirstOrDefault(m => m.HardwareId == _selectedMonitorIdToRestore)
+            if (e.PropertyName == nameof(MonitorLayoutViewModel.IsDirty))
+            {
+                CheckDirtyState();
+            }
+        }
+
+        /// <summary>
+        /// Restores the monitor selection based on a hardware ID.
+        /// </summary>
+        /// <param name="hardwareId">The monitor to reselect, or null to clear the selection.</param>
+        private void RestoreSelection(string? hardwareId)
+        {
+            SelectedMonitor = hardwareId != null
+                ? Monitors.FirstOrDefault(m => m.HardwareId == hardwareId)
                 : null;
         }
 

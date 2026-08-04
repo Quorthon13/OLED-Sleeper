@@ -10,22 +10,19 @@ namespace OLED_Sleeper.UI.Services.Interfaces
     public interface IWorkspaceService
     {
         /// <summary>
-        /// Raised when the workspace has finished building and monitor layout view models are ready.
-        /// </summary>
-        event EventHandler<ObservableCollection<MonitorLayoutViewModel>>? WorkspaceReady;
-
-        /// <summary>
         /// Builds the workspace by discovering monitors, loading settings, and constructing layout view models.
         /// </summary>
         /// <param name="containerWidth">The width of the container for layout scaling.</param>
         /// <param name="containerHeight">The height of the container for layout scaling.</param>
-        Task BuildWorkspaceAsync(double containerWidth, double containerHeight);
+        /// <returns>The layout view models for the monitors that were found.</returns>
+        Task<ObservableCollection<MonitorLayoutViewModel>> BuildWorkspaceAsync(double containerWidth, double containerHeight);
 
         /// <summary>
         /// Performs a full refresh of the workspace by re-scanning the monitor list and then rebuilding the workspace.
         /// </summary>
         /// <param name="containerWidth">The width of the container for layout scaling.</param>
         /// <param name="containerHeight">The height of the container for layout scaling.</param>
-        Task RefreshWorkspaceAsync(double containerWidth, double containerHeight);
+        /// <returns>The layout view models for the monitors that were found.</returns>
+        Task<ObservableCollection<MonitorLayoutViewModel>> RefreshWorkspaceAsync(double containerWidth, double containerHeight);
     }
 }

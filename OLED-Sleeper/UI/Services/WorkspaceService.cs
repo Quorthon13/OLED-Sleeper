@@ -18,8 +18,6 @@ namespace OLED_Sleeper.UI.Services
         private readonly IMonitorSettingsFileService _settingsService;
         private readonly IMonitorLayoutService _monitorLayoutService;
 
-        public event EventHandler<ObservableCollection<MonitorLayoutViewModel>>? WorkspaceReady;
-
         public WorkspaceService(
             IMonitorInfoManager monitorManager,
             IMonitorSettingsFileService settingsService,
@@ -30,30 +28,24 @@ namespace OLED_Sleeper.UI.Services
             _monitorLayoutService = monitorLayoutService;
         }
 
-        /// <summary>
-        /// Builds the workspace asynchronously.
-        /// </summary>
-        /// <param name="containerWidth">The width of the container.</param>
-        /// <param name="containerHeight">The height of the container.</param>
-        public async Task BuildWorkspaceAsync(double containerWidth, double containerHeight)
+        /// <inheritdoc />
+        public async Task<ObservableCollection<MonitorLayoutViewModel>> BuildWorkspaceAsync(double containerWidth, double containerHeight)
         {
             var monitorInfos = await _monitorManager.GetCurrentMonitorsAsync();
 
             var savedSettings = _settingsService.LoadSettings();
             var monitorLayoutViewModels = _monitorLayoutService.CreateLayout(monitorInfos.ToList(), containerWidth, containerHeight);
             ApplySettingsToViewModels(monitorLayoutViewModels, savedSettings);
-            WorkspaceReady?.Invoke(this, monitorLayoutViewModels);
+
+            return monitorLayoutViewModels;
         }
 
-        /// <summary>
-        /// Performs a full refresh of the workspace by re-scanning the monitor list and then rebuilding the workspace.
-        /// </summary>
-        /// <param name="containerWidth">The width of the container for layout scaling.</param>
-        /// <param name="containerHeight">The height of the container for layout scaling.</param>
-        public async Task RefreshWorkspaceAsync(double containerWidth, double containerHeight)
+        /// <inheritdoc />
+        public async Task<ObservableCollection<MonitorLayoutViewModel>> RefreshWorkspaceAsync(double containerWidth, double containerHeight)
         {
             await _monitorManager.RefreshMonitorsAsync();
-            await BuildWorkspaceAsync(containerWidth, containerHeight);
+
+            return await BuildWorkspaceAsync(containerWidth, containerHeight);
         }
 
         /// <summary>
