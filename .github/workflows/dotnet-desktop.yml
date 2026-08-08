@@ -43,6 +43,7 @@ on:
     branches: [ "master" ]
   pull_request:
     branches: [ "master" ]
+  workflow_dispatch: # Enables manual run button in browser UI
 
 jobs:
 
