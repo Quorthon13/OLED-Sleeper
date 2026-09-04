@@ -1,4 +1,4 @@
-; Inno Setup installer script for OLED Sleeper
+﻿; Inno Setup installer script for OLED Sleeper
 ; Builds a single installer supporting both x64 and x86 deployments.
 
 #include "CodeDependencies.iss"
@@ -75,6 +75,22 @@ Filename: "{cmd}"; Parameters: "/C ""taskkill /im OLED-Sleeper.exe /f /t"""; Run
 
 [Code]
 
+// Reports whether the application's autostart registry entry exists.
+function StartupIsEnabled(): Boolean;
+begin
+  Result := RegValueExists(HKEY_CURRENT_USER, 'Software\Microsoft\Windows\CurrentVersion\Run', 'OLED Sleeper');
+end;
+
+// Ticks the startup task when autostart is already enabled, whether it was enabled here or from the
+// application's own toggle. Unlisted tasks keep their state.
+procedure InitializeWizard();
+begin
+  if StartupIsEnabled() then
+  begin
+    WizardSelectTasks('startup');
+  end;
+end;
+
 // Removes the application's autostart registry entry if present.
 procedure RemoveStartupKey();
 begin
@@ -85,10 +101,11 @@ begin
   end;
 end;
 
-// Runs during installation to clear any existing autostart entry.
+// Clears the autostart entry during installation only when the startup task was left unticked. The
+// [Registry] entry writes it back when the task is ticked.
 procedure CurStepChanged(CurStep: TSetupStep);
 begin
-  if CurStep = ssInstall then
+  if (CurStep = ssInstall) and (not WizardIsTaskSelected('startup')) then
   begin
     RemoveStartupKey();
   end;
