@@ -1,4 +1,4 @@
-# OLED Sleeper 😴 – Blackout or Dim Secondary Monitors on Windows
+﻿# OLED Sleeper 😴 – Blackout or Dim Secondary Monitors on Windows
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
@@ -46,9 +46,29 @@ OLED Sleeper monitors each screen for activity. When a monitor is idle for a set
 
 ## How to Use
 
-1. Download the latest installer from the [Releases page](https://github.com/Quorthon13/OLED-Sleeper/releases).
-2. Run the installer and follow the on-screen prompts. During installation, you will be prompted to configure automatic startup and create shortcuts.
-3. Open OLED Sleeper from your Start Menu or desktop shortcut.
+1. Go to the [Releases page](https://github.com/Quorthon13/OLED-Sleeper/releases) and pick a download:
+
+   | | Size | Needs .NET? | Settings live in |
+   |---|---|---|---|
+   | **`OLED-Sleeper-<version>-Setup.exe`** | ~2 MB | Downloads the .NET 8 Desktop runtime during install | `%APPDATA%\OLED-Sleeper` |
+   | **`OLED-Sleeper-<version>-Portable-x64.zip`** | ~64 MB | No, everything is bundled | `Data\` beside the executable |
+
+   The installer is small because it fetches the runtime at install time; the portable build carries it, which
+   is the whole size difference. Both are the same application. Verify either against the
+   `SHA256SUMS.txt` published alongside it.
+
+   Take the portable build if you want no installation, or need to run from a USB stick or a machine you
+   cannot install software on. Take the installer otherwise.
+
+2. **Installer:** run it and follow the on-screen prompts. You will be asked whether to start OLED Sleeper
+   with Windows and whether to create a desktop shortcut. Note that **updating resets your per-monitor
+   settings to defaults** — logs are kept.
+
+   **Portable:** extract the zip anywhere and run `OLED-Sleeper.exe`. Keep the other files in the folder beside it.
+   Settings, state and logs are written to a `Data\` folder next to the executable, so the whole thing moves
+   with the folder. The folder must be writable — OLED Sleeper checks at startup and tells you if it is not.
+
+3. Open OLED Sleeper from your Start Menu or desktop shortcut, or by running the portable executable.
 4. Use the interface to select your target monitors, choose your preferred idle detection mode, and set your idle timers.
 5. Apply your settings. The application will minimize to the system tray and run in the background.
 
