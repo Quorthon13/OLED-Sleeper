@@ -3,7 +3,11 @@
 
 #include "CodeDependencies.iss"
 
-#define AppVersion "2.0.0"
+; The build script passes the MinVer-derived version as /DAppVersion=. This fallback only applies to a
+; compile started from the Inno Setup IDE.
+#ifndef AppVersion
+  #define AppVersion "0.0.0-dev"
+#endif
 
 [Setup]
 ; Unique application identifier used by Windows for installation tracking.
@@ -19,6 +23,10 @@ AppSupportURL=https://github.com/Quorthon13/OLED-Sleeper/issues
 
 ; Installation runs without elevation.
 PrivilegesRequired=lowest
+
+; The mutex ApplicationInstanceManager holds. Setup and uninstall both wait for the application to be closed,
+; so its own shutdown restores monitor brightness before any file is replaced or removed.
+AppMutex=OLED-Sleeper-Mutex
 
 ; Output installer configuration.
 OutputBaseFilename=OLED-Sleeper-{#AppVersion}-Setup
@@ -51,6 +59,16 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 Name: "startup"; Description: "Launch OLED Sleeper when Windows starts"; GroupDescription: "Additional options:";
 Name: "desktopicon"; Description: "Create a desktop icon"; GroupDescription: "Additional shortcuts:";
 
+[InstallDelete]
+; Every install starts from default settings and no recorded brightness. Logs are deliberately kept, so a
+; report about a build still carries the history from before it was installed.
+Type: files; Name: "{userappdata}\OLED-Sleeper\settings.json"
+Type: files; Name: "{userappdata}\OLED-Sleeper\settings.json.bak"
+Type: files; Name: "{userappdata}\OLED-Sleeper\settings.json.tmp"
+Type: files; Name: "{userappdata}\OLED-Sleeper\brightness_state.json"
+Type: files; Name: "{userappdata}\OLED-Sleeper\brightness_state.json.bak"
+Type: files; Name: "{userappdata}\OLED-Sleeper\brightness_state.json.tmp"
+
 [Files]
 ; Install platform-specific binaries based on system architecture.
 Source: ".\publish-x64\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs; Check: Is64BitInstallMode
@@ -68,10 +86,6 @@ Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: 
 [Run]
 ; Optionally launch the application after installation completes.
 Filename: "{app}\OLED-Sleeper.exe"; Description: "{cm:LaunchProgram,OLED Sleeper}"; Flags: nowait postinstall skipifsilent
-
-[UninstallRun]
-; Ensure the application process is terminated before file removal.
-Filename: "{cmd}"; Parameters: "/C ""taskkill /im OLED-Sleeper.exe /f /t"""; RunOnceId: "CloseOLEDSleeper"; Flags: runhidden
 
 [Code]
 
