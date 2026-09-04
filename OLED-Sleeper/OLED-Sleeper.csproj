@@ -10,6 +10,12 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <ApplicationIcon>Assets\icon.ico</ApplicationIcon>
+    <Version>2.0.0</Version>
+  </PropertyGroup>
+
+  <!-- Publishing with -p:Portable=true builds the portable distribution, which keeps its state beside the executable. -->
+  <PropertyGroup Condition="'$(Portable)' == 'true'">
+    <DefineConstants>$(DefineConstants);PORTABLE</DefineConstants>
   </PropertyGroup>
 
   <ItemGroup>

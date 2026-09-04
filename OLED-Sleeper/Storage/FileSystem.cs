@@ -14,6 +14,9 @@ namespace OLED_Sleeper.Storage
         public string GetApplicationDataPath() => Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
 
         /// <inheritdoc />
+        public string GetApplicationDirectoryPath() => AppContext.BaseDirectory.TrimEnd(Path.DirectorySeparatorChar);
+
+        /// <inheritdoc />
         public void CreateDirectory(string path) => Directory.CreateDirectory(path);
 
         /// <inheritdoc />
@@ -31,5 +34,8 @@ namespace OLED_Sleeper.Storage
 
         /// <inheritdoc />
         public void Move(string sourcePath, string destinationPath) => File.Move(sourcePath, destinationPath);
+
+        /// <inheritdoc />
+        public void DeleteFile(string path) => File.Delete(path);
     }
 }

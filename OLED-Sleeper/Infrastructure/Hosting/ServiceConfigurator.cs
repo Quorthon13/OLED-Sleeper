@@ -44,8 +44,9 @@ namespace OLED_Sleeper.Infrastructure.Hosting
         /// Registers all application services and builds the service provider.
         /// </summary>
         /// <param name="applicationOptions">The parsed command-line options to register.</param>
+        /// <param name="storageRoot">The storage root resolved and prepared during startup.</param>
         /// <returns>The built <see cref="IServiceProvider"/>.</returns>
-        public static IServiceProvider ConfigureServices(ApplicationOptions applicationOptions)
+        public static IServiceProvider ConfigureServices(ApplicationOptions applicationOptions, IStorageRoot storageRoot)
         {
             var services = new ServiceCollection();
             services.AddSingleton<IMediator, Mediator>();
@@ -65,6 +66,7 @@ namespace OLED_Sleeper.Infrastructure.Hosting
 
             services.AddSingleton(Options.Create(applicationOptions));
 
+            services.AddSingleton<IStorageRoot>(storageRoot);
             services.AddSingleton<IFileSystem, FileSystem>();
             services.AddSingleton<IAppDataFileStore, AppDataFileStore>();
             services.AddSingleton<IMonitorInfoManager, MonitorInfoManager>();
