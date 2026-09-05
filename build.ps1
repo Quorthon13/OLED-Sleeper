@@ -88,6 +88,10 @@ Then re-run this script, or pass the path directly:
     Reads the version MinVer derives from the nearest v* tag.
 #>
 function Get-BuildVersion {
+    # MinVer's targets arrive with the package, so a clean checkout has to restore before the target exists.
+    & dotnet restore $projectPath --nologo | Out-Null
+    if ($LASTEXITCODE -ne 0) { throw 'Restore failed while preparing to read the version.' }
+
     $output = & dotnet msbuild $projectPath -t:MinVer -getProperty:Version -v:quiet -nologo
     if ($LASTEXITCODE -ne 0) { throw 'Could not read the version from the project.' }
 
