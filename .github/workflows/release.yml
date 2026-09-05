@@ -24,7 +24,7 @@ jobs:
 
     steps:
       - name: Check out
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           # MinVer derives the version from the nearest v* tag, so it needs the full history.
           fetch-depth: 0
@@ -42,7 +42,7 @@ jobs:
           Write-Host "$env:GITHUB_REF_NAME is on master."
 
       - name: Set up .NET
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v6
         with:
           dotnet-version: '8.0.x'
 
@@ -79,7 +79,7 @@ jobs:
 
       - name: Upload the test build
         if: github.event_name == 'workflow_dispatch'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: oled-sleeper-${{ steps.version.outputs.version }}
           path: |
