@@ -96,7 +96,8 @@ namespace OLED_Sleeper.Features.MonitorState.Helpers
                 && first.Bounds == second.Bounds
                 && first.Dpi == second.Dpi
                 && first.IsPrimary == second.IsPrimary
-                && first.DisplayNumber == second.DisplayNumber;
+                && first.DisplayNumber == second.DisplayNumber
+                && first.TopologyLabel == second.TopologyLabel;
         }
     }
 }
