@@ -53,7 +53,7 @@ namespace OLED_Sleeper.UI.ViewModels
         /// <summary>
         /// Gets a value indicating whether the "Dim" behavior option should be enabled.
         /// </summary>
-        public bool IsDimBehaviorEnabled => _monitorInfo.IsDdcCiSupported;
+        public bool IsDimBehaviorEnabled => _monitorInfo.Capabilities?.IsSupported == true;
 
         /// <summary>
         /// Gets the tooltip for the entire Behavior section, changing based on DDC/CI support.
@@ -66,7 +66,7 @@ namespace OLED_Sleeper.UI.ViewModels
                                     "• Blackout: Turns the monitor completely black.\n" +
                                      "• Dim: Reduces the monitor's brightness using DDC/CI.";
 
-                if (!_monitorInfo.IsDdcCiSupported)
+                if (_monitorInfo.Capabilities?.IsSupported != true)
                 {
                     baseTooltip = "THE SELECTED MONITOR DOES NOT SUPPORT DIMMING.\n\n" + baseTooltip;
                 }

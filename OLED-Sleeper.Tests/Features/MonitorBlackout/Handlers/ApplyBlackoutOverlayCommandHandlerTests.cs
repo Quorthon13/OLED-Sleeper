@@ -37,7 +37,7 @@ namespace OLED_Sleeper.Tests.Features.MonitorBlackout.Handlers
 
             var monitors = new List<MonitorInfo>
             {
-                new MonitorInfo { HardwareId = hardwareId, IsDdcCiSupported = true, Bounds = new Rect(0, 0, 1920, 1080) }
+                new MonitorInfo { HardwareId = hardwareId, Capabilities = new DdcCiCapabilities(true, 100), Bounds = new Rect(0, 0, 1920, 1080) }
             };
 
             SetupMonitors(monitors);
@@ -67,7 +67,7 @@ namespace OLED_Sleeper.Tests.Features.MonitorBlackout.Handlers
 
             var monitors = new List<MonitorInfo>
             {
-                new MonitorInfo { HardwareId = hardwareId, IsDdcCiSupported = false, Bounds = new Rect(0, 0, 1920, 1080) }
+                new MonitorInfo { HardwareId = hardwareId, Capabilities = new DdcCiCapabilities(false, 0), Bounds = new Rect(0, 0, 1920, 1080) }
             };
 
             SetupMonitors(monitors);
@@ -112,7 +112,7 @@ namespace OLED_Sleeper.Tests.Features.MonitorBlackout.Handlers
 
             var monitors = new List<MonitorInfo>
             {
-                new MonitorInfo { HardwareId = hardwareId, IsDdcCiSupported = false, Bounds = new Rect(0, 0, 1920, 1080) }
+                new MonitorInfo { HardwareId = hardwareId, Capabilities = new DdcCiCapabilities(false, 0), Bounds = new Rect(0, 0, 1920, 1080) }
             };
 
             SetupMonitors(monitors);

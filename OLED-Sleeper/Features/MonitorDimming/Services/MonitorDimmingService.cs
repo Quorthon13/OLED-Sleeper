@@ -1,4 +1,4 @@
-using OLED_Sleeper.Features.MonitorDimming.Helpers;
+﻿using OLED_Sleeper.Features.MonitorDimming.Helpers;
 using OLED_Sleeper.Features.MonitorDimming.Services.Interfaces;
 using OLED_Sleeper.Features.MonitorInformation.Services.Interfaces;
 using Serilog;
@@ -117,7 +117,7 @@ namespace OLED_Sleeper.Features.MonitorDimming.Services
         private async Task<uint> ScaleToMonitorRangeAsync(string hardwareId, int dimLevel)
         {
             var monitors = await _monitorManager.GetCurrentMonitorsAsync();
-            var maxBrightness = monitors.FirstOrDefault(m => m.HardwareId == hardwareId)?.MaxBrightness ?? 0;
+            var maxBrightness = monitors.FirstOrDefault(m => m.HardwareId == hardwareId)?.Capabilities?.MaxBrightness ?? 0;
 
             var targetBrightness = BrightnessScale.ToRawBrightness(dimLevel, maxBrightness);
             if (targetBrightness != dimLevel)

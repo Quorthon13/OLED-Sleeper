@@ -1,4 +1,4 @@
-﻿using System.Windows;
+using System.Windows;
 
 namespace OLED_Sleeper.Features.MonitorInformation.Models
 {
@@ -9,13 +9,14 @@ namespace OLED_Sleeper.Features.MonitorInformation.Models
     public class MonitorInfo
     {
         /// <summary>
-        /// Gets or sets the device name (e.g., \\.\DISPLAY1).
+        /// Gets or sets the device name (e.g., \\.\DISPLAY1). Windows reassigns these between panels when
+        /// the display set changes.
         /// </summary>
         public string DeviceName { get; set; } = string.Empty;
 
         /// <summary>
         /// Gets or sets the unique hardware ID for the monitor.
-        /// Empty until the monitor is enriched; an enriched list never contains an empty one.
+        /// Empty when no attached display device matched.
         /// </summary>
         public string HardwareId { get; set; } = string.Empty;
 
@@ -40,14 +41,9 @@ namespace OLED_Sleeper.Features.MonitorInformation.Models
         public int DisplayNumber { get; set; }
 
         /// <summary>
-        /// Gets or sets a value indicating whether DDC/CI is supported by this monitor.
+        /// Gets or sets what a DDC/CI probe of this monitor reported.
+        /// Null until the monitor has been probed.
         /// </summary>
-        public bool IsDdcCiSupported { get; set; }
-
-        /// <summary>
-        /// Gets or sets the highest value the monitor accepts for the brightness VCP code.
-        /// Zero when the monitor has not been probed or reported no range.
-        /// </summary>
-        public uint MaxBrightness { get; set; }
+        public DdcCiCapabilities? Capabilities { get; set; }
     }
 }

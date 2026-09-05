@@ -1,4 +1,4 @@
-using OLED_Sleeper.Features.MonitorBehavior.Commands;
+﻿using OLED_Sleeper.Features.MonitorBehavior.Commands;
 using OLED_Sleeper.Features.MonitorIdleDetection.Services.Interfaces;
 using OLED_Sleeper.Features.MonitorInformation.Services.Interfaces;
 using OLED_Sleeper.Features.UserSettings.Commands;

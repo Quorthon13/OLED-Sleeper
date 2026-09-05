@@ -5,7 +5,7 @@ using Serilog;
 namespace OLED_Sleeper.Features.MonitorInformation.Services
 {
     /// <summary>
-    /// Manages monitor information, including caching and enrichment with DDC/CI support and hardware IDs.
+    /// Manages monitor information, including caching and enrichment with DDC/CI capabilities.
     /// </summary>
     public class MonitorInfoManager : IMonitorInfoManager
     {
@@ -65,7 +65,7 @@ namespace OLED_Sleeper.Features.MonitorInformation.Services
 
         /// <inheritdoc />
         /// <remarks>
-        /// A monitor whose hardware ID cannot be resolved is removed from the list.
+        /// A monitor whose hardware ID was not resolved is removed from the list.
         /// </remarks>
         public void EnrichMonitorInfoList(List<MonitorInfo>? monitors)
         {
@@ -74,12 +74,7 @@ namespace OLED_Sleeper.Features.MonitorInformation.Services
             {
                 var monitor = monitors[index];
 
-                var capabilities = _monitorInfoProvider.GetDdcCiCapabilities(monitor);
-                monitor.IsDdcCiSupported = capabilities.IsSupported;
-                monitor.MaxBrightness = capabilities.MaxBrightness;
-
-                var hardwareId = _monitorInfoProvider.GetHardwareId(monitor);
-                if (string.IsNullOrEmpty(hardwareId))
+                if (string.IsNullOrEmpty(monitor.HardwareId))
                 {
                     Log.Warning("No hardware ID resolved for {DeviceName}. The monitor is dropped and will not be managed.",
                         monitor.DeviceName);
@@ -87,7 +82,7 @@ namespace OLED_Sleeper.Features.MonitorInformation.Services
                     continue;
                 }
 
-                monitor.HardwareId = hardwareId;
+                monitor.Capabilities = _monitorInfoProvider.GetDdcCiCapabilities(monitor);
             }
         }
 

@@ -1,6 +1,7 @@
-using OLED_Sleeper.Features.MonitorInformation.Models;
+﻿using OLED_Sleeper.Features.MonitorInformation.Models;
 using OLED_Sleeper.Features.MonitorInformation.Services.Interfaces;
 using OLED_Sleeper.Features.MonitorState.Commands;
+using OLED_Sleeper.Features.MonitorState.Helpers;
 using OLED_Sleeper.Features.MonitorState.Services.Interfaces;
 using OLED_Sleeper.Messaging.Interfaces;
 using Serilog;
@@ -21,8 +22,15 @@ namespace OLED_Sleeper.Features.MonitorState.Services
         private readonly IMediator _mediator;
         private readonly Timer _pollTimer;
         private readonly object _lock = new();
+
+        /// <summary>The last probed list, carried into the next synchronization as its old monitors.</summary>
         private IReadOnlyList<MonitorInfo> _lastKnownMonitors = Array.Empty<MonitorInfo>();
-        private IReadOnlyList<MonitorInfo>? _pendingMonitors;
+
+        /// <summary>The reading every poll is compared against. Always a whole reading, never the probed
+        /// subset, which leaves out monitors whose hardware ID did not resolve.</summary>
+        private IReadOnlyList<MonitorInfo> _lastReading = Array.Empty<MonitorInfo>();
+
+        private IReadOnlyList<MonitorInfo>? _pendingReading;
         private int _pollInProgress;
         private volatile bool _isStopped;
 
@@ -95,9 +103,12 @@ namespace OLED_Sleeper.Features.MonitorState.Services
 
                 if (_isStopped) return;
 
+                var reading = _monitorInfoManager.GetLatestMonitorsBasicInfo();
+
                 lock (_lock)
                 {
                     _lastKnownMonitors = monitors;
+                    _lastReading = reading;
                 }
 
                 await _mediator.SendAsync(new SynchronizeMonitorStateCommand([], monitors));
@@ -134,23 +145,23 @@ namespace OLED_Sleeper.Features.MonitorState.Services
         /// <summary>
         /// Reads the current display set, and when a change is confirmed, refreshes the shared monitor cache
         /// and dispatches a synchronization command carrying the freshly enriched list.
-        /// <see cref="_lock"/> covers only the comparison and the swap of <see cref="_lastKnownMonitors"/>;
+        /// <see cref="_lock"/> covers only the comparison and the swap of the last known state;
         /// neither the refresh nor the mediator dispatch runs under it.
         /// </summary>
         private async Task PollForChangesAsync()
         {
             try
             {
-                var currentMonitors = _monitorInfoManager.GetLatestMonitorsBasicInfo();
+                var currentReading = _monitorInfoManager.GetLatestMonitorsBasicInfo();
 
-                if (currentMonitors.Count == 0)
+                if (currentReading.Count == 0)
                 {
                     Log.Debug("Monitor poll returned an empty display set. Treating it as transient.");
                     ClearPendingChange();
                     return;
                 }
 
-                if (!IsChangeConfirmed(currentMonitors)) return;
+                if (!IsChangeConfirmed(currentReading)) return;
 
                 var refreshedMonitors = await _monitorInfoManager.RefreshMonitorsAsync();
 
@@ -171,6 +182,7 @@ namespace OLED_Sleeper.Features.MonitorState.Services
                 {
                     oldMonitors = _lastKnownMonitors;
                     _lastKnownMonitors = refreshedMonitors;
+                    _lastReading = currentReading;
                 }
 
                 await DispatchSynchronizationAsync(oldMonitors, refreshedMonitors);
@@ -186,28 +198,28 @@ namespace OLED_Sleeper.Features.MonitorState.Services
         }
 
         /// <summary>
-        /// Determines whether a detected difference from the last known monitor list is stable enough to act on.
+        /// Determines whether a detected difference from the last known reading is stable enough to act on.
         /// </summary>
-        /// <param name="currentMonitors">The display set read by this poll.</param>
+        /// <param name="currentReading">The display set read by this poll.</param>
         /// <returns>True if the same change has now been observed twice in a row; otherwise, false.</returns>
-        private bool IsChangeConfirmed(IReadOnlyList<MonitorInfo> currentMonitors)
+        private bool IsChangeConfirmed(IReadOnlyList<MonitorInfo> currentReading)
         {
             lock (_lock)
             {
-                if (AreMonitorListsEqual(_lastKnownMonitors, currentMonitors))
+                if (DisplaySetComparer.AreEquivalent(_lastReading, currentReading))
                 {
-                    _pendingMonitors = null;
+                    _pendingReading = null;
                     return false;
                 }
 
-                if (!AreMonitorListsEqual(_pendingMonitors, currentMonitors))
+                if (!DisplaySetComparer.AreEquivalent(_pendingReading, currentReading))
                 {
                     Log.Debug("Display change observed. Waiting for a second matching reading before acting.");
-                    _pendingMonitors = currentMonitors;
+                    _pendingReading = currentReading;
                     return false;
                 }
 
-                _pendingMonitors = null;
+                _pendingReading = null;
                 return true;
             }
         }
@@ -219,7 +231,7 @@ namespace OLED_Sleeper.Features.MonitorState.Services
         {
             lock (_lock)
             {
-                _pendingMonitors = null;
+                _pendingReading = null;
             }
         }
 
@@ -238,53 +250,6 @@ namespace OLED_Sleeper.Features.MonitorState.Services
             {
                 Log.Error(ex, "Failed to synchronize monitor state after a display change.");
             }
-        }
-
-        /// <summary>
-        /// Compares two monitor lists for equality by device name and per-monitor geometry.
-        /// </summary>
-        /// <param name="a">First monitor list.</param>
-        /// <param name="b">Second monitor list.</param>
-        /// <returns>True if the lists describe the same displays with the same geometry; otherwise, false.</returns>
-        /// <remarks>
-        /// <see cref="MonitorInfo.HardwareId"/> is not compared — the lists come from
-        /// <c>GetLatestMonitorsBasicInfo</c>, which does not populate it. A port swap that puts a different
-        /// panel under the same device name with identical geometry is therefore not detected.
-        /// </remarks>
-        private static bool AreMonitorListsEqual(IReadOnlyList<MonitorInfo>? a, IReadOnlyList<MonitorInfo>? b)
-        {
-            if (a == null || b == null) return false;
-            if (a.Count != b.Count) return false;
-
-            var byDeviceName = new Dictionary<string, MonitorInfo>(a.Count);
-            foreach (var monitor in a)
-            {
-                if (monitor.DeviceName == null) return false;
-                if (!byDeviceName.TryAdd(monitor.DeviceName, monitor)) return false;
-            }
-
-            foreach (var monitor in b)
-            {
-                if (monitor.DeviceName == null) return false;
-                if (!byDeviceName.TryGetValue(monitor.DeviceName, out var counterpart)) return false;
-                if (!HasSameGeometry(monitor, counterpart)) return false;
-            }
-
-            return true;
-        }
-
-        /// <summary>
-        /// Compares the geometry-bearing fields of two records describing the same device name.
-        /// </summary>
-        /// <param name="a">First monitor record.</param>
-        /// <param name="b">Second monitor record.</param>
-        /// <returns>True if both describe the same rectangle, scaling and role; otherwise, false.</returns>
-        private static bool HasSameGeometry(MonitorInfo a, MonitorInfo b)
-        {
-            return a.Bounds == b.Bounds
-                && a.Dpi == b.Dpi
-                && a.IsPrimary == b.IsPrimary
-                && a.DisplayNumber == b.DisplayNumber;
         }
 
         #endregion Private Methods
