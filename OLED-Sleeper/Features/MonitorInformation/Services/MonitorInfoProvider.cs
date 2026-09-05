@@ -9,17 +9,15 @@ using System.Windows;
 namespace OLED_Sleeper.Features.MonitorInformation.Services
 {
     /// <summary>
-    /// Provides monitor enumeration and hardware ID / DDC/CI support services.
+    /// Reads the attached monitors through the Win32 display APIs and probes them over DDC/CI.
     /// Implements <see cref="IMonitorInfoProvider"/> for dependency injection.
     /// </summary>
     public class MonitorInfoProvider : IMonitorInfoProvider
     {
-        /// <summary>
-        /// Enumerates all monitors connected to the system and returns their basic information (no enrichment).
-        /// </summary>
-        /// <returns>A list of <see cref="MonitorInfo"/> objects representing each monitor (basic info only).</returns>
+        /// <inheritdoc />
         public List<MonitorInfo> GetAllMonitorsBasicInfo()
         {
+            var hardwareIdsByDeviceName = MapDeviceNamesToHardwareIds();
             var monitors = new List<MonitorInfo>();
 
             NativeMethods.MonitorEnumProc callback = (IntPtr hMonitor, IntPtr hdcMonitor, ref NativeMethods.Rect lprcMonitor, IntPtr dwData) =>
@@ -28,15 +26,23 @@ namespace OLED_Sleeper.Features.MonitorInformation.Services
                 if (NativeMethods.GetMonitorInfo(hMonitor, ref mi))
                 {
                     NativeMethods.GetDpiForMonitor(hMonitor, NativeMethods.MonitorDpiType.MDT_EFFECTIVE_DPI, out uint dpiX, out _);
+                    hardwareIdsByDeviceName.TryGetValue(mi.szDevice, out var hardwareId);
+
+                    if (string.IsNullOrEmpty(hardwareId))
+                    {
+                        Log.Debug("No hardware ID resolved for {DeviceName}.", mi.szDevice);
+                    }
+
                     monitors.Add(new MonitorInfo
                     {
                         DeviceName = mi.szDevice,
+                        HardwareId = hardwareId ?? string.Empty,
                         Bounds = new Rect(
                             mi.rcMonitor.left,
                             mi.rcMonitor.top,
                             mi.rcMonitor.right - mi.rcMonitor.left,
                             mi.rcMonitor.bottom - mi.rcMonitor.top),
-                        IsPrimary = (mi.dwFlags & 1) == 1,
+                        IsPrimary = (mi.dwFlags & NativeMethods.MONITORINFOF_PRIMARY) == NativeMethods.MONITORINFOF_PRIMARY,
                         Dpi = dpiX,
                         DisplayNumber = ParseDisplayNumber(mi.szDevice)
                     });
@@ -48,10 +54,7 @@ namespace OLED_Sleeper.Features.MonitorInformation.Services
             return monitors;
         }
 
-        /// <summary>
-        /// Probes the given monitor over DDC/CI for its support and its brightness range.
-        /// Both are read from a single physical monitor handle.
-        /// </summary>
+        /// <inheritdoc />
         public DdcCiCapabilities GetDdcCiCapabilities(MonitorInfo monitor)
         {
             bool isSupported = false;
@@ -90,29 +93,28 @@ namespace OLED_Sleeper.Features.MonitorInformation.Services
         }
 
         /// <summary>
-        /// Returns the hardware ID for the given monitor, or null when no attached display device matched it.
+        /// Walks the attached display adapters once and maps each adapter's device name to the hardware ID
+        /// of the monitor on it.
         /// </summary>
-        public string? GetHardwareId(MonitorInfo monitor)
+        /// <returns>The hardware ID for each adapter that reported one.</returns>
+        private static Dictionary<string, string> MapDeviceNamesToHardwareIds()
         {
-            string deviceName = monitor.DeviceName;
-            string? hardwareId = null;
-            var displayDevice = new NativeMethods.DISPLAY_DEVICE { cb = Marshal.SizeOf(typeof(NativeMethods.DISPLAY_DEVICE)) };
-            for (uint adapterIndex = 0; NativeMethods.EnumDisplayDevices(null, adapterIndex, ref displayDevice, 0); adapterIndex++)
+            var hardwareIdsByDeviceName = new Dictionary<string, string>();
+            var adapter = new NativeMethods.DISPLAY_DEVICE { cb = Marshal.SizeOf(typeof(NativeMethods.DISPLAY_DEVICE)) };
+
+            for (uint adapterIndex = 0; NativeMethods.EnumDisplayDevices(null, adapterIndex, ref adapter, 0); adapterIndex++)
             {
-                if ((displayDevice.StateFlags & 1) == 0) continue;
+                if ((adapter.StateFlags & NativeMethods.DISPLAY_DEVICE_ATTACHED_TO_DESKTOP) == 0) continue;
+
                 var monitorDevice = new NativeMethods.DISPLAY_DEVICE { cb = Marshal.SizeOf(typeof(NativeMethods.DISPLAY_DEVICE)) };
-                for (uint monitorIndex = 0; NativeMethods.EnumDisplayDevices(displayDevice.DeviceName, monitorIndex, ref monitorDevice, 0); monitorIndex++)
-                {
-                    if (deviceName == displayDevice.DeviceName)
-                    {
-                        hardwareId = monitorDevice.DeviceID;
-                        Log.Debug("HWID for monitor {DeviceName}: {HWID}", deviceName, hardwareId);
-                        break;
-                    }
-                }
-                if (hardwareId != null) break;
+                if (!NativeMethods.EnumDisplayDevices(adapter.DeviceName, 0, ref monitorDevice, 0)) continue;
+                if (string.IsNullOrEmpty(monitorDevice.DeviceID)) continue;
+
+                hardwareIdsByDeviceName[adapter.DeviceName] = monitorDevice.DeviceID;
+                Log.Debug("HWID for monitor {DeviceName}: {HWID}", adapter.DeviceName, monitorDevice.DeviceID);
             }
-            return hardwareId;
+
+            return hardwareIdsByDeviceName;
         }
 
         /// <summary>

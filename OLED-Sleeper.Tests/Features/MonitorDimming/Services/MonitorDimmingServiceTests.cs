@@ -1,4 +1,4 @@
-using Moq;
+﻿using Moq;
 using OLED_Sleeper.Features.MonitorDimming.Services;
 using OLED_Sleeper.Features.MonitorDimming.Services.Interfaces;
 using OLED_Sleeper.Features.MonitorInformation.Models;
@@ -333,8 +333,7 @@ namespace OLED_Sleeper.Tests.Features.MonitorDimming.Services
             {
                 HardwareId = hardwareId,
                 DeviceName = deviceName,
-                MaxBrightness = maxBrightness,
-                IsDdcCiSupported = true
+                Capabilities = new DdcCiCapabilities(true, maxBrightness)
             };
         }
 

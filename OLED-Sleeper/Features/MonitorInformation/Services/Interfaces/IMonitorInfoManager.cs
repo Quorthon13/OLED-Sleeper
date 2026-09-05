@@ -21,13 +21,14 @@ namespace OLED_Sleeper.Features.MonitorInformation.Services.Interfaces
         Task<IReadOnlyList<MonitorInfo>> RefreshMonitorsAsync();
 
         /// <summary>
-        /// Gets the latest, up-to-date list of monitors from the system (basic info only, no enrichment).
+        /// Gets the latest, up-to-date list of monitors from the system (basic info only, no DDC/CI probing).
         /// </summary>
-        /// <returns>A list of <see cref="MonitorInfo"/> objects representing the latest monitors.</returns>
+        /// <returns>A list of <see cref="MonitorInfo"/> objects representing the latest monitors, including
+        /// any whose hardware ID did not resolve.</returns>
         List<MonitorInfo> GetLatestMonitorsBasicInfo();
 
         /// <summary>
-        /// Enriches a list of MonitorInfo objects with DDC/CI support and hardware ID.
+        /// Enriches a list of MonitorInfo objects with their DDC/CI capabilities.
         /// </summary>
         /// <param name="monitors">The list of monitors to enrich.</param>
         void EnrichMonitorInfoList(List<MonitorInfo> monitors);

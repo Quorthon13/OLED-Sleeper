@@ -163,6 +163,16 @@ namespace OLED_Sleeper.Native
         }
 
         /// <summary>
+        /// Set in <see cref="MonitorInfoEx.dwFlags"/> when the monitor is the primary display.
+        /// </summary>
+        public const uint MONITORINFOF_PRIMARY = 0x1;
+
+        /// <summary>
+        /// Set in <see cref="DISPLAY_DEVICE.StateFlags"/> when the adapter is part of the desktop.
+        /// </summary>
+        public const uint DISPLAY_DEVICE_ATTACHED_TO_DESKTOP = 0x1;
+
+        /// <summary>
         /// Specifies the type of DPI being queried.
         /// </summary>
         public enum MonitorDpiType

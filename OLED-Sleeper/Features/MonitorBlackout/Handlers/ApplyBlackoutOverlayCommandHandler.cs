@@ -52,7 +52,7 @@ namespace OLED_Sleeper.Features.MonitorBlackout.Handlers
 
                 var showOverlayTask = _monitorBlackoutService.ShowBlackoutOverlayAsync(monitorInfo.HardwareId, monitorInfo.Bounds);
 
-                if (monitorInfo.IsDdcCiSupported)
+                if (monitorInfo.Capabilities?.IsSupported == true)
                 {
                     Log.Information("Monitor {HardwareId} supports DDC/CI. Setting brightness to 0 for blackout.", monitorInfo.HardwareId);
                     var dimTask = _monitorDimmingService.DimMonitorAsync(monitorInfo.HardwareId, 0);
