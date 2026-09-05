@@ -36,6 +36,11 @@ namespace OLED_Sleeper.Infrastructure.Hosting
         /// </summary>
         private readonly IApplicationShutdown _applicationShutdown = new ApplicationShutdown();
 
+        /// <summary>
+        /// Reaches the UI thread. Created here for the same reason as <see cref="_applicationShutdown"/>.
+        /// </summary>
+        private readonly IDispatcher _dispatcher = new ApplicationDispatcher();
+
         private IStorageRoot? _storageRoot;
         private IServiceProvider? _serviceProvider;
         private ITrayIconService? _trayIconService;
@@ -104,7 +109,7 @@ namespace OLED_Sleeper.Infrastructure.Hosting
         /// </summary>
         private void InitializeInstanceManager()
         {
-            _instanceManager = new ApplicationInstanceManager(new ApplicationDispatcher(), _applicationShutdown);
+            _instanceManager = new ApplicationInstanceManager(_dispatcher, _applicationShutdown);
             _instanceManager.Initialize();
         }
 
@@ -153,13 +158,22 @@ namespace OLED_Sleeper.Infrastructure.Hosting
         }
 
         /// <summary>
-        /// Handles the tray menu's Exit. Unsaved settings are answered for first, and the exit is abandoned
-        /// when the user cancels. Only this path asks; <c>OnExit</c> and <c>SessionEnding</c> shut down
-        /// without a prompt.
+        /// Handles the tray menu's Exit. The work is queued behind the menu's own input, so the click that
+        /// picked Exit cannot answer the prompt that follows it.
         /// </summary>
-        private void RequestExit()
+        private void RequestExit() => _ = _dispatcher.InvokeAfterInputAsync(ConfirmAndShutdown);
+
+        /// <summary>
+        /// Shuts down unless the user cancels over unsaved settings. Only the tray exit asks; <c>OnExit</c>
+        /// and <c>SessionEnding</c> shut down without a prompt.
+        /// </summary>
+        private void ConfirmAndShutdown()
         {
-            if (_unsavedSettingsService?.ConfirmExit() == false) return;
+            if (_unsavedSettingsService?.ConfirmExit() == false)
+            {
+                Log.Information("Exit cancelled. Unsaved settings were kept.");
+                return;
+            }
 
             ShutdownApp();
         }

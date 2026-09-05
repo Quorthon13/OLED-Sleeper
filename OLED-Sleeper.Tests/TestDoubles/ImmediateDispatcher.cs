@@ -26,6 +26,11 @@ namespace OLED_Sleeper.Tests.TestDoubles
         public int InvokeAsyncCount { get; private set; }
 
         /// <summary>
+        /// How many actions have been run through <see cref="InvokeAfterInputAsync"/>.
+        /// </summary>
+        public int InvokeAfterInputCount { get; private set; }
+
+        /// <summary>
         /// Whether the caller counts as being on the UI thread. Starts true; set it to false to make a
         /// class under test take its marshalling branch. Reads true while an action is running.
         /// </summary>
@@ -42,6 +47,14 @@ namespace OLED_Sleeper.Tests.TestDoubles
         public Task InvokeAsync(Action action)
         {
             InvokeAsyncCount++;
+            Run(action);
+            return Task.CompletedTask;
+        }
+
+        /// <inheritdoc />
+        public Task InvokeAfterInputAsync(Action action)
+        {
+            InvokeAfterInputCount++;
             Run(action);
             return Task.CompletedTask;
         }
