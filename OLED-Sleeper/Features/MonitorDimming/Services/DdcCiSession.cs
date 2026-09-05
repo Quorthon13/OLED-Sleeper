@@ -14,10 +14,12 @@ namespace OLED_Sleeper.Features.MonitorDimming.Services
         private readonly nint _hPhysicalMonitor;
         private bool _disposed;
 
-        internal DdcCiSession(NativeMethods.PHYSICAL_MONITOR[] physicalMonitors)
+        /// <param name="physicalMonitors">Every physical monitor behind one display monitor handle. All are released together.</param>
+        /// <param name="index">The monitor within that set this channel talks to.</param>
+        internal DdcCiSession(NativeMethods.PHYSICAL_MONITOR[] physicalMonitors, int index)
         {
             _physicalMonitors = physicalMonitors;
-            _hPhysicalMonitor = physicalMonitors[0].hPhysicalMonitor;
+            _hPhysicalMonitor = physicalMonitors[index].hPhysicalMonitor;
         }
 
         /// <inheritdoc />
@@ -46,7 +48,7 @@ namespace OLED_Sleeper.Features.MonitorDimming.Services
             if (_disposed) return;
 
             _disposed = true;
-            NativeMethods.DestroyPhysicalMonitors(1, _physicalMonitors);
+            NativeMethods.DestroyPhysicalMonitors((uint)_physicalMonitors.Length, _physicalMonitors);
         }
     }
 }
