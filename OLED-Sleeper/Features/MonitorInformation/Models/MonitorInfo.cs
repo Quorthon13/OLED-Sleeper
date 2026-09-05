@@ -21,6 +21,12 @@ namespace OLED_Sleeper.Features.MonitorInformation.Models
         public string HardwareId { get; set; } = string.Empty;
 
         /// <summary>
+        /// Gets or sets how Windows numbers the panels showing this desktop surface, such as <c>1|2</c> for a
+        /// duplicated one. Empty when the surface is not duplicated.
+        /// </summary>
+        public string TopologyLabel { get; set; } = string.Empty;
+
+        /// <summary>
         /// Gets or sets the bounding rectangle of the monitor in screen coordinates.
         /// </summary>
         public Rect Bounds { get; set; }

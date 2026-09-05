@@ -18,10 +18,42 @@ namespace OLED_Sleeper.Features.MonitorDimming.Services
             var hMonitor = FindMonitorHandle(deviceName);
             if (hMonitor == nint.Zero) return null;
 
-            var physicalMonitors = new NativeMethods.PHYSICAL_MONITOR[1];
-            if (!NativeMethods.GetPhysicalMonitorsFromHMONITOR(hMonitor, 1, physicalMonitors)) return null;
+            if (!NativeMethods.GetNumberOfPhysicalMonitorsFromHMONITOR(hMonitor, out uint count) || count == 0)
+            {
+                count = 1;
+            }
 
-            return new DdcCiSession(physicalMonitors);
+            var physicalMonitors = new NativeMethods.PHYSICAL_MONITOR[count];
+            if (!NativeMethods.GetPhysicalMonitorsFromHMONITOR(hMonitor, count, physicalMonitors)) return null;
+
+            int index = count == 1 ? 0 : FindRespondingMonitor(physicalMonitors);
+            if (index < 0)
+            {
+                NativeMethods.DestroyPhysicalMonitors(count, physicalMonitors);
+                return null;
+            }
+
+            return new DdcCiSession(physicalMonitors, index);
+        }
+
+        /// <summary>
+        /// Finds the physical monitor that answers DDC/CI. A duplicated desktop surface hands back one physical
+        /// monitor per panel in no useful order, and a virtual display can be the one that comes first.
+        /// </summary>
+        /// <param name="physicalMonitors">The physical monitors behind one display monitor handle.</param>
+        /// <returns>The index of the first monitor that answered, or -1 when none did.</returns>
+        private static int FindRespondingMonitor(NativeMethods.PHYSICAL_MONITOR[] physicalMonitors)
+        {
+            for (int index = 0; index < physicalMonitors.Length; index++)
+            {
+                if (NativeMethods.GetVCPFeatureAndVCPFeatureReply(
+                        physicalMonitors[index].hPhysicalMonitor, NativeMethods.VCP_CODE_BRIGHTNESS, nint.Zero, out _, out _))
+                {
+                    return index;
+                }
+            }
+
+            return -1;
         }
 
         /// <summary>

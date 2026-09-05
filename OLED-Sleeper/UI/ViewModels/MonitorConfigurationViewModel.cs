@@ -1,6 +1,7 @@
 ﻿using OLED_Sleeper.Features.MonitorBehavior.Models;
 using OLED_Sleeper.Features.MonitorInformation.Models;
 using OLED_Sleeper.Features.UserSettings.Models;
+using OLED_Sleeper.UI.Helpers;
 using OLED_Sleeper.UI.Models;
 using System.ComponentModel;
 
@@ -20,9 +21,10 @@ namespace OLED_Sleeper.UI.ViewModels
         #region Properties
 
         /// <summary>
-        /// The display title for the monitor, including primary indicator if applicable.
+        /// The display title for the monitor, including primary indicator if applicable. A duplicated surface
+        /// is titled the way Windows titles it, such as <c>Monitor 1|2</c>.
         /// </summary>
-        public string MonitorTitle => _monitorInfo.IsPrimary ? $"Monitor {_monitorInfo.DisplayNumber} (Primary)" : $"Monitor {_monitorInfo.DisplayNumber}";
+        public string MonitorTitle => MonitorTitleFormatter.Format(_monitorInfo);
 
         public string IdleValueError => this["IdleValue"];
 
