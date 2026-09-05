@@ -169,14 +169,14 @@ if (-not (Test-Path -LiteralPath $setupPath)) { throw "The installer was not pro
 
 if (-not $SkipPortable) {
     Write-Step 'Publishing the portable build'
-    $portableX64 = Join-Path $stagingDirectory 'portable'
+    $portableX64 = Join-Path $stagingDirectory 'portable\OLED-Sleeper'
     Publish-Payload -Runtime 'win-x64' -Destination $portableX64 -Portable
 
     Write-Step 'Zipping the portable build'
     $zipPath = Join-Path $OutputDirectory "OLED-Sleeper-$version-Portable-x64.zip"
     if (Test-Path -LiteralPath $zipPath) { Remove-Item -LiteralPath $zipPath -Force }
-    # The exe sits at the zip root, so extracting anywhere gives a working folder.
-    Compress-Archive -Path (Join-Path $portableX64 '*') -DestinationPath $zipPath
+    # The zip carries its own OLED-Sleeper folder, so extracting it never scatters files loose.
+    Compress-Archive -Path $portableX64 -DestinationPath $zipPath
 }
 
 Write-Step 'Writing checksums'
