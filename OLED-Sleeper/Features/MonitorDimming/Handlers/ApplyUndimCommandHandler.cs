@@ -1,6 +1,6 @@
-using OLED_Sleeper.Core.Interfaces;
 using OLED_Sleeper.Features.MonitorDimming.Commands;
 using OLED_Sleeper.Features.MonitorDimming.Services.Interfaces;
+using OLED_Sleeper.Messaging.Interfaces;
 using Serilog;
 
 namespace OLED_Sleeper.Features.MonitorDimming.Handlers
@@ -13,10 +13,6 @@ namespace OLED_Sleeper.Features.MonitorDimming.Handlers
     {
         private readonly IMonitorDimmingService _monitorDimmingService;
 
-        /// <summary>
-        /// Initializes a new instance of the <see cref="ApplyUndimCommandHandler"/> class.
-        /// </summary>
-        /// <param name="monitorDimmingService">The service responsible for controlling monitor brightness.</param>
         public ApplyUndimCommandHandler(
             IMonitorDimmingService monitorDimmingService)
         {

@@ -1,6 +1,7 @@
 ﻿using OLED_Sleeper.Features.MonitorBehavior.Models;
 using OLED_Sleeper.Features.MonitorInformation.Models;
 using OLED_Sleeper.Features.UserSettings.Models;
+using OLED_Sleeper.UI.Helpers;
 using OLED_Sleeper.UI.Models;
 using System.ComponentModel;
 
@@ -17,19 +18,14 @@ namespace OLED_Sleeper.UI.ViewModels
         /// </summary>
         private readonly MonitorInfo _monitorInfo;
 
-        /// <summary>
-        /// Callback invoked when the dirty state changes.
-        /// </summary>
-        public Action? OnDirtyStateChanged { get; set; }
-
         #region Properties
 
         /// <summary>
-        /// The display title for the monitor, including primary indicator if applicable.
+        /// The display title for the monitor, including primary indicator if applicable. A duplicated surface
+        /// is titled the way Windows titles it, such as <c>Monitor 1|2</c>.
         /// </summary>
-        public string MonitorTitle => _monitorInfo.IsPrimary ? $"Monitor {_monitorInfo.DisplayNumber} (Primary)" : $"Monitor {_monitorInfo.DisplayNumber}";
+        public string MonitorTitle => MonitorTitleFormatter.Format(_monitorInfo);
 
-        // --- Updated: Added explicit error properties for robust UI binding ---
         public string IdleValueError => this["IdleValue"];
 
         public string ActiveConditionsError => this["IsActiveOnInput"];
@@ -59,7 +55,7 @@ namespace OLED_Sleeper.UI.ViewModels
         /// <summary>
         /// Gets a value indicating whether the "Dim" behavior option should be enabled.
         /// </summary>
-        public bool IsDimBehaviorEnabled => _monitorInfo.IsDdcCiSupported;
+        public bool IsDimBehaviorEnabled => _monitorInfo.Capabilities?.IsSupported == true;
 
         /// <summary>
         /// Gets the tooltip for the entire Behavior section, changing based on DDC/CI support.
@@ -72,7 +68,7 @@ namespace OLED_Sleeper.UI.ViewModels
                                     "• Blackout: Turns the monitor completely black.\n" +
                                      "• Dim: Reduces the monitor's brightness using DDC/CI.";
 
-                if (!_monitorInfo.IsDdcCiSupported)
+                if (_monitorInfo.Capabilities?.IsSupported != true)
                 {
                     baseTooltip = "THE SELECTED MONITOR DOES NOT SUPPORT DIMMING.\n\n" + baseTooltip;
                 }
@@ -98,6 +94,8 @@ namespace OLED_Sleeper.UI.ViewModels
                 if (_behavior == MonitorBehaviorType.Blackout) { DimLevel = 0; }
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(IsDimSliderEnabled));
+                OnPropertyChanged(nameof(IsLowerBrightnessOptionEnabled));
+                OnPropertyChanged(nameof(LowerBrightnessTooltip));
                 OnPropertyChanged(nameof(BehaviorError));
                 UpdateDirtyState();
             }
@@ -127,6 +125,53 @@ namespace OLED_Sleeper.UI.ViewModels
         /// </summary>
         public bool IsDimSliderEnabled => Behavior == MonitorBehaviorType.Dim;
 
+        // --- LowerBrightnessOnBlackout ---
+        private bool _lowerBrightnessOnBlackout;
+
+        private bool _initialLowerBrightnessOnBlackout;
+
+        /// <summary>
+        /// Gets or sets whether a blackout also sets this monitor's hardware brightness to zero.
+        /// Always false on a monitor without DDC/CI support.
+        /// </summary>
+        public bool LowerBrightnessOnBlackout
+        {
+            get => _lowerBrightnessOnBlackout;
+            set
+            {
+                _lowerBrightnessOnBlackout = value;
+                OnPropertyChanged();
+                UpdateDirtyState();
+            }
+        }
+
+        /// <summary>
+        /// Returns true if the lower-brightness option should be enabled (only for Blackout behavior on a monitor that supports DDC/CI).
+        /// </summary>
+        public bool IsLowerBrightnessOptionEnabled => Behavior == MonitorBehaviorType.Blackout && IsDimBehaviorEnabled;
+
+        /// <summary>
+        /// Gets the tooltip for the lower-brightness option, prefixed with the reason when the option is disabled.
+        /// </summary>
+        public string LowerBrightnessTooltip
+        {
+            get
+            {
+                string baseTooltip = "Takes the monitor's own brightness down to zero\n" +
+                                     "as well as covering the screen with the black overlay.\n\n" +
+                                     "Useful on non-OLED displays, where the backlight\n" +
+                                     "stays lit behind the black overlay.";
+
+                if (!IsDimBehaviorEnabled)
+                    return "THE SELECTED MONITOR DOES NOT SUPPORT DIMMING.\n\n" + baseTooltip;
+
+                if (Behavior != MonitorBehaviorType.Blackout)
+                    return "AVAILABLE ONLY WHEN BLACKOUT IS SELECTED.\n\n" + baseTooltip;
+
+                return baseTooltip;
+            }
+        }
+
         // --- Idle Timer ---
         /// <summary>
         /// List of available time units for idle timer.
@@ -142,7 +187,6 @@ namespace OLED_Sleeper.UI.ViewModels
         public int? IdleValue
         {
             get => _idleValue;
-            // --- Updated: Notifies error property when changed ---
             set
             {
                 _idleValue = value;
@@ -175,7 +219,6 @@ namespace OLED_Sleeper.UI.ViewModels
         public bool IsActiveOnInput
         {
             get => _isActiveOnInput;
-            // --- Updated: Notifies error property when changed ---
             set
             {
                 _isActiveOnInput = value;
@@ -194,7 +237,6 @@ namespace OLED_Sleeper.UI.ViewModels
         public bool IsActiveOnMousePosition
         {
             get => _isActiveOnMousePosition;
-            // --- Updated: Notifies error property when changed ---
             set
             {
                 _isActiveOnMousePosition = value;
@@ -213,7 +255,6 @@ namespace OLED_Sleeper.UI.ViewModels
         public bool IsActiveOnActiveWindow
         {
             get => _isActiveOnActiveWindow;
-            // --- Updated: Notifies error property when changed ---
             set
             {
                 _isActiveOnActiveWindow = value;
@@ -225,18 +266,12 @@ namespace OLED_Sleeper.UI.ViewModels
 
         #endregion Properties
 
-        /// <summary>
-        /// Initializes a new instance of the MonitorConfigurationViewModel class for a specific monitor.
-        /// </summary>
         /// <param name="monitorInfo">The monitor information model.</param>
-        /// <param name="displayNumber">The display number for the monitor.</param>
         public MonitorConfigurationViewModel(MonitorInfo monitorInfo)
         {
             _monitorInfo = monitorInfo;
 
-            // Initialize properties from the model's defaults
             ApplySettings(new MonitorSettings());
-            // Set the initial state for dirty checking
             MarkAsSaved();
         }
 
@@ -257,6 +292,7 @@ namespace OLED_Sleeper.UI.ViewModels
             IsDirty = IsManaged != _initialIsManaged ||
                        Behavior != _initialBehavior ||
                        Math.Abs(DimLevel - _initialDimLevel) > epsilon ||
+                       LowerBrightnessOnBlackout != _initialLowerBrightnessOnBlackout ||
                        IdleValue != _initialIdleValue ||
                        SelectedTimeUnit != _initialSelectedTimeUnit ||
                        IsActiveOnInput != _initialIsActiveOnInput ||
@@ -264,7 +300,6 @@ namespace OLED_Sleeper.UI.ViewModels
                        IsActiveOnActiveWindow != _initialIsActiveOnActiveWindow;
 
             OnPropertyChanged(nameof(IsDirty));
-            OnDirtyStateChanged?.Invoke();
         }
 
         /// <summary>
@@ -275,6 +310,7 @@ namespace OLED_Sleeper.UI.ViewModels
             _initialIsManaged = IsManaged;
             _initialBehavior = Behavior;
             _initialDimLevel = DimLevel;
+            _initialLowerBrightnessOnBlackout = LowerBrightnessOnBlackout;
             _initialIdleValue = IdleValue;
             _initialSelectedTimeUnit = SelectedTimeUnit;
             _initialIsActiveOnInput = IsActiveOnInput;
@@ -292,6 +328,7 @@ namespace OLED_Sleeper.UI.ViewModels
             IsManaged = settings.IsManaged;
             Behavior = settings.Behavior;
             DimLevel = settings.DimLevel;
+            LowerBrightnessOnBlackout = settings.LowerBrightnessOnBlackout && IsDimBehaviorEnabled;
             IdleValue = settings.IdleValue;
             SelectedTimeUnit = settings.IdleUnit;
             IsActiveOnInput = settings.IsActiveOnInput;
@@ -311,6 +348,7 @@ namespace OLED_Sleeper.UI.ViewModels
                 IsManaged = IsManaged,
                 Behavior = Behavior,
                 DimLevel = DimLevel,
+                LowerBrightnessOnBlackout = LowerBrightnessOnBlackout,
                 IdleValue = IdleValue,
                 IdleUnit = SelectedTimeUnit,
                 IsActiveOnInput = IsActiveOnInput,
@@ -332,7 +370,6 @@ namespace OLED_Sleeper.UI.ViewModels
             {
                 if (!IsManaged) return true; // Unmanaged monitors are always "valid"
 
-                // Check all validation rules
                 return ValidateIdleValue() == null && ValidateActiveConditions() == null && ValidateBehavior() == null;
             }
         }

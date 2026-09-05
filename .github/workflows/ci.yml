@@ -1,0 +1,34 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [develop, master]
+
+jobs:
+  build:
+    name: Build, test and check formatting
+    runs-on: windows-latest
+
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+        with:
+          # MinVer derives the version from the nearest v* tag, so it needs the full history.
+          fetch-depth: 0
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restore
+        run: dotnet restore OLED-Sleeper.sln
+
+      - name: Build
+        run: dotnet build OLED-Sleeper.sln -c Release --no-restore
+
+      - name: Test
+        run: dotnet test OLED-Sleeper.sln -c Release --no-build
+
+      - name: Check formatting
+        run: dotnet format OLED-Sleeper.sln --verify-no-changes

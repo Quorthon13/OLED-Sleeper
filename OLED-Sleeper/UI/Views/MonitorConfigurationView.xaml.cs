@@ -8,9 +8,6 @@ namespace OLED_Sleeper.UI.Views
     /// </summary>
     public partial class MonitorConfigurationView : UserControl
     {
-        /// <summary>
-        /// Initializes a new instance of the <see cref="MonitorConfigurationView"/> class.
-        /// </summary>
         public MonitorConfigurationView()
         {
             InitializeComponent();

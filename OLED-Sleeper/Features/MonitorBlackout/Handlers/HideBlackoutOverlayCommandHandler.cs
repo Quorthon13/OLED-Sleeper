@@ -1,6 +1,6 @@
-using OLED_Sleeper.Core.Interfaces;
 using OLED_Sleeper.Features.MonitorBlackout.Commands;
 using OLED_Sleeper.Features.MonitorBlackout.Services.Interfaces;
+using OLED_Sleeper.Messaging.Interfaces;
 using Serilog;
 
 namespace OLED_Sleeper.Features.MonitorBlackout.Handlers
@@ -13,10 +13,6 @@ namespace OLED_Sleeper.Features.MonitorBlackout.Handlers
     {
         private readonly IMonitorBlackoutService _monitorBlackoutService;
 
-        /// <summary>
-        /// Initializes a new instance of the <see cref="HideBlackoutOverlayCommandHandler"/> class.
-        /// </summary>
-        /// <param name="monitorBlackoutService">The service responsible for showing/hiding blackout overlays.</param>
         public HideBlackoutOverlayCommandHandler(
             IMonitorBlackoutService monitorBlackoutService)
         {

@@ -101,6 +101,17 @@ namespace OLED_Sleeper.Native
         [DllImport("user32.dll")]
         public static extern IntPtr SetWindowLongPtr(IntPtr hWnd, int nIndex, IntPtr dwNewLong);
 
+        /// <summary>
+        /// Retrieves the name of the class to which the specified window belongs.
+        /// </summary>
+        /// <param name="hWnd">A handle to the window.</param>
+        /// <param name="lpClassName">The buffer that receives the class name.</param>
+        /// <param name="nMaxCount">The length of the buffer, in characters.</param>
+        /// <returns>The number of characters copied, excluding the terminating null; zero on failure.</returns>
+        /// <seealso href="https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-getclassnamew"/>
+        [DllImport("user32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+        public static extern int GetClassName(IntPtr hWnd, System.Text.StringBuilder lpClassName, int nMaxCount);
+
         #endregion User Input and Window Management
 
         #region Monitor and Display Configuration
@@ -163,6 +174,22 @@ namespace OLED_Sleeper.Native
         }
 
         /// <summary>
+        /// Set in <see cref="MonitorInfoEx.dwFlags"/> when the monitor is the primary display.
+        /// </summary>
+        public const uint MONITORINFOF_PRIMARY = 0x1;
+
+        /// <summary>
+        /// Set in <see cref="DISPLAY_DEVICE.StateFlags"/> when the adapter is part of the desktop.
+        /// </summary>
+        public const uint DISPLAY_DEVICE_ATTACHED_TO_DESKTOP = 0x1;
+
+        /// <summary>
+        /// Passed to <see cref="EnumDisplayDevices"/> to return the device interface path in
+        /// <see cref="DISPLAY_DEVICE.DeviceID"/> instead of the monitor's hardware ID.
+        /// </summary>
+        public const uint EDD_GET_DEVICE_INTERFACE_NAME = 0x1;
+
+        /// <summary>
         /// Specifies the type of DPI being queried.
         /// </summary>
         public enum MonitorDpiType
@@ -183,6 +210,16 @@ namespace OLED_Sleeper.Native
         /// Does not activate the window.
         /// </summary>
         public const uint SWP_NOACTIVATE = 0x0010;
+
+        /// <summary>
+        /// Retains the window's current size.
+        /// </summary>
+        public const uint SWP_NOSIZE = 0x0001;
+
+        /// <summary>
+        /// Retains the window's current position.
+        /// </summary>
+        public const uint SWP_NOMOVE = 0x0002;
 
         /// <summary>
         /// Use with <see cref="DwmGetWindowAttribute"/> to get the extended frame bounds rectangle.
@@ -294,9 +331,10 @@ namespace OLED_Sleeper.Native
         public const byte VCP_CODE_BRIGHTNESS = 0x10;
 
         /// <summary>
-        /// Represents a handle to a physical monitor.
+        /// Represents a handle to a physical monitor. The description is a wide string, so the struct is
+        /// 264 bytes; marshalling it as ANSI hands dxva2 a 136-byte buffer to write 264 bytes into.
         /// </summary>
-        [StructLayout(LayoutKind.Sequential)]
+        [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
         public struct PHYSICAL_MONITOR
         {
             public IntPtr hPhysicalMonitor;
@@ -315,6 +353,17 @@ namespace OLED_Sleeper.Native
         [DllImport("dxva2.dll", EntryPoint = "DestroyPhysicalMonitors")]
         [return: MarshalAs(UnmanagedType.Bool)]
         public static extern bool DestroyPhysicalMonitors(uint dwPhysicalMonitorArraySize, [In] PHYSICAL_MONITOR[] pPhysicalMonitorArray);
+
+        /// <summary>
+        /// Retrieves the number of physical monitors behind a display monitor handle.
+        /// </summary>
+        /// <param name="hMonitor">Handle to the display monitor.</param>
+        /// <param name="pdwNumberOfPhysicalMonitors">Receives the number of physical monitors.</param>
+        /// <returns>True if successful; otherwise, false.</returns>
+        /// <seealso href="https://learn.microsoft.com/en-us/windows/win32/api/dxva2/nf-dxva2-getnumberofphysicalmonitorsfromhmonitor"/>
+        [DllImport("dxva2.dll", EntryPoint = "GetNumberOfPhysicalMonitorsFromHMONITOR")]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        public static extern bool GetNumberOfPhysicalMonitorsFromHMONITOR(IntPtr hMonitor, out uint pdwNumberOfPhysicalMonitors);
 
         /// <summary>
         /// Retrieves the physical monitors associated with a display monitor handle.
@@ -368,6 +417,197 @@ namespace OLED_Sleeper.Native
         public static extern bool GetCapabilitiesStringLength(IntPtr hPhysicalMonitor, out uint pdwCapabilitiesStringLengthInCharacters);
 
         #endregion DDC/CI (Monitor Brightness)
+
+        #region Display Configuration (CCD)
+
+        /// <summary>
+        /// Restricts a <see cref="QueryDisplayConfig"/> query to paths that are currently in use.
+        /// </summary>
+        public const uint QDC_ONLY_ACTIVE_PATHS = 0x2;
+
+        /// <summary>
+        /// Asks <see cref="DisplayConfigGetDeviceInfo(ref DISPLAYCONFIG_SOURCE_DEVICE_NAME)"/> for the GDI device name of a source.
+        /// </summary>
+        public const uint DISPLAYCONFIG_DEVICE_INFO_GET_SOURCE_NAME = 1;
+
+        /// <summary>
+        /// Asks <see cref="DisplayConfigGetDeviceInfo(ref DISPLAYCONFIG_TARGET_DEVICE_NAME)"/> for the name and device path of a target.
+        /// </summary>
+        public const uint DISPLAYCONFIG_DEVICE_INFO_GET_TARGET_NAME = 2;
+
+        /// <summary>
+        /// Locally unique identifier for a display adapter.
+        /// </summary>
+        [StructLayout(LayoutKind.Sequential)]
+        public struct LUID
+        {
+            public uint LowPart;
+            public int HighPart;
+        }
+
+        /// <summary>
+        /// Describes the source (the desktop surface) end of a display path.
+        /// </summary>
+        [StructLayout(LayoutKind.Sequential)]
+        public struct DISPLAYCONFIG_PATH_SOURCE_INFO
+        {
+            public LUID adapterId;
+            public uint id;
+            public uint modeInfoIdx;
+            public uint statusFlags;
+        }
+
+        /// <summary>
+        /// A ratio of two unsigned integers, used for refresh rates.
+        /// </summary>
+        [StructLayout(LayoutKind.Sequential)]
+        public struct DISPLAYCONFIG_RATIONAL
+        {
+            public uint Numerator;
+            public uint Denominator;
+        }
+
+        /// <summary>
+        /// Describes the target (the panel) end of a display path.
+        /// </summary>
+        [StructLayout(LayoutKind.Sequential)]
+        public struct DISPLAYCONFIG_PATH_TARGET_INFO
+        {
+            public LUID adapterId;
+            public uint id;
+            public uint modeInfoIdx;
+            public uint outputTechnology;
+            public uint rotation;
+            public uint scaling;
+            public DISPLAYCONFIG_RATIONAL refreshRate;
+            public uint scanLineOrdering;
+
+            [MarshalAs(UnmanagedType.Bool)]
+            public bool targetAvailable;
+
+            public uint statusFlags;
+        }
+
+        /// <summary>
+        /// One source-to-target display path.
+        /// </summary>
+        [StructLayout(LayoutKind.Sequential)]
+        public struct DISPLAYCONFIG_PATH_INFO
+        {
+            public DISPLAYCONFIG_PATH_SOURCE_INFO sourceInfo;
+            public DISPLAYCONFIG_PATH_TARGET_INFO targetInfo;
+            public uint flags;
+        }
+
+        /// <summary>
+        /// A mode entry. The 48-byte payload is a union this application does not read; only the size matters,
+        /// because <see cref="QueryDisplayConfig"/> refuses to run without a mode array to fill.
+        /// </summary>
+        [StructLayout(LayoutKind.Sequential)]
+        public struct DISPLAYCONFIG_MODE_INFO
+        {
+            public uint infoType;
+            public uint id;
+            public LUID adapterId;
+
+            [MarshalAs(UnmanagedType.ByValArray, SizeConst = 48)]
+            public byte[] union;
+        }
+
+        /// <summary>
+        /// Names the request and its subject for a <see cref="DisplayConfigGetDeviceInfo(ref DISPLAYCONFIG_SOURCE_DEVICE_NAME)"/> call.
+        /// </summary>
+        [StructLayout(LayoutKind.Sequential)]
+        public struct DISPLAYCONFIG_DEVICE_INFO_HEADER
+        {
+            public uint type;
+            public uint size;
+            public LUID adapterId;
+            public uint id;
+        }
+
+        /// <summary>
+        /// Receives the GDI device name, such as <c>\\.\DISPLAY1</c>, of a display path's source.
+        /// </summary>
+        [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+        public struct DISPLAYCONFIG_SOURCE_DEVICE_NAME
+        {
+            public DISPLAYCONFIG_DEVICE_INFO_HEADER header;
+
+            [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 32)]
+            public string viewGdiDeviceName;
+        }
+
+        /// <summary>
+        /// Receives the friendly name and device interface path of a display path's target.
+        /// </summary>
+        [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+        public struct DISPLAYCONFIG_TARGET_DEVICE_NAME
+        {
+            public DISPLAYCONFIG_DEVICE_INFO_HEADER header;
+            public uint flags;
+            public uint outputTechnology;
+            public ushort edidManufactureId;
+            public ushort edidProductCodeId;
+            public uint connectorInstance;
+
+            [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 64)]
+            public string monitorFriendlyDeviceName;
+
+            [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 128)]
+            public string monitorDevicePath;
+        }
+
+        /// <summary>
+        /// Retrieves the array sizes <see cref="QueryDisplayConfig"/> needs.
+        /// </summary>
+        /// <param name="flags">The topology to size for, such as <see cref="QDC_ONLY_ACTIVE_PATHS"/>.</param>
+        /// <param name="numPathArrayElements">Receives the number of path elements.</param>
+        /// <param name="numModeInfoArrayElements">Receives the number of mode elements.</param>
+        /// <returns>ERROR_SUCCESS (0) on success; otherwise, a Win32 error code.</returns>
+        /// <seealso href="https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-getdisplayconfigbuffersizes"/>
+        [DllImport("user32.dll", EntryPoint = "GetDisplayConfigBufferSizes")]
+        public static extern int GetDisplayConfigBufferSizes(uint flags, out uint numPathArrayElements, out uint numModeInfoArrayElements);
+
+        /// <summary>
+        /// Retrieves the display paths that make up the current desktop.
+        /// </summary>
+        /// <param name="flags">The topology to query, such as <see cref="QDC_ONLY_ACTIVE_PATHS"/>.</param>
+        /// <param name="numPathArrayElements">On entry the array size, on return the number of paths written.</param>
+        /// <param name="pathArray">Receives the paths.</param>
+        /// <param name="numModeInfoArrayElements">On entry the array size, on return the number of modes written.</param>
+        /// <param name="modeInfoArray">Receives the modes.</param>
+        /// <param name="currentTopologyId">Reserved for database queries; pass zero.</param>
+        /// <returns>ERROR_SUCCESS (0) on success; otherwise, a Win32 error code.</returns>
+        /// <seealso href="https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-querydisplayconfig"/>
+        [DllImport("user32.dll", EntryPoint = "QueryDisplayConfig")]
+        public static extern int QueryDisplayConfig(
+            uint flags,
+            ref uint numPathArrayElements,
+            [Out] DISPLAYCONFIG_PATH_INFO[] pathArray,
+            ref uint numModeInfoArrayElements,
+            [Out] DISPLAYCONFIG_MODE_INFO[] modeInfoArray,
+            IntPtr currentTopologyId);
+
+        /// <summary>
+        /// Retrieves the GDI device name of a display path's source.
+        /// </summary>
+        /// <param name="requestPacket">The request, with its header filled in.</param>
+        /// <returns>ERROR_SUCCESS (0) on success; otherwise, a Win32 error code.</returns>
+        /// <seealso href="https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-displayconfiggetdeviceinfo"/>
+        [DllImport("user32.dll", EntryPoint = "DisplayConfigGetDeviceInfo")]
+        public static extern int DisplayConfigGetDeviceInfo(ref DISPLAYCONFIG_SOURCE_DEVICE_NAME requestPacket);
+
+        /// <summary>
+        /// Retrieves the name and device interface path of a display path's target.
+        /// </summary>
+        /// <param name="requestPacket">The request, with its header filled in.</param>
+        /// <returns>ERROR_SUCCESS (0) on success; otherwise, a Win32 error code.</returns>
+        /// <seealso href="https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-displayconfiggetdeviceinfo"/>
+        [DllImport("user32.dll", EntryPoint = "DisplayConfigGetDeviceInfo")]
+        public static extern int DisplayConfigGetDeviceInfo(ref DISPLAYCONFIG_TARGET_DEVICE_NAME requestPacket);
+
+        #endregion Display Configuration (CCD)
 
         #region Process Memory Management
 

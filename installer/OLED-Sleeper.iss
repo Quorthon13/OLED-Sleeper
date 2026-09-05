@@ -1,9 +1,13 @@
-; Inno Setup installer script for OLED Sleeper
+﻿; Inno Setup installer script for OLED Sleeper
 ; Builds a single installer supporting both x64 and x86 deployments.
 
 #include "CodeDependencies.iss"
 
-#define AppVersion "2.0.0"
+; The build script passes the MinVer-derived version as /DAppVersion=. This fallback only applies to a
+; compile started from the Inno Setup IDE.
+#ifndef AppVersion
+  #define AppVersion "0.0.0-dev"
+#endif
 
 [Setup]
 ; Unique application identifier used by Windows for installation tracking.
@@ -20,16 +24,20 @@ AppSupportURL=https://github.com/Quorthon13/OLED-Sleeper/issues
 ; Installation runs without elevation.
 PrivilegesRequired=lowest
 
+; The mutex ApplicationInstanceManager holds. Setup and uninstall both wait for the application to be closed,
+; so its own shutdown restores monitor brightness before any file is replaced or removed.
+AppMutex=OLED-Sleeper-Mutex
+
 ; Output installer configuration.
 OutputBaseFilename=OLED-Sleeper-{#AppVersion}-Setup
 SourceDir=.
-OutputDir=.\InstallerOutput
+OutputDir=..\artifacts
 
 ; Default installation directory.
 DefaultDirName={autopf}\OLED Sleeper
 
 ; Enables 64-bit installation mode when running on x64 systems.
-ArchitecturesInstallIn64BitMode=x64
+ArchitecturesInstallIn64BitMode=x64compatible
 
 ; Installer and uninstall entry icons.
 SetupIconFile=..\OLED-Sleeper\Assets\icon.ico
@@ -51,10 +59,20 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 Name: "startup"; Description: "Launch OLED Sleeper when Windows starts"; GroupDescription: "Additional options:";
 Name: "desktopicon"; Description: "Create a desktop icon"; GroupDescription: "Additional shortcuts:";
 
+[InstallDelete]
+; Every install starts from default settings and no recorded brightness. Logs are deliberately kept, so a
+; report about a build still carries the history from before it was installed.
+Type: files; Name: "{userappdata}\OLED-Sleeper\settings.json"
+Type: files; Name: "{userappdata}\OLED-Sleeper\settings.json.bak"
+Type: files; Name: "{userappdata}\OLED-Sleeper\settings.json.tmp"
+Type: files; Name: "{userappdata}\OLED-Sleeper\brightness_state.json"
+Type: files; Name: "{userappdata}\OLED-Sleeper\brightness_state.json.bak"
+Type: files; Name: "{userappdata}\OLED-Sleeper\brightness_state.json.tmp"
+
 [Files]
 ; Install platform-specific binaries based on system architecture.
-Source: ".\publish-x64\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs; Check: Is64BitInstallMode
-Source: ".\publish-x86\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs; Check: not Is64BitInstallMode
+Source: "..\artifacts\publish\x64\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs; Check: Is64BitInstallMode
+Source: "..\artifacts\publish\x86\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs; Check: not Is64BitInstallMode
 
 [Icons]
 ; Start Menu and optional Desktop shortcuts.
@@ -69,11 +87,23 @@ Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: 
 ; Optionally launch the application after installation completes.
 Filename: "{app}\OLED-Sleeper.exe"; Description: "{cm:LaunchProgram,OLED Sleeper}"; Flags: nowait postinstall skipifsilent
 
-[UninstallRun]
-; Ensure the application process is terminated before file removal.
-Filename: "{cmd}"; Parameters: "/C ""taskkill /im OLED-Sleeper.exe /f /t"""; RunOnceId: "CloseOLEDSleeper"; Flags: runhidden
-
 [Code]
+
+// Reports whether the application's autostart registry entry exists.
+function StartupIsEnabled(): Boolean;
+begin
+  Result := RegValueExists(HKEY_CURRENT_USER, 'Software\Microsoft\Windows\CurrentVersion\Run', 'OLED Sleeper');
+end;
+
+// Ticks the startup task when autostart is already enabled, whether it was enabled here or from the
+// application's own toggle. Unlisted tasks keep their state.
+procedure InitializeWizard();
+begin
+  if StartupIsEnabled() then
+  begin
+    WizardSelectTasks('startup');
+  end;
+end;
 
 // Removes the application's autostart registry entry if present.
 procedure RemoveStartupKey();
@@ -85,10 +115,11 @@ begin
   end;
 end;
 
-// Runs during installation to clear any existing autostart entry.
+// Clears the autostart entry during installation only when the startup task was left unticked. The
+// [Registry] entry writes it back when the task is ticked.
 procedure CurStepChanged(CurStep: TSetupStep);
 begin
-  if CurStep = ssInstall then
+  if (CurStep = ssInstall) and (not WizardIsTaskSelected('startup')) then
   begin
     RemoveStartupKey();
   end;

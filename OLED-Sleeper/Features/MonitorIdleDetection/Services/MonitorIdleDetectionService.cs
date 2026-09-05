@@ -1,69 +1,78 @@
-﻿using OLED_Sleeper.Core.Interfaces;
-using OLED_Sleeper.Features.MonitorBehavior.Commands;
+﻿using OLED_Sleeper.Features.MonitorBehavior.Commands;
 using OLED_Sleeper.Features.MonitorIdleDetection.Models;
 using OLED_Sleeper.Features.MonitorIdleDetection.Services.Interfaces;
 using OLED_Sleeper.Features.MonitorInformation.Models;
-using OLED_Sleeper.Features.MonitorInformation.Services.Interfaces;
 using OLED_Sleeper.Features.UserSettings.Models;
+using OLED_Sleeper.Messaging.Interfaces;
 using OLED_Sleeper.Native;
 using Serilog;
 using System.Runtime.InteropServices;
+using System.Text;
 using System.Windows;
 
 namespace OLED_Sleeper.Features.MonitorIdleDetection.Services
 {
     /// <summary>
     /// Monitors user activity and determines when managed monitors become idle or active.
-    /// Manages a timer for each monitor, raising events on state transitions.
-    /// </summary>
-
-    /// <summary>
-    /// Service that monitors user activity and determines when managed monitors become idle or active.
     /// Handles per-monitor state machines and dispatches commands to apply idle/active behaviors.
     /// </summary>
     public class MonitorIdleDetectionService : IMonitorIdleDetectionService
     {
+        /// <summary>
+        /// Window classes that make up the shell desktop. The desktop spans the whole virtual screen, so
+        /// it never counts as active-window activity for any monitor.
+        /// </summary>
+        private static readonly HashSet<string> DesktopWindowClasses = new(StringComparer.Ordinal)
+        {
+            "Progman",
+            "WorkerW"
+        };
+
+        /// <summary>
+        /// Buffer size, in characters, for a window class name.
+        /// </summary>
+        private const int ClassNameBufferLength = 256;
+
         // === Dependencies & State ===
         private readonly IMediator _mediator;
 
-        private readonly IMonitorInfoManager _monitorManager;
-        private CancellationTokenSource _cancellationTokenSource;
+        private CancellationTokenSource? _cancellationTokenSource;
         private List<ManagedMonitorState> _managedMonitors = new();
         private readonly object _lock = new();
         private readonly Dictionary<string, MonitorTimerState> _monitorStates = new();
 
         // === Construction ===
 
-        /// <summary>
-        /// Initializes a new instance of the <see cref="MonitorIdleDetectionService"/> class.
-        /// </summary>
-        /// <param name="monitorManager">Service for monitor information.</param>
-        /// <param name="mediator">Mediator for dispatching monitor behavior commands.</param>
-        public MonitorIdleDetectionService(IMonitorInfoManager monitorManager, IMediator mediator)
+        public MonitorIdleDetectionService(IMediator mediator)
         {
-            _monitorManager = monitorManager;
             _mediator = mediator;
         }
 
         // === Service Lifecycle ===
 
         /// <summary>
-        /// Starts the idle detection service and begins monitoring.
+        /// Starts the idle detection service and begins monitoring. Any previous loop is stopped first.
         /// </summary>
         public void Start()
         {
-            _cancellationTokenSource = new CancellationTokenSource();
-            Task.Run(() => IdleCheckLoop(_cancellationTokenSource.Token));
+            Stop();
+
+            var cancellationTokenSource = new CancellationTokenSource();
+            _cancellationTokenSource = cancellationTokenSource;
+            Task.Run(() => IdleCheckLoop(cancellationTokenSource.Token));
             Log.Information("MonitorIdleDetectionService started.");
         }
 
         /// <summary>
-        /// Stops the idle detection service and monitoring.
+        /// Stops the idle detection service and monitoring. A second call does nothing.
         /// </summary>
         public void Stop()
         {
-            _cancellationTokenSource?.Cancel();
-            _cancellationTokenSource?.Dispose();
+            var cancellationTokenSource = Interlocked.Exchange(ref _cancellationTokenSource, null);
+            if (cancellationTokenSource == null) return;
+
+            cancellationTokenSource.Cancel();
+            cancellationTokenSource.Dispose();
             Log.Information("MonitorIdleDetectionService stopped.");
         }
 
@@ -71,36 +80,38 @@ namespace OLED_Sleeper.Features.MonitorIdleDetection.Services
         /// Updates the settings for all managed monitors.
         /// </summary>
         /// <param name="monitorSettings">The list of monitor settings to manage.</param>
-        public void UpdateSettings(List<MonitorSettings> monitorSettings)
+        /// <param name="monitors">The monitors to join the settings against, supplying bounds and display numbers.</param>
+        /// <remarks>
+        /// Callers supply the monitor list; this class never reads the shared cache and does not depend on
+        /// the monitor manager, so no lock that manager owns can be taken while <see cref="_lock"/> is held.
+        /// </remarks>
+        public Task UpdateSettingsAsync(List<MonitorSettings> monitorSettings, IReadOnlyList<MonitorInfo> monitors)
         {
             var activeSettings = monitorSettings.Where(s => s.IsManaged).ToList();
 
-            void OnMonitorsReady(object? sender, IReadOnlyList<MonitorInfo> allMonitors)
+            int trackedCount;
+            lock (_lock)
             {
-                _monitorManager.MonitorListReady -= OnMonitorsReady;
+                _managedMonitors = (from setting in activeSettings
+                                    join monitorInfo in monitors on setting.HardwareId equals monitorInfo.HardwareId
+                                    select new ManagedMonitorState
+                                    {
+                                        Settings = setting,
+                                        Bounds = monitorInfo.Bounds,
+                                        DisplayNumber = monitorInfo.DisplayNumber
+                                    }).ToList();
 
-                lock (_lock)
+                _monitorStates.Clear();
+                foreach (var monitor in _managedMonitors)
                 {
-                    _managedMonitors = (from setting in activeSettings
-                                        join monitorInfo in allMonitors on setting.HardwareId equals monitorInfo.HardwareId
-                                        select new ManagedMonitorState
-                                        {
-                                            Settings = setting,
-                                            Bounds = monitorInfo.Bounds,
-                                            DisplayNumber = monitorInfo.DisplayNumber
-                                        }).ToList();
-
-                    _monitorStates.Clear();
-                    foreach (var monitor in _managedMonitors)
-                    {
-                        _monitorStates[monitor.Settings.HardwareId] = new MonitorTimerState();
-                    }
+                    _monitorStates[monitor.Settings.HardwareId] = new MonitorTimerState();
                 }
-                Log.Information("MonitorIdleDetectionService settings updated. Now tracking {Count} monitors.", _managedMonitors.Count);
+
+                trackedCount = _managedMonitors.Count;
             }
 
-            _monitorManager.MonitorListReady += OnMonitorsReady;
-            _monitorManager.GetCurrentMonitorsAsync();
+            Log.Information("MonitorIdleDetectionService settings updated. Now tracking {Count} monitors.", trackedCount);
+            return Task.CompletedTask;
         }
 
         // === Idle Detection Loop ===
@@ -295,8 +306,25 @@ namespace OLED_Sleeper.Features.MonitorIdleDetection.Services
             NativeMethods.GetCursorPos(out var nativePoint);
             Point cursorPosition = new(nativePoint.X, nativePoint.Y);
             nint foregroundWindowHandle = NativeMethods.GetForegroundWindow();
-            Rect windowRect = GetForegroundWindowRect(foregroundWindowHandle);
+            Rect windowRect = IsDesktopWindow(foregroundWindowHandle)
+                ? Rect.Empty
+                : GetForegroundWindowRect(foregroundWindowHandle);
             return new SystemState(idleTime, cursorPosition, windowRect, foregroundWindowHandle);
+        }
+
+        /// <summary>
+        /// Determines whether a window is the shell desktop rather than an application window.
+        /// </summary>
+        /// <param name="hwnd">The handle to test.</param>
+        /// <returns>True when the window belongs to one of the <see cref="DesktopWindowClasses"/>; false for a null handle or a class name the shell would not answer.</returns>
+        private static bool IsDesktopWindow(nint hwnd)
+        {
+            if (hwnd == nint.Zero) return false;
+
+            var className = new StringBuilder(ClassNameBufferLength);
+            if (NativeMethods.GetClassName(hwnd, className, className.Capacity) == 0) return false;
+
+            return DesktopWindowClasses.Contains(className.ToString());
         }
 
         /// <summary>
@@ -351,7 +379,7 @@ namespace OLED_Sleeper.Features.MonitorIdleDetection.Services
         private class ManagedMonitorState
         {
             public int DisplayNumber { get; set; }
-            public MonitorSettings Settings { get; set; }
+            public required MonitorSettings Settings { get; set; }
             public Rect Bounds { get; set; }
         }
 

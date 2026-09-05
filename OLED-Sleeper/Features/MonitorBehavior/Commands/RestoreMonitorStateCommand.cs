@@ -1,4 +1,4 @@
-﻿using OLED_Sleeper.Core.Interfaces;
+﻿using OLED_Sleeper.Messaging.Interfaces;
 
 namespace OLED_Sleeper.Features.MonitorBehavior.Commands
 {
@@ -9,8 +9,8 @@ namespace OLED_Sleeper.Features.MonitorBehavior.Commands
     public class RestoreMonitorStateCommand : ICommand
     {
         /// <summary>
-        /// Gets or sets the unique hardware ID of the monitor to be restored.
+        /// The unique hardware identifier of the target monitor.
         /// </summary>
-        public string HardwareId { get; set; }
+        public required string HardwareId { get; init; }
     }
 }

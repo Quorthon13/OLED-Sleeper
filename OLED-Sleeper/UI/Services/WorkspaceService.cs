@@ -18,14 +18,6 @@ namespace OLED_Sleeper.UI.Services
         private readonly IMonitorSettingsFileService _settingsService;
         private readonly IMonitorLayoutService _monitorLayoutService;
 
-        public event EventHandler<ObservableCollection<MonitorLayoutViewModel>> WorkspaceReady;
-
-        /// <summary>
-        /// Initializes a new instance of the <see cref="WorkspaceService"/> class.
-        /// </summary>
-        /// <param name="monitorManager">Service for monitor enumeration.</param>
-        /// <param name="settingsService">Service for loading and saving monitor settings.</param>
-        /// <param name="monitorLayoutService">Service for creating monitor layout view models.</param>
         public WorkspaceService(
             IMonitorInfoManager monitorManager,
             IMonitorSettingsFileService settingsService,
@@ -36,39 +28,24 @@ namespace OLED_Sleeper.UI.Services
             _monitorLayoutService = monitorLayoutService;
         }
 
-        /// <summary>
-        /// Builds the workspace asynchronously.
-        /// </summary>
-        /// <param name="containerWidth">The width of the container.</param>
-        /// <param name="containerHeight">The height of the container.</param>
-        public void BuildWorkspaceAsync(double containerWidth, double containerHeight)
+        /// <inheritdoc />
+        public async Task<ObservableCollection<MonitorLayoutViewModel>> BuildWorkspaceAsync(double containerWidth, double containerHeight)
         {
-            void Handler(object sender, System.Collections.Generic.IReadOnlyList<MonitorInfo> monitorInfos)
-            {
-                _monitorManager.MonitorListReady -= Handler;
-                var savedSettings = _settingsService.LoadSettings();
-                var monitorLayoutViewModels = _monitorLayoutService.CreateLayout(monitorInfos.ToList(), containerWidth, containerHeight);
-                ApplySettingsToViewModels(monitorLayoutViewModels, savedSettings);
-                WorkspaceReady?.Invoke(this, monitorLayoutViewModels);
-            }
-            _monitorManager.MonitorListReady += Handler;
-            _monitorManager.GetCurrentMonitorsAsync();
+            var monitorInfos = await _monitorManager.GetCurrentMonitorsAsync();
+
+            var savedSettings = _settingsService.LoadSettings();
+            var monitorLayoutViewModels = _monitorLayoutService.CreateLayout(monitorInfos.ToList(), containerWidth, containerHeight);
+            ApplySettingsToViewModels(monitorLayoutViewModels, savedSettings);
+
+            return monitorLayoutViewModels;
         }
 
-        /// <summary>
-        /// Begins a full refresh of the workspace asynchronously by refreshing the monitor list and then rebuilding the workspace.
-        /// </summary>
-        /// <param name="containerWidth">The width of the container for layout scaling.</param>
-        /// <param name="containerHeight">The height of the container for layout scaling.</param>
-        public void RefreshWorkspaceAsync(double containerWidth, double containerHeight)
+        /// <inheritdoc />
+        public async Task<ObservableCollection<MonitorLayoutViewModel>> RefreshWorkspaceAsync(double containerWidth, double containerHeight)
         {
-            void Handler(object sender, System.Collections.Generic.IReadOnlyList<MonitorInfo> monitorInfos)
-            {
-                _monitorManager.MonitorListReady -= Handler;
-                BuildWorkspaceAsync(containerWidth, containerHeight);
-            }
-            _monitorManager.MonitorListReady += Handler;
-            _monitorManager.RefreshMonitorsAsync();
+            await _monitorManager.RefreshMonitorsAsync();
+
+            return await BuildWorkspaceAsync(containerWidth, containerHeight);
         }
 
         /// <summary>

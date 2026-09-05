@@ -52,10 +52,10 @@ namespace OLED_Sleeper.Tests.Features.MonitorBlackout.Handlers
         }
 
         [Fact]
-        public async Task HandleAsync_WithNullHardwareId_DoesNotThrow()
+        public async Task HandleAsync_WithEmptyHardwareId_DoesNotThrow()
         {
             // Arrange
-            var command = new HideBlackoutOverlayCommand { HardwareId = null };
+            var command = new HideBlackoutOverlayCommand { HardwareId = string.Empty };
 
             // Act
             var exception = await Record.ExceptionAsync(() => _handler.HandleAsync(command));

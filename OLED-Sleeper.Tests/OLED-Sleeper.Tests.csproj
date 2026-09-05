@@ -27,8 +27,4 @@
 	<Using Include="Xunit" />
 	</ItemGroup>
 
-	<ItemGroup>
-	  <Folder Include="Features\MonitorBlackout\Services\" />
-	</ItemGroup>
-
 </Project>

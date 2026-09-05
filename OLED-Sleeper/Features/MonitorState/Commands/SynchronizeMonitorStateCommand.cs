@@ -1,5 +1,5 @@
-﻿using OLED_Sleeper.Core.Interfaces;
-using OLED_Sleeper.Features.MonitorInformation.Models;
+﻿using OLED_Sleeper.Features.MonitorInformation.Models;
+using OLED_Sleeper.Messaging.Interfaces;
 
 namespace OLED_Sleeper.Features.MonitorState.Commands
 {
@@ -20,9 +20,6 @@ namespace OLED_Sleeper.Features.MonitorState.Commands
         /// </summary>
         public IReadOnlyList<MonitorInfo> NewMonitors { get; }
 
-        /// <summary>
-        /// Initializes a new instance of the <see cref="SynchronizeMonitorStateCommand"/> class.
-        /// </summary>
         /// <param name="oldMonitors">The list of monitors before the change.</param>
         /// <param name="newMonitors">The list of monitors after the change.</param>
         public SynchronizeMonitorStateCommand(IReadOnlyList<MonitorInfo> oldMonitors, IReadOnlyList<MonitorInfo> newMonitors)

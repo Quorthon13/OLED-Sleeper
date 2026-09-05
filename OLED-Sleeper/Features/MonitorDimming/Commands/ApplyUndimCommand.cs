@@ -1,4 +1,4 @@
-using OLED_Sleeper.Core.Interfaces;
+using OLED_Sleeper.Messaging.Interfaces;
 
 namespace OLED_Sleeper.Features.MonitorDimming.Commands
 {
@@ -11,6 +11,6 @@ namespace OLED_Sleeper.Features.MonitorDimming.Commands
         /// <summary>
         /// The unique hardware identifier of the target monitor.
         /// </summary>
-        public string? HardwareId { get; init; }
+        public required string HardwareId { get; init; }
     }
 }

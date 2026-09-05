@@ -1,7 +1,7 @@
-﻿using OLED_Sleeper.Core.Interfaces;
-using OLED_Sleeper.Features.MonitorBehavior.Commands;
+﻿using OLED_Sleeper.Features.MonitorBehavior.Commands;
 using OLED_Sleeper.Features.MonitorBlackout.Commands;
 using OLED_Sleeper.Features.MonitorDimming.Commands;
+using OLED_Sleeper.Messaging.Interfaces;
 using Serilog;
 
 namespace OLED_Sleeper.Features.MonitorBehavior.Handlers
@@ -14,10 +14,6 @@ namespace OLED_Sleeper.Features.MonitorBehavior.Handlers
     {
         private readonly IMediator _mediator;
 
-        /// <summary>
-        /// Initializes a new instance of the <see cref="RestoreMonitorStateCommandHandler"/> class.
-        /// </summary>
-        /// <param name="mediator">The mediator for dispatching further commands.</param>
         public RestoreMonitorStateCommandHandler(IMediator mediator)
         {
             _mediator = mediator;

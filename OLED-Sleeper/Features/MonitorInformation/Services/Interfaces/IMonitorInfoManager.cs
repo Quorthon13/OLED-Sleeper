@@ -1,4 +1,4 @@
-﻿using OLED_Sleeper.Features.MonitorInformation.Models;
+using OLED_Sleeper.Features.MonitorInformation.Models;
 
 namespace OLED_Sleeper.Features.MonitorInformation.Services.Interfaces
 {
@@ -8,32 +8,27 @@ namespace OLED_Sleeper.Features.MonitorInformation.Services.Interfaces
     public interface IMonitorInfoManager
     {
         /// <summary>
-        /// Begins asynchronous retrieval and enrichment of the monitor list.
-        /// Subscribers will be notified via <see cref="MonitorListReady"/> when the list is available.
-        /// If the cache is already populated, the event is raised immediately.
+        /// Gets the enriched monitor list, scanning the system on first use and serving a cached
+        /// result thereafter. Concurrent callers share a single scan.
         /// </summary>
-        void GetCurrentMonitorsAsync();
+        /// <returns>The enriched list of <see cref="MonitorInfo"/> objects.</returns>
+        Task<IReadOnlyList<MonitorInfo>> GetCurrentMonitorsAsync();
 
         /// <summary>
-        /// Raised when the monitor list has been retrieved and enriched.
+        /// Forces a re-scan of the monitor list from the system and replaces the cache with the result.
         /// </summary>
-        event EventHandler<IReadOnlyList<MonitorInfo>> MonitorListReady;
+        /// <returns>The freshly enriched list of <see cref="MonitorInfo"/> objects.</returns>
+        Task<IReadOnlyList<MonitorInfo>> RefreshMonitorsAsync();
 
         /// <summary>
-        /// Forces a refresh of the monitor list from the system asynchronously.
-        /// The refresh is performed on a background thread, and subscribers will be notified via <see cref="MonitorListReady"/> when the list is available.
-        /// This method is event-driven and does not return a Task.
+        /// Gets the latest, up-to-date list of monitors from the system (basic info only, no DDC/CI probing).
         /// </summary>
-        void RefreshMonitorsAsync();
-
-        /// <summary>
-        /// Gets the latest, up-to-date list of monitors from the system (basic info only, no enrichment).
-        /// </summary>
-        /// <returns>A list of <see cref="MonitorInfo"/> objects representing the latest monitors.</returns>
+        /// <returns>A list of <see cref="MonitorInfo"/> objects representing the latest monitors, including
+        /// any whose hardware ID did not resolve.</returns>
         List<MonitorInfo> GetLatestMonitorsBasicInfo();
 
         /// <summary>
-        /// Enriches a list of MonitorInfo objects with DDC/CI support and hardware ID.
+        /// Enriches a list of MonitorInfo objects with their DDC/CI capabilities.
         /// </summary>
         /// <param name="monitors">The list of monitors to enrich.</param>
         void EnrichMonitorInfoList(List<MonitorInfo> monitors);

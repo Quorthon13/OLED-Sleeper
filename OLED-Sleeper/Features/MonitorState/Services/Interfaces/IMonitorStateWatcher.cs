@@ -11,7 +11,7 @@ namespace OLED_Sleeper.Features.MonitorState.Services.Interfaces
         void Start();
 
         /// <summary>
-        /// Stops monitoring for monitor state changes.
+        /// Stops monitoring for monitor state changes. No synchronization is dispatched after this returns.
         /// </summary>
         void Stop();
     }

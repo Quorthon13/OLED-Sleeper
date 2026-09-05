@@ -1,10 +1,6 @@
-﻿using OLED_Sleeper.Features.MonitorBlackout.Services.Interfaces;
-using OLED_Sleeper.Native;
-using System;
-using System.Collections.Generic;
+using OLED_Sleeper.Features.MonitorBlackout.Services.Interfaces;
+using OLED_Sleeper.Infrastructure.Runtime.Interfaces;
 using System.Windows;
-using System.Windows.Interop;
-using System.Windows.Media;
 
 namespace OLED_Sleeper.Features.MonitorBlackout.Services
 {
@@ -14,122 +10,100 @@ namespace OLED_Sleeper.Features.MonitorBlackout.Services
     /// </summary>
     public class MonitorBlackoutService : IMonitorBlackoutService
     {
-        private readonly Dictionary<string, Window> _overlayWindows = new();
+        private readonly IDispatcher _dispatcher;
+        private readonly IOverlayWindowFactory _overlayWindowFactory;
+
+        /// <summary>
+        /// Guards <see cref="_overlayWindows"/> and <see cref="_overlayHandles"/>. Overlays are created and
+        /// closed on the dispatcher thread while <see cref="IsOverlayWindow"/> reads from the idle thread.
+        /// Window creation, showing and closing all happen outside this lock.
+        /// </summary>
+        private readonly object _overlayLock = new();
+
+        /// <summary>
+        /// The overlay currently shown on each monitor, keyed by hardware ID. A monitor with no overlay
+        /// has no entry.
+        /// </summary>
+        private readonly Dictionary<string, OverlayRegistration> _overlayWindows = new();
+
+        /// <summary>
+        /// The handles of every overlay currently shown, which is what <see cref="IsOverlayWindow"/>
+        /// answers from. Overlays that never got a handle are absent.
+        /// </summary>
         private readonly HashSet<nint> _overlayHandles = new();
 
+        public MonitorBlackoutService(IDispatcher dispatcher, IOverlayWindowFactory overlayWindowFactory)
+        {
+            _dispatcher = dispatcher;
+            _overlayWindowFactory = overlayWindowFactory;
+        }
+
         /// <summary>
-        /// Asynchronously shows a blackout overlay on the specified monitor.
+        /// An overlay window paired with the handle it was tracked under.
         /// </summary>
-        /// <param name="hardwareId">The unique hardware ID of the monitor.</param>
-        /// <param name="bounds">The bounds of the monitor in screen coordinates.</param>
-        /// <returns>A task representing the asynchronous operation.</returns>
+        /// <param name="Window">The overlay window.</param>
+        /// <param name="Handle">The handle recorded when the overlay was shown, or zero if none was obtained.</param>
+        private readonly record struct OverlayRegistration(IOverlayWindow Window, nint Handle);
+
+        /// <inheritdoc />
         public async Task ShowBlackoutOverlayAsync(string hardwareId, Rect bounds)
         {
-            await Application.Current.Dispatcher.InvokeAsync(() =>
+            await _dispatcher.InvokeAsync(() =>
             {
-                if (_overlayWindows.ContainsKey(hardwareId)) return;
-
-                var overlay = CreateOverlayWindow();
-                overlay.Show();
-
-                nint hwnd = new WindowInteropHelper(overlay).Handle;
-                if (hwnd != nint.Zero)
+                lock (_overlayLock)
                 {
-                    ApplyNoActivateStyle(hwnd);
-                    PositionOverlayToMonitor(hwnd, bounds);
-                    _overlayHandles.Add(hwnd);
+                    if (_overlayWindows.ContainsKey(hardwareId)) return;
                 }
 
-                _overlayWindows[hardwareId] = overlay;
+                var overlay = _overlayWindowFactory.Create();
+                overlay.Show(bounds);
+
+                nint hwnd = overlay.Handle;
+
+                lock (_overlayLock)
+                {
+                    if (hwnd != nint.Zero)
+                    {
+                        _overlayHandles.Add(hwnd);
+                    }
+
+                    _overlayWindows[hardwareId] = new OverlayRegistration(overlay, hwnd);
+                }
             });
         }
 
-        /// <summary>
-        /// Asynchronously hides the blackout overlay for the specified monitor.
-        /// </summary>
-        /// <param name="hardwareId">The unique hardware ID of the monitor.</param>
-        /// <returns>A task representing the asynchronous operation.</returns>
+        /// <inheritdoc />
         public async Task HideBlackoutOverlayAsync(string hardwareId)
         {
-            await Application.Current.Dispatcher.InvokeAsync(() =>
+            await _dispatcher.InvokeAsync(() =>
             {
-                if (_overlayWindows.TryGetValue(hardwareId, out var overlay))
+                OverlayRegistration registration;
+
+                lock (_overlayLock)
                 {
-                    RemoveOverlayHandle(overlay);
-                    overlay.Close();
-                    _overlayWindows.Remove(hardwareId);
+                    if (!_overlayWindows.Remove(hardwareId, out registration)) return;
+
+                    // An overlay reports a zero handle once it is closed, so the handle recorded when it
+                    // was shown is used here.
+                    if (registration.Handle != nint.Zero)
+                    {
+                        _overlayHandles.Remove(registration.Handle);
+                    }
                 }
+
+                registration.Window.Close();
             });
         }
 
-        /// <summary>
-        /// Determines whether the specified window handle belongs to an overlay window.
-        /// </summary>
-        /// <param name="windowHandle">The window handle to check.</param>
-        /// <returns>True if the handle is an overlay window; otherwise, false.</returns>
-        public bool IsOverlayWindow(nint windowHandle) =>
-            windowHandle != nint.Zero && _overlayHandles.Contains(windowHandle);
+        /// <inheritdoc />
+        public bool IsOverlayWindow(nint windowHandle)
+        {
+            if (windowHandle == nint.Zero) return false;
 
-        #region Private Helpers
-
-        /// <summary>
-        /// Creates a new overlay window.
-        /// </summary>
-        /// <returns>A configured <see cref="Window"/> instance.</returns>
-        private static Window CreateOverlayWindow() =>
-            new()
+            lock (_overlayLock)
             {
-                Cursor = System.Windows.Input.Cursors.None,
-                WindowStyle = WindowStyle.None,
-                ResizeMode = ResizeMode.NoResize,
-                AllowsTransparency = true,
-                Background = Brushes.Black,
-                ShowInTaskbar = false,
-                Topmost = true,
-                WindowStartupLocation = WindowStartupLocation.Manual
-            };
-
-        /// <summary>
-        /// Positions the overlay window to exactly cover the monitor using physical screen coordinates.
-        /// </summary>
-        /// <param name="hwnd">The window handle.</param>
-        /// <param name="bounds">The monitor bounds in physical screen coordinates.</param>
-        private static void PositionOverlayToMonitor(nint hwnd, Rect bounds)
-        {
-            NativeMethods.SetWindowPos(
-                hwnd,
-                NativeMethods.HWND_TOPMOST,
-                (int)bounds.Left,
-                (int)bounds.Top,
-                (int)bounds.Width,
-                (int)bounds.Height,
-                NativeMethods.SWP_NOACTIVATE);
-        }
-
-        /// <summary>
-        /// Applies the WS_EX_NOACTIVATE style to prevent the overlay from stealing focus.
-        /// </summary>
-        /// <param name="hwnd">The window handle.</param>
-        private static void ApplyNoActivateStyle(nint hwnd)
-        {
-            nint extendedStyle = NativeMethods.GetWindowLongPtr(hwnd, NativeMethods.GWL_EXSTYLE);
-            NativeMethods.SetWindowLongPtr(hwnd, NativeMethods.GWL_EXSTYLE,
-                new nint(extendedStyle.ToInt64() | NativeMethods.WS_EX_NOACTIVATE));
-        }
-
-        /// <summary>
-        /// Removes the overlay window handle from tracking before closing.
-        /// </summary>
-        /// <param name="overlay">The overlay window.</param>
-        private void RemoveOverlayHandle(Window overlay)
-        {
-            nint hwnd = new WindowInteropHelper(overlay).Handle;
-            if (hwnd != nint.Zero)
-            {
-                _overlayHandles.Remove(hwnd);
+                return _overlayHandles.Contains(windowHandle);
             }
         }
-
-        #endregion Private Helpers
     }
 }

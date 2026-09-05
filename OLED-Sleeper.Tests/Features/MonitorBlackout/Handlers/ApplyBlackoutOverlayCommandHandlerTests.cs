@@ -37,10 +37,10 @@ namespace OLED_Sleeper.Tests.Features.MonitorBlackout.Handlers
 
             var monitors = new List<MonitorInfo>
             {
-                new MonitorInfo { HardwareId = hardwareId, IsDdcCiSupported = true, Bounds = new Rect(0, 0, 1920, 1080) }
+                new MonitorInfo { HardwareId = hardwareId, Capabilities = new DdcCiCapabilities(true, 100), Bounds = new Rect(0, 0, 1920, 1080) }
             };
 
-            SetupMonitorListReadyEvent(monitors);
+            SetupMonitors(monitors);
 
             _monitorBlackoutServiceMock
                 .Setup(x => x.ShowBlackoutOverlayAsync(It.IsAny<string>(), It.IsAny<Rect>()))
@@ -67,10 +67,10 @@ namespace OLED_Sleeper.Tests.Features.MonitorBlackout.Handlers
 
             var monitors = new List<MonitorInfo>
             {
-                new MonitorInfo { HardwareId = hardwareId, IsDdcCiSupported = false, Bounds = new Rect(0, 0, 1920, 1080) }
+                new MonitorInfo { HardwareId = hardwareId, Capabilities = new DdcCiCapabilities(false, 0), Bounds = new Rect(0, 0, 1920, 1080) }
             };
 
-            SetupMonitorListReadyEvent(monitors);
+            SetupMonitors(monitors);
 
             _monitorBlackoutServiceMock
                 .Setup(x => x.ShowBlackoutOverlayAsync(It.IsAny<string>(), It.IsAny<Rect>()))
@@ -92,7 +92,7 @@ namespace OLED_Sleeper.Tests.Features.MonitorBlackout.Handlers
             var command = new ApplyBlackoutOverlayCommand { HardwareId = hardwareId };
             var monitors = new List<MonitorInfo>();
 
-            SetupMonitorListReadyEvent(monitors);
+            SetupMonitors(monitors);
 
             // Act
             var exception = await Record.ExceptionAsync(() => _handler.HandleAsync(command));
@@ -112,10 +112,10 @@ namespace OLED_Sleeper.Tests.Features.MonitorBlackout.Handlers
 
             var monitors = new List<MonitorInfo>
             {
-                new MonitorInfo { HardwareId = hardwareId, IsDdcCiSupported = false, Bounds = new Rect(0, 0, 1920, 1080) }
+                new MonitorInfo { HardwareId = hardwareId, Capabilities = new DdcCiCapabilities(false, 0), Bounds = new Rect(0, 0, 1920, 1080) }
             };
 
-            SetupMonitorListReadyEvent(monitors);
+            SetupMonitors(monitors);
 
             _monitorBlackoutServiceMock
                 .Setup(x => x.ShowBlackoutOverlayAsync(It.IsAny<string>(), It.IsAny<Rect>()))
@@ -128,17 +128,33 @@ namespace OLED_Sleeper.Tests.Features.MonitorBlackout.Handlers
             Assert.Null(exception);
         }
 
+        [Fact]
+        public async Task HandleAsync_WhenMonitorScanFails_CatchesExceptionAndDoesNotThrow()
+        {
+            // Arrange
+            var command = new ApplyBlackoutOverlayCommand { HardwareId = "MON-123" };
+
+            _monitorInfoManagerMock
+                .Setup(m => m.GetCurrentMonitorsAsync())
+                .ThrowsAsync(new InvalidOperationException("Native monitor enumeration failed."));
+
+            // Act
+            var exception = await Record.ExceptionAsync(() => _handler.HandleAsync(command));
+
+            // Assert
+            Assert.Null(exception);
+            _monitorBlackoutServiceMock.Verify(x => x.ShowBlackoutOverlayAsync(It.IsAny<string>(), It.IsAny<Rect>()), Times.Never);
+            _monitorDimmingServiceMock.Verify(x => x.DimMonitorAsync(It.IsAny<string>(), It.IsAny<int>()), Times.Never);
+        }
+
         /// <summary>
-        /// Simulates the firing of the MonitorListReady event immediately when GetCurrentMonitorsAsync() is called.
+        /// Makes GetCurrentMonitorsAsync() return the supplied monitor list.
         /// </summary>
-        private void SetupMonitorListReadyEvent(List<MonitorInfo> monitors)
+        private void SetupMonitors(List<MonitorInfo> monitors)
         {
             _monitorInfoManagerMock
                 .Setup(m => m.GetCurrentMonitorsAsync())
-                .Callback(() =>
-                {
-                    _monitorInfoManagerMock.Raise(m => m.MonitorListReady += null, _monitorInfoManagerMock.Object, monitors);
-                });
+                .ReturnsAsync(monitors);
         }
     }
 }

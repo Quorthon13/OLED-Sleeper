@@ -1,11 +1,11 @@
-﻿using OLED_Sleeper.Core.Interfaces;
-using OLED_Sleeper.Features.MonitorBlackout.Services.Interfaces;
+﻿using OLED_Sleeper.Features.MonitorBlackout.Services.Interfaces;
 using OLED_Sleeper.Features.MonitorDimming.Services.Interfaces;
 using OLED_Sleeper.Features.MonitorIdleDetection.Services.Interfaces;
 using OLED_Sleeper.Features.MonitorInformation.Models;
 using OLED_Sleeper.Features.MonitorState.Commands;
 using OLED_Sleeper.Features.UserSettings.Models;
 using OLED_Sleeper.Features.UserSettings.Services.Interfaces;
+using OLED_Sleeper.Messaging.Interfaces;
 using Serilog;
 
 namespace OLED_Sleeper.Features.MonitorState.Handlers;
@@ -34,7 +34,7 @@ public class SynchronizeMonitorStateCommandHandler(
     /// updating managed monitor settings, and restarting idle detection.
     /// </summary>
     /// <param name="command">The command containing the old and new monitor lists.</param>
-    public Task HandleAsync(SynchronizeMonitorStateCommand command)
+    public async Task HandleAsync(SynchronizeMonitorStateCommand command)
     {
         idleDetectionService.Stop();
 
@@ -44,11 +44,11 @@ public class SynchronizeMonitorStateCommandHandler(
         var savedSettings = settingsFileService.LoadSettings();
         UpdateManagedSettings(savedSettings, command.NewMonitors);
 
-        idleDetectionService.UpdateSettings(savedSettings);
+        // Awaited so idle detection restarts against the new settings rather than racing them.
+        await idleDetectionService.UpdateSettingsAsync(savedSettings, command.NewMonitors);
         idleDetectionService.Start();
 
         Log.Information("Monitor state synchronized. Active monitors: {Count}", command.NewMonitors.Count);
-        return Task.CompletedTask;
     }
 
     /// <summary>

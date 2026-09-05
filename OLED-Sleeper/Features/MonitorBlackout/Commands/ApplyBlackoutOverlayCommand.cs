@@ -1,4 +1,4 @@
-﻿using OLED_Sleeper.Core.Interfaces;
+﻿using OLED_Sleeper.Messaging.Interfaces;
 
 namespace OLED_Sleeper.Features.MonitorBlackout.Commands
 {
@@ -12,6 +12,11 @@ namespace OLED_Sleeper.Features.MonitorBlackout.Commands
         /// <summary>
         /// The unique hardware identifier of the target monitor.
         /// </summary>
-        public string? HardwareId { get; init; }
+        public required string HardwareId { get; init; }
+
+        /// <summary>
+        /// Whether to also set the monitor's hardware brightness to zero. True when unset.
+        /// </summary>
+        public bool LowerBrightness { get; init; } = true;
     }
 }
