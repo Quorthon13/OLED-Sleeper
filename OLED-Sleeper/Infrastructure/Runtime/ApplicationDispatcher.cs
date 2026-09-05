@@ -1,6 +1,7 @@
 using OLED_Sleeper.Infrastructure.Runtime.Interfaces;
 using System.Diagnostics.CodeAnalysis;
 using System.Windows;
+using System.Windows.Threading;
 
 namespace OLED_Sleeper.Infrastructure.Runtime
 {
@@ -19,5 +20,9 @@ namespace OLED_Sleeper.Infrastructure.Runtime
         /// <inheritdoc />
         public async Task InvokeAsync(Action action) =>
             await Application.Current.Dispatcher.InvokeAsync(action);
+
+        /// <inheritdoc />
+        public async Task InvokeAfterInputAsync(Action action) =>
+            await Application.Current.Dispatcher.InvokeAsync(action, DispatcherPriority.Background);
     }
 }

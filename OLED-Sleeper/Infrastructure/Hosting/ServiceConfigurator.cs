@@ -88,6 +88,8 @@ namespace OLED_Sleeper.Infrastructure.Hosting
             services.AddSingleton<ITrayIconService, TrayIconService>();
             services.AddSingleton<IMainWindowService, MainWindowService>();
             services.AddSingleton<IDialogService, MessageBoxDialogService>();
+            services.AddSingleton<IUnsavedSettings>(sp => sp.GetRequiredService<MainViewModel>());
+            services.AddSingleton<IUnsavedSettingsService, UnsavedSettingsService>();
             services.AddSingleton<IMonitorSettingsSaveService, MonitorSettingsSaveService>();
 
             return services.BuildServiceProvider();

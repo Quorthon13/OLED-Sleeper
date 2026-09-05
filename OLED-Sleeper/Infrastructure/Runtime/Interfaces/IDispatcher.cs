@@ -23,5 +23,13 @@ namespace OLED_Sleeper.Infrastructure.Runtime.Interfaces
         /// <param name="action">The action to run.</param>
         /// <returns>A task that completes once the action has finished.</returns>
         Task InvokeAsync(Action action);
+
+        /// <summary>
+        /// Hands the action to the UI thread to run after the input already queued there has been
+        /// processed. A modal dialog opened this way cannot be answered by the click that asked for it.
+        /// </summary>
+        /// <param name="action">The action to run.</param>
+        /// <returns>A task that completes once the action has finished.</returns>
+        Task InvokeAfterInputAsync(Action action);
     }
 }

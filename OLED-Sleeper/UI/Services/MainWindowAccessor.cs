@@ -14,6 +14,6 @@ namespace OLED_Sleeper.UI.Services
         public void SetMainWindow(Window window) => Application.Current.MainWindow = window;
 
         /// <inheritdoc />
-        public void HideMainWindow() => Application.Current.MainWindow?.Hide();
+        public Window? MainWindow => Application.Current?.MainWindow;
     }
 }

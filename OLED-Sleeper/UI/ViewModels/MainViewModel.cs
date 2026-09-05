@@ -13,7 +13,7 @@ namespace OLED_Sleeper.UI.ViewModels
     /// The main ViewModel for the application's main window.
     /// It orchestrates the various services and manages the overall state of the UI.
     /// </summary>
-    public class MainViewModel : ViewModelBase
+    public class MainViewModel : ViewModelBase, IUnsavedSettings
     {
         #region Private Fields
 
@@ -31,16 +31,6 @@ namespace OLED_Sleeper.UI.ViewModels
         /// Runs actions on the UI thread.
         /// </summary>
         private readonly IDispatcher _dispatcher;
-
-        /// <summary>
-        /// Reaches the application's main window.
-        /// </summary>
-        private readonly IMainWindowAccessor _mainWindowAccessor;
-
-        /// <summary>
-        /// Shows modal dialogs to the user.
-        /// </summary>
-        private readonly IDialogService _dialogService;
 
         /// <summary>
         /// The width of the container used for monitor layout calculations.
@@ -187,20 +177,16 @@ namespace OLED_Sleeper.UI.ViewModels
         public MainViewModel(
             IWorkspaceService workspaceService,
             IMonitorSettingsSaveService saveService,
-            IDispatcher dispatcher,
-            IMainWindowAccessor mainWindowAccessor,
-            IDialogService dialogService)
+            IDispatcher dispatcher)
         {
             _workspaceService = workspaceService;
             _saveService = saveService;
             _dispatcher = dispatcher;
-            _mainWindowAccessor = mainWindowAccessor;
-            _dialogService = dialogService;
 
             SelectMonitorCommand = new RelayCommand(ExecuteSelectMonitor);
             ReloadMonitorsCommand = new RelayCommand(() => RefreshMonitors(false));
             SaveSettingsCommand = new AsyncRelayCommand(ExecuteSaveSettings, () => IsDirty);
-            DiscardChangesCommand = new RelayCommand(ExecuteDiscardChanges, () => IsDirty);
+            DiscardChangesCommand = new RelayCommand(DiscardChanges, () => IsDirty);
         }
 
         #endregion Constructor
@@ -226,31 +212,24 @@ namespace OLED_Sleeper.UI.ViewModels
             ApplyWorkspace(_workspaceService.BuildWorkspaceAsync, width, height, preserveSelection: true);
         }
 
-        /// <summary>
-        /// Handles logic for when the main window is closing. Returns true if the window should close, false to cancel.
-        /// </summary>
-        /// <returns>True to allow closing, false to cancel.</returns>
-        public bool OnWindowClosing()
+        /// <inheritdoc />
+        public bool TrySaveChanges()
         {
-            if (IsDirty)
+            if (!_saveService.TrySave(Monitors)) return false;
+
+            CheckDirtyState();
+            return true;
+        }
+
+        /// <inheritdoc />
+        public void DiscardChanges()
+        {
+            foreach (var monitor in Monitors)
             {
-                var result = _dialogService.AskYesNoCancel(
-                    "You have unsaved changes. Would you like to save them before hiding the window?",
-                    "Unsaved Changes");
-
-                if (result == MessageBoxResult.Cancel)
-                {
-                    return false; // Cancel closing
-                }
-
-                if (result == MessageBoxResult.Yes)
-                {
-                    SaveSettingsCommand.Execute(null);
-                }
+                monitor.Configuration.Revert();
             }
-            _mainWindowAccessor.HideMainWindow();
 
-            return false;
+            CheckDirtyState();
         }
 
         #endregion Public Methods (for View Interaction)
@@ -267,24 +246,11 @@ namespace OLED_Sleeper.UI.ViewModels
         }
 
         /// <summary>
-        /// Handles discarding unsaved changes by refreshing the monitor list.
-        /// </summary>
-        private void ExecuteDiscardChanges()
-        {
-            RefreshMonitors(true);
-        }
-
-        /// <summary>
         /// Saves the monitor settings and reports the outcome on the save button.
         /// </summary>
         private async Task ExecuteSaveSettings()
         {
-            if (!_saveService.TrySave(Monitors))
-            {
-                return; // Stop if invalid
-            }
-
-            CheckDirtyState();
+            if (!TrySaveChanges()) return;
 
             await ProvideSaveFeedbackAsync();
         }

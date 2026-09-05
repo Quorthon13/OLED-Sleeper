@@ -1,5 +1,3 @@
-﻿using OLED_Sleeper.UI.ViewModels;
-using System.ComponentModel;
 using System.Windows;
 using System.Windows.Input;
 
@@ -7,7 +5,7 @@ namespace OLED_Sleeper
 {
     /// <summary>
     /// The main application window for OLED Sleeper.
-    /// Handles window chrome, custom title bar, and delegates closing logic to the ViewModel.
+    /// Handles window chrome and the custom title bar.
     /// </summary>
     public partial class MainWindow : Window
     {
@@ -19,25 +17,6 @@ namespace OLED_Sleeper
         }
 
         #endregion Constructor
-
-        #region Window Event Overrides
-
-        /// <summary>
-        /// Handles the window closing event, delegating logic to the ViewModel.
-        /// Cancels closing if the ViewModel returns false.
-        /// </summary>
-        /// <param name="e">CancelEventArgs for the closing event.</param>
-        protected override void OnClosing(CancelEventArgs e)
-        {
-            if (DataContext is MainViewModel viewModel && !viewModel.OnWindowClosing())
-            {
-                e.Cancel = true;
-                return;
-            }
-            base.OnClosing(e);
-        }
-
-        #endregion Window Event Overrides
 
         #region Title Bar & Window Controls
 
