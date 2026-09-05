@@ -1,0 +1,126 @@
+﻿name: Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Build the artifacts without publishing a release'
+        type: boolean
+        default: true
+
+jobs:
+  release:
+    name: Build and publish
+    runs-on: windows-latest
+    permissions:
+      contents: write
+
+    env:
+      # Present only once code signing is set up. Until then the signing step is skipped.
+      # See .claude/docs/code-signing.md.
+      SIGNPATH_API_TOKEN: ${{ secrets.SIGNPATH_API_TOKEN }}
+
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+        with:
+          # MinVer derives the version from the nearest v* tag, so it needs the full history.
+          fetch-depth: 0
+
+      - name: Verify the tag is on master
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: pwsh
+        run: |
+          git fetch --no-tags origin +refs/heads/master:refs/remotes/origin/master
+          git merge-base --is-ancestor $env:GITHUB_SHA origin/master
+          if ($LASTEXITCODE -ne 0) {
+            Write-Host "::error::${env:GITHUB_REF_NAME} is not on master. Releases are cut from master; merge develop into master first, then tag."
+            exit 1
+          }
+          Write-Host "$env:GITHUB_REF_NAME is on master."
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Install Inno Setup
+        run: choco install innosetup -y --no-progress
+
+      - name: Mark this as a test build
+        if: github.event_name == 'workflow_dispatch'
+        shell: pwsh
+        run: |
+          # MinVer reads this as an MSBuild property, so an untagged test build carries the commit it came
+          # from and can never be mistaken for a release.
+          $shortSha = git rev-parse --short HEAD
+          "MinVerBuildMetadata=$shortSha" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
+      - name: Build the release artifacts
+        shell: pwsh
+        run: .\build.ps1
+
+      - name: Read the version
+        id: version
+        shell: pwsh
+        run: |
+          $version = (dotnet msbuild OLED-Sleeper\OLED-Sleeper.csproj -t:MinVer -getProperty:Version -v:quiet -nologo | Out-String).Trim()
+          "version=$version" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+
+      # Inert until the SignPath Foundation application is approved and the secret is set.
+      - name: Sign the artifacts
+        if: env.SIGNPATH_API_TOKEN != ''
+        shell: pwsh
+        run: |
+          Write-Host '::error::Signing is configured but not implemented yet. See .claude/docs/code-signing.md.'
+          exit 1
+
+      - name: Upload the test build
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@v4
+        with:
+          name: oled-sleeper-${{ steps.version.outputs.version }}
+          path: |
+            artifacts/*
+            !artifacts/publish
+          if-no-files-found: error
+
+      - name: Draft the release
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $version = '${{ steps.version.outputs.version }}'
+
+          $header = @"
+          ## 💾 Which download?
+
+          | | Size | Needs .NET? | Settings live in |
+          |---|---|---|---|
+          | **``OLED-Sleeper-$version-Setup.exe``** | ~2 MB | Downloads the .NET 8 Desktop runtime during install | ``%APPDATA%\OLED-Sleeper`` |
+          | **``OLED-Sleeper-$version-Portable-x64.zip``** | ~64 MB | No — everything is bundled | ``Data\`` beside the executable |
+
+          The installer is small because it fetches the runtime; the portable build carries it, which is the
+          whole size difference. Verify either against ``OLED-Sleeper-$version-SHA256SUMS.txt``.
+
+          > **Updating resets your per-monitor settings to defaults.** Logs are kept.
+
+          ---
+
+          "@
+
+          # Generate the label-driven notes, then put the download guidance above them.
+          $generated = gh api "repos/$env:GITHUB_REPOSITORY/releases/generate-notes" `
+            -f tag_name="$env:GITHUB_REF_NAME" `
+            --jq '.body'
+
+          $body = $header + $generated
+          Set-Content -LiteralPath release-notes.md -Value $body -Encoding utf8
+
+          gh release create "$env:GITHUB_REF_NAME" (Get-ChildItem artifacts -File | ForEach-Object { $_.FullName }) `
+            --draft `
+            --title "OLED Sleeper $env:GITHUB_REF_NAME" `
+            --notes-file release-notes.md

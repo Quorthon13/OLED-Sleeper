@@ -1,4 +1,4 @@
-using Moq;
+﻿using Moq;
 using OLED_Sleeper.Features.UserSettings.Models;
 using OLED_Sleeper.Features.UserSettings.Services;
 using OLED_Sleeper.Storage.Interfaces;
@@ -8,6 +8,7 @@ namespace OLED_Sleeper.Tests.Features.UserSettings.Services
     public class MonitorSettingsFileServiceTests
     {
         private const string SettingsFileName = "settings.json";
+        private const int CurrentSchemaVersion = 1;
 
         private readonly Mock<IAppDataFileStore> _fileStore;
         private readonly MonitorSettingsFileService _service;
@@ -15,7 +16,7 @@ namespace OLED_Sleeper.Tests.Features.UserSettings.Services
         public MonitorSettingsFileServiceTests()
         {
             _fileStore = new Mock<IAppDataFileStore>();
-            _fileStore.Setup(s => s.TryWrite(SettingsFileName, It.IsAny<List<MonitorSettings>>())).Returns(true);
+            _fileStore.Setup(s => s.TryWrite(SettingsFileName, It.IsAny<MonitorSettingsDocument>())).Returns(true);
             _service = new MonitorSettingsFileService(_fileStore.Object);
         }
 
@@ -98,7 +99,7 @@ namespace OLED_Sleeper.Tests.Features.UserSettings.Services
         public void SaveSettings_WhenTheWriteFails_DoesNotRaiseSettingsChanged()
         {
             // Arrange
-            _fileStore.Setup(s => s.TryWrite(SettingsFileName, It.IsAny<List<MonitorSettings>>())).Returns(false);
+            _fileStore.Setup(s => s.TryWrite(SettingsFileName, It.IsAny<MonitorSettingsDocument>())).Returns(false);
             var raised = false;
             _service.SettingsChanged += _ => raised = true;
 
@@ -122,6 +123,48 @@ namespace OLED_Sleeper.Tests.Features.UserSettings.Services
             Assert.Null(exception);
         }
 
+        [Fact]
+        public void LoadSettings_WhenTheStoredVersionIsOlder_DiscardsTheSettings()
+        {
+            // Arrange
+            SetupStoredDocument(new MonitorSettingsDocument
+            {
+                SchemaVersion = CurrentSchemaVersion - 1,
+                Monitors = new List<MonitorSettings> { Settings("A") }
+            });
+
+            // Act
+            var settings = _service.LoadSettings();
+
+            // Assert
+            Assert.Empty(settings);
+        }
+
+        [Fact]
+        public void LoadSettings_WhenTheStoredVersionIsAbsent_DiscardsTheSettings()
+        {
+            // Arrange
+            SetupStoredDocument(new MonitorSettingsDocument { Monitors = new List<MonitorSettings> { Settings("A") } });
+
+            // Act
+            var settings = _service.LoadSettings();
+
+            // Assert
+            Assert.Empty(settings);
+        }
+
+        [Fact]
+        public void SaveSettings_StampsTheCurrentSchemaVersion()
+        {
+            // Act
+            _service.SaveSettings(new List<MonitorSettings> { Settings("A") });
+
+            // Assert
+            _fileStore.Verify(
+                s => s.TryWrite(SettingsFileName, It.Is<MonitorSettingsDocument>(d => d.SchemaVersion == CurrentSchemaVersion)),
+                Times.Once);
+        }
+
         /// <summary>
         /// Builds a settings entry for the given monitor.
         /// </summary>
@@ -132,12 +175,18 @@ namespace OLED_Sleeper.Tests.Features.UserSettings.Services
         /// Makes the store report the given entries as already on disk.
         /// </summary>
         private void SetupStoredSettings(params MonitorSettings[] stored)
-            => _fileStore.Setup(s => s.Read<List<MonitorSettings>>(SettingsFileName)).Returns(stored.ToList());
+            => SetupStoredDocument(new MonitorSettingsDocument { SchemaVersion = CurrentSchemaVersion, Monitors = stored.ToList() });
+
+        /// <summary>
+        /// Makes the store report the given document as already on disk.
+        /// </summary>
+        private void SetupStoredDocument(MonitorSettingsDocument document)
+            => _fileStore.Setup(s => s.Read<MonitorSettingsDocument>(SettingsFileName)).Returns(document);
 
         /// <summary>
         /// Asserts that exactly one write happened and that the list it carried satisfies the predicate.
         /// </summary>
         private void VerifyWritten(Func<List<MonitorSettings>, bool> predicate)
-            => _fileStore.Verify(s => s.TryWrite(SettingsFileName, It.Is<List<MonitorSettings>>(w => predicate(w))), Times.Once);
+            => _fileStore.Verify(s => s.TryWrite(SettingsFileName, It.Is<MonitorSettingsDocument>(w => predicate(w.Monitors))), Times.Once);
     }
 }

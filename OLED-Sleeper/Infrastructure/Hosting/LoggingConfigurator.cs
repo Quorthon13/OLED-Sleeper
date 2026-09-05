@@ -7,14 +7,16 @@ namespace OLED_Sleeper.Infrastructure.Hosting
     /// </summary>
     public static class LoggingConfigurator
     {
+        /// <summary>The folder created under the storage root for log files.</summary>
+        private const string LogFolderName = "Logs";
+
         /// <summary>
         /// Sets up Serilog logging and deletes log files older than 7 days.
         /// </summary>
-        public static void Configure()
+        /// <param name="storageDirectory">The storage root the log folder is created under. Must already be writable.</param>
+        public static void Configure(string storageDirectory)
         {
-            var logDirectory = System.IO.Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                "OLED-Sleeper", "Logs");
+            var logDirectory = System.IO.Path.Combine(storageDirectory, LogFolderName);
             var logPath = System.IO.Path.Combine(logDirectory, "log-.txt");
 
             Log.Logger = new LoggerConfiguration()
@@ -23,6 +25,7 @@ namespace OLED_Sleeper.Infrastructure.Hosting
                 .CreateLogger();
 
             Log.Information("--- Application Starting ---");
+            Log.Information("Storage root is {StorageDirectory}.", storageDirectory);
 
             CleanupOldLogs(logDirectory, TimeSpan.FromDays(7));
         }

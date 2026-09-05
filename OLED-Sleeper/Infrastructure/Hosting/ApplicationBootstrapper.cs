@@ -3,6 +3,9 @@ using OLED_Sleeper.Infrastructure.Helpers;
 using OLED_Sleeper.Infrastructure.Hosting.Interfaces;
 using OLED_Sleeper.Infrastructure.Runtime;
 using OLED_Sleeper.Infrastructure.Runtime.Interfaces;
+using OLED_Sleeper.Storage;
+using OLED_Sleeper.Storage.Interfaces;
+using OLED_Sleeper.UI.Services;
 using OLED_Sleeper.UI.Services.Interfaces;
 using Serilog;
 using System;
@@ -22,6 +25,9 @@ namespace OLED_Sleeper.Infrastructure.Hosting
         /// </summary>
         private const int RestoreOnShutdownTimeoutMs = 10000;
 
+        /// <summary>The title of the dialog shown when the storage root cannot be written to.</summary>
+        private const string StorageErrorCaption = "OLED Sleeper";
+
         private readonly ApplicationOptions _applicationOptions = CommandLineHelper.ParseArguments(args);
 
         /// <summary>
@@ -30,6 +36,7 @@ namespace OLED_Sleeper.Infrastructure.Hosting
         /// </summary>
         private readonly IApplicationShutdown _applicationShutdown = new ApplicationShutdown();
 
+        private IStorageRoot? _storageRoot;
         private IServiceProvider? _serviceProvider;
         private ITrayIconService? _trayIconService;
         private IMainWindowService? _mainWindowService;
@@ -38,12 +45,17 @@ namespace OLED_Sleeper.Infrastructure.Hosting
         private bool _isExiting = false;
 
         /// <summary>
-        /// Initializes the application: logging, single-instance, DI, orchestrator, main window, and tray icon.
+        /// Initializes the application: storage, logging, single-instance, DI, orchestrator, main window, and tray icon.
         /// A second instance stops after the single-instance check and starts no services.
         /// </summary>
         public void Initialize()
         {
-            LoggingConfigurator.Configure();
+            if (!TryPrepareStorage())
+            {
+                return;
+            }
+
+            LoggingConfigurator.Configure(_storageRoot!.DirectoryPath);
             InitializeInstanceManager();
 
             if (!_instanceManager!.IsFirstInstance)
@@ -61,6 +73,31 @@ namespace OLED_Sleeper.Infrastructure.Hosting
         }
 
         /// <summary>
+        /// Resolves the storage root, creates it and confirms it is writable, reporting the failure and ending
+        /// the process when it is not. Runs before logging, whose file sink writes into the same directory and
+        /// reports nothing of its own when it cannot.
+        /// </summary>
+        /// <returns><c>true</c> when startup can continue; otherwise, <c>false</c>.</returns>
+        private bool TryPrepareStorage()
+        {
+            var fileSystem = new FileSystem();
+            _storageRoot = new StorageRoot(fileSystem, BuildMode.IsPortable);
+
+            if (new StorageRootPreparer(fileSystem, _storageRoot).TryPrepare(out var error))
+            {
+                return true;
+            }
+
+            var guidance = BuildMode.IsPortable
+                ? "Move the OLED Sleeper folder somewhere you can write to, such as your Desktop, and start it again."
+                : "Check that your user profile is accessible and start OLED Sleeper again.";
+
+            new MessageBoxDialogService().ShowError($"{error}{Environment.NewLine}{Environment.NewLine}{guidance}", StorageErrorCaption);
+            _applicationShutdown.Shutdown();
+            return false;
+        }
+
+        /// <summary>
         /// Initializes the single-instance manager before any other services.
         /// Its seams are constructed here because the check runs before the container exists.
         /// </summary>
@@ -75,7 +112,7 @@ namespace OLED_Sleeper.Infrastructure.Hosting
         /// </summary>
         private void ConfigureServices()
         {
-            _serviceProvider = ServiceConfigurator.ConfigureServices(_applicationOptions);
+            _serviceProvider = ServiceConfigurator.ConfigureServices(_applicationOptions, _storageRoot!);
         }
 
         /// <summary>

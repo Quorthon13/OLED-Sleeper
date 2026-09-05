@@ -13,6 +13,12 @@ namespace OLED_Sleeper.Features.UserSettings.Services
         /// <summary>The name of the file the settings are kept in.</summary>
         private const string SettingsFileName = "settings.json";
 
+        /// <summary>
+        /// The schema version this build writes and is willing to read. Raise it whenever a change to
+        /// <see cref="MonitorSettings"/> makes an older file's contents wrong rather than merely incomplete.
+        /// </summary>
+        private const int CurrentSchemaVersion = 1;
+
         private readonly IAppDataFileStore _fileStore;
 
         /// <inheritdoc />
@@ -26,9 +32,25 @@ namespace OLED_Sleeper.Features.UserSettings.Services
         /// <inheritdoc />
         public List<MonitorSettings> LoadSettings()
         {
-            var settings = _fileStore.Read<List<MonitorSettings>>(SettingsFileName) ?? new List<MonitorSettings>();
-            Log.Information("Loaded {Count} monitor settings.", settings.Count);
-            return settings;
+            var document = _fileStore.Read<MonitorSettingsDocument>(SettingsFileName);
+
+            if (document == null)
+            {
+                Log.Information("No monitor settings could be read. Starting from defaults.");
+                return new List<MonitorSettings>();
+            }
+
+            if (document.SchemaVersion != CurrentSchemaVersion)
+            {
+                Log.Warning(
+                    "Discarding monitor settings written under schema version {StoredVersion}; this build reads version {CurrentVersion}. Starting from defaults.",
+                    document.SchemaVersion,
+                    CurrentSchemaVersion);
+                return new List<MonitorSettings>();
+            }
+
+            Log.Information("Loaded {Count} monitor settings.", document.Monitors.Count);
+            return document.Monitors;
         }
 
         /// <inheritdoc />
@@ -37,8 +59,9 @@ namespace OLED_Sleeper.Features.UserSettings.Services
             try
             {
                 var merged = MergeWithStoredSettings(settings);
+                var document = new MonitorSettingsDocument { SchemaVersion = CurrentSchemaVersion, Monitors = merged };
 
-                if (!_fileStore.TryWrite(SettingsFileName, merged)) return;
+                if (!_fileStore.TryWrite(SettingsFileName, document)) return;
 
                 Log.Information("Saved {Count} monitor settings.", merged.Count);
                 SettingsChanged?.Invoke(settings);

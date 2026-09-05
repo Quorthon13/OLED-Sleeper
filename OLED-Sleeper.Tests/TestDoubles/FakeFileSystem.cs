@@ -17,6 +17,9 @@ namespace OLED_Sleeper.Tests.TestDoubles
         /// <summary>The root <see cref="GetApplicationDataPath"/> reports.</summary>
         public string ApplicationDataPath { get; set; } = @"C:\FakeAppData";
 
+        /// <summary>The directory <see cref="GetApplicationDirectoryPath"/> reports.</summary>
+        public string ApplicationDirectoryPath { get; set; } = @"C:\FakeApp";
+
         /// <summary>Every path <see cref="CreateDirectory"/> was called with, in order.</summary>
         public List<string> CreatedDirectories { get; } = new();
 
@@ -28,6 +31,12 @@ namespace OLED_Sleeper.Tests.TestDoubles
 
         /// <summary>Makes every <see cref="Replace"/> call throw.</summary>
         public bool ReplaceFails { get; set; }
+
+        /// <summary>Makes every <see cref="DeleteFile"/> call throw.</summary>
+        public bool DeletesFail { get; set; }
+
+        /// <summary>Makes every <see cref="CreateDirectory"/> call throw.</summary>
+        public bool DirectoryCreationFails { get; set; }
 
         /// <summary>
         /// Puts a file in place without going through <see cref="WriteAllText"/>, so arranging a fixture is
@@ -48,7 +57,15 @@ namespace OLED_Sleeper.Tests.TestDoubles
         public string GetApplicationDataPath() => ApplicationDataPath;
 
         /// <inheritdoc />
-        public void CreateDirectory(string path) => CreatedDirectories.Add(path);
+        public string GetApplicationDirectoryPath() => ApplicationDirectoryPath;
+
+        /// <inheritdoc />
+        public void CreateDirectory(string path)
+        {
+            if (DirectoryCreationFails) throw new IOException($"Directory creation is failing: {path}.");
+
+            CreatedDirectories.Add(path);
+        }
 
         /// <inheritdoc />
         public bool FileExists(string path) => _files.ContainsKey(path);
@@ -90,6 +107,14 @@ namespace OLED_Sleeper.Tests.TestDoubles
 
             _files[destinationPath] = _files[sourcePath];
             _files.Remove(sourcePath);
+        }
+
+        /// <inheritdoc />
+        public void DeleteFile(string path)
+        {
+            if (DeletesFail) throw new IOException($"Deletes are failing: {path}.");
+
+            _files.Remove(path);
         }
     }
 }

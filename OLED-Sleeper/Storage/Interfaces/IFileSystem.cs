@@ -12,6 +12,12 @@ namespace OLED_Sleeper.Storage.Interfaces
         string GetApplicationDataPath();
 
         /// <summary>
+        /// Gets the directory the running executable lives in.
+        /// </summary>
+        /// <returns>The directory path, without a trailing separator.</returns>
+        string GetApplicationDirectoryPath();
+
+        /// <summary>
         /// Creates a directory and any missing parent. Does nothing when the directory already exists.
         /// </summary>
         /// <param name="path">The directory to create.</param>
@@ -53,5 +59,11 @@ namespace OLED_Sleeper.Storage.Interfaces
         /// <param name="sourcePath">The file to move.</param>
         /// <param name="destinationPath">Where to move it to.</param>
         void Move(string sourcePath, string destinationPath);
+
+        /// <summary>
+        /// Deletes a file. Does nothing when the file does not exist.
+        /// </summary>
+        /// <param name="path">The file to delete.</param>
+        void DeleteFile(string path);
     }
 }

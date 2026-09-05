@@ -1,0 +1,16 @@
+changelog:
+  exclude:
+    labels:
+      - duplicate
+      - invalid
+      - wontfix
+  categories:
+    - title: 🚀 Improvements
+      labels:
+        - enhancement
+    - title: 🧩 Fixes
+      labels:
+        - bug
+    - title: ⚙️ Changes
+      labels:
+        - '*'

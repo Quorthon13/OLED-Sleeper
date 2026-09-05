@@ -17,14 +17,7 @@ namespace OLED_Sleeper.Tests.Storage
         public AppDataFileStoreTests()
         {
             _fileSystem = new FakeFileSystem();
-            _store = new AppDataFileStore(_fileSystem);
-        }
-
-        [Fact]
-        public void Constructor_WhenBuilt_CreatesTheStoreDirectoryOnce()
-        {
-            // Assert
-            Assert.Equal(new[] { StoreDirectory }, _fileSystem.CreatedDirectories);
+            _store = new AppDataFileStore(_fileSystem, new StorageRoot(_fileSystem, isPortable: false));
         }
 
         [Fact]

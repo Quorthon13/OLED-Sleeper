@@ -6,16 +6,13 @@ using System.Text.Json;
 namespace OLED_Sleeper.Storage
 {
     /// <summary>
-    /// Reads and writes JSON files under <c>%APPDATA%\OLED-Sleeper</c>.
+    /// Reads and writes JSON files in the directory <see cref="IStorageRoot"/> names.
     /// A write is built in a temporary file and replaces the target, keeping the contents it replaced as a backup.
     /// A read tries the target and then that backup, so an interrupted write does not lose the previous contents.
     /// </summary>
     public class AppDataFileStore : IAppDataFileStore
     {
         #region Constants
-
-        /// <summary>The folder created under the user's application data directory.</summary>
-        private const string ApplicationFolderName = "OLED-Sleeper";
 
         /// <summary>Appended to a file name for the staging file a write is built in.</summary>
         private const string TempFileSuffix = ".tmp";
@@ -29,7 +26,7 @@ namespace OLED_Sleeper.Storage
 
         private readonly IFileSystem _fileSystem;
 
-        /// <summary>The directory every file name is resolved against.</summary>
+        /// <summary>The directory every file name is resolved against. Created before the store is built.</summary>
         private readonly string _storeDirectory;
 
         private static readonly JsonSerializerOptions SerializerOptions = new() { WriteIndented = true };
@@ -38,14 +35,10 @@ namespace OLED_Sleeper.Storage
 
         #region Constructor
 
-        /// <summary>
-        /// Resolves the store directory and creates it if it does not exist.
-        /// </summary>
-        public AppDataFileStore(IFileSystem fileSystem)
+        public AppDataFileStore(IFileSystem fileSystem, IStorageRoot storageRoot)
         {
             _fileSystem = fileSystem;
-            _storeDirectory = Path.Combine(_fileSystem.GetApplicationDataPath(), ApplicationFolderName);
-            _fileSystem.CreateDirectory(_storeDirectory);
+            _storeDirectory = storageRoot.DirectoryPath;
         }
 
         #endregion Constructor
