@@ -14,8 +14,6 @@ namespace OLED_Sleeper.Tests.UI.ViewModels
     {
         private readonly Mock<IWorkspaceService> _workspaceServiceMock;
         private readonly Mock<IMonitorSettingsSaveService> _saveServiceMock;
-        private readonly Mock<IMainWindowAccessor> _mainWindowAccessorMock;
-        private readonly Mock<IDialogService> _dialogServiceMock;
         private readonly ImmediateDispatcher _dispatcher;
         private readonly MainViewModel _viewModel;
 
@@ -23,8 +21,6 @@ namespace OLED_Sleeper.Tests.UI.ViewModels
         {
             _workspaceServiceMock = new Mock<IWorkspaceService>();
             _saveServiceMock = new Mock<IMonitorSettingsSaveService>();
-            _mainWindowAccessorMock = new Mock<IMainWindowAccessor>();
-            _dialogServiceMock = new Mock<IDialogService>();
             _dispatcher = new ImmediateDispatcher();
 
             SetupWorkspace();
@@ -33,9 +29,7 @@ namespace OLED_Sleeper.Tests.UI.ViewModels
             _viewModel = new MainViewModel(
                 _workspaceServiceMock.Object,
                 _saveServiceMock.Object,
-                _dispatcher,
-                _mainWindowAccessorMock.Object,
-                _dialogServiceMock.Object);
+                _dispatcher);
         }
 
         [Fact]
@@ -315,83 +309,57 @@ namespace OLED_Sleeper.Tests.UI.ViewModels
         }
 
         [Fact]
-        public void DiscardChangesCommand_RefreshesWorkspacePreservingSelection()
+        public void DiscardChangesCommand_RevertsEachMonitorAndKeepsTheSelection()
         {
             // Arrange
             var monitor = CreateMonitor("MON-1");
             LoadMonitors(monitor);
             _viewModel.SelectMonitorCommand.Execute(monitor);
-            var rebuilt = CreateMonitor("MON-1");
-            SetupWorkspace(rebuilt);
+            var savedDimLevel = monitor.Configuration.DimLevel;
+            monitor.Configuration.DimLevel = 50;
 
             // Act
             _viewModel.DiscardChangesCommand.Execute(null);
 
             // Assert
-            _workspaceServiceMock.Verify(x => x.RefreshWorkspaceAsync(800, 600), Times.Once);
-            Assert.Same(rebuilt, _viewModel.SelectedMonitor);
+            Assert.Equal(savedDimLevel, monitor.Configuration.DimLevel);
+            Assert.False(_viewModel.IsDirty);
+            Assert.Same(monitor, _viewModel.SelectedMonitor);
+            _workspaceServiceMock.Verify(x => x.RefreshWorkspaceAsync(It.IsAny<double>(), It.IsAny<double>()), Times.Never);
         }
 
         [Fact]
-        public void OnWindowClosing_WhenNotDirty_HidesMainWindowAndReturnsFalse()
-        {
-            // Act
-            var shouldClose = _viewModel.OnWindowClosing();
-
-            // Assert
-            Assert.False(shouldClose);
-            _mainWindowAccessorMock.Verify(x => x.HideMainWindow(), Times.Once);
-            _dialogServiceMock.Verify(x => x.AskYesNoCancel(It.IsAny<string>(), It.IsAny<string>()), Times.Never);
-        }
-
-        [Fact]
-        public void OnWindowClosing_WhenDirtyAndUserCancels_KeepsWindowVisible()
-        {
-            // Arrange
-            _viewModel.IsDirty = true;
-            SetupUnsavedChangesAnswer(MessageBoxResult.Cancel);
-
-            // Act
-            var shouldClose = _viewModel.OnWindowClosing();
-
-            // Assert
-            Assert.False(shouldClose);
-            _mainWindowAccessorMock.Verify(x => x.HideMainWindow(), Times.Never);
-            _saveServiceMock.Verify(x => x.TrySave(It.IsAny<IReadOnlyList<MonitorLayoutViewModel>>()), Times.Never);
-        }
-
-        [Fact]
-        public void OnWindowClosing_WhenDirtyAndUserSaves_SavesThenHides()
+        public void TrySaveChanges_WhenSaveSucceeds_ClearsDirtyStateWithoutTouchingTheButton()
         {
             // Arrange
             var monitor = CreateMonitor("MON-1");
             LoadMonitors(monitor);
             monitor.Configuration.DimLevel = 50;
-            SetupUnsavedChangesAnswer(MessageBoxResult.Yes);
 
             // Act
-            var shouldClose = _viewModel.OnWindowClosing();
+            var saved = _viewModel.TrySaveChanges();
 
             // Assert
-            Assert.False(shouldClose);
-            _saveServiceMock.Verify(x => x.TrySave(It.IsAny<IReadOnlyList<MonitorLayoutViewModel>>()), Times.Once);
-            _mainWindowAccessorMock.Verify(x => x.HideMainWindow(), Times.Once);
+            Assert.True(saved);
+            Assert.False(_viewModel.IsDirty);
+            Assert.Equal("Save Settings", _viewModel.SaveButtonText);
         }
 
         [Fact]
-        public void OnWindowClosing_WhenDirtyAndUserDiscards_HidesWithoutSaving()
+        public void TrySaveChanges_WhenSaveIsRejected_ReportsFailureAndKeepsDirtyState()
         {
             // Arrange
-            _viewModel.IsDirty = true;
-            SetupUnsavedChangesAnswer(MessageBoxResult.No);
+            var monitor = CreateMonitor("MON-1");
+            LoadMonitors(monitor);
+            monitor.Configuration.DimLevel = 50;
+            SetupSaveOutcome(false);
 
             // Act
-            var shouldClose = _viewModel.OnWindowClosing();
+            var saved = _viewModel.TrySaveChanges();
 
             // Assert
-            Assert.False(shouldClose);
-            _saveServiceMock.Verify(x => x.TrySave(It.IsAny<IReadOnlyList<MonitorLayoutViewModel>>()), Times.Never);
-            _mainWindowAccessorMock.Verify(x => x.HideMainWindow(), Times.Once);
+            Assert.False(saved);
+            Assert.True(_viewModel.IsDirty);
         }
 
         [Fact]
@@ -518,17 +486,6 @@ namespace OLED_Sleeper.Tests.UI.ViewModels
 
                     return true;
                 });
-        }
-
-        /// <summary>
-        /// Makes the unsaved-changes prompt return the supplied answer.
-        /// </summary>
-        /// <param name="answer">The answer the prompt should return.</param>
-        private void SetupUnsavedChangesAnswer(MessageBoxResult answer)
-        {
-            _dialogServiceMock
-                .Setup(x => x.AskYesNoCancel(It.IsAny<string>(), "Unsaved Changes"))
-                .Returns(answer);
         }
 
         /// <summary>

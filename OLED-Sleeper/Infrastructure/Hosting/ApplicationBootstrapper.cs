@@ -36,12 +36,18 @@ namespace OLED_Sleeper.Infrastructure.Hosting
         /// </summary>
         private readonly IApplicationShutdown _applicationShutdown = new ApplicationShutdown();
 
+        /// <summary>
+        /// Reaches the UI thread. Created here for the same reason as <see cref="_applicationShutdown"/>.
+        /// </summary>
+        private readonly IDispatcher _dispatcher = new ApplicationDispatcher();
+
         private IStorageRoot? _storageRoot;
         private IServiceProvider? _serviceProvider;
         private ITrayIconService? _trayIconService;
         private IMainWindowService? _mainWindowService;
         private IApplicationInstanceManager? _instanceManager;
         private IApplicationOrchestrator? _orchestrator;
+        private IUnsavedSettingsService? _unsavedSettingsService;
         private bool _isExiting = false;
 
         /// <summary>
@@ -92,7 +98,7 @@ namespace OLED_Sleeper.Infrastructure.Hosting
                 ? "Move the OLED Sleeper folder somewhere you can write to, such as your Desktop, and start it again."
                 : "Check that your user profile is accessible and start OLED Sleeper again.";
 
-            new MessageBoxDialogService().ShowError($"{error}{Environment.NewLine}{Environment.NewLine}{guidance}", StorageErrorCaption);
+            new MessageBoxDialogService(new MainWindowAccessor()).ShowError($"{error}{Environment.NewLine}{Environment.NewLine}{guidance}", StorageErrorCaption);
             _applicationShutdown.Shutdown();
             return false;
         }
@@ -103,7 +109,7 @@ namespace OLED_Sleeper.Infrastructure.Hosting
         /// </summary>
         private void InitializeInstanceManager()
         {
-            _instanceManager = new ApplicationInstanceManager(new ApplicationDispatcher(), _applicationShutdown);
+            _instanceManager = new ApplicationInstanceManager(_dispatcher, _applicationShutdown);
             _instanceManager.Initialize();
         }
 
@@ -143,11 +149,33 @@ namespace OLED_Sleeper.Infrastructure.Hosting
         private void SetupTrayIconService()
         {
             if (_serviceProvider == null) return;
+            _unsavedSettingsService = _serviceProvider.GetRequiredService<IUnsavedSettingsService>();
             _trayIconService = _serviceProvider.GetRequiredService<ITrayIconService>();
             _trayIconService.Initialize(
                 () => _mainWindowService?.ShowMainWindow(),
-                () => ShutdownApp()
+                RequestExit
             );
+        }
+
+        /// <summary>
+        /// Handles the tray menu's Exit. The work is queued behind the menu's own input, so the click that
+        /// picked Exit cannot answer the prompt that follows it.
+        /// </summary>
+        private void RequestExit() => _ = _dispatcher.InvokeAfterInputAsync(ConfirmAndShutdown);
+
+        /// <summary>
+        /// Shuts down unless the user cancels over unsaved settings. Only the tray exit asks; <c>OnExit</c>
+        /// and <c>SessionEnding</c> shut down without a prompt.
+        /// </summary>
+        private void ConfirmAndShutdown()
+        {
+            if (_unsavedSettingsService?.ConfirmExit() == false)
+            {
+                Log.Information("Exit cancelled. Unsaved settings were kept.");
+                return;
+            }
+
+            ShutdownApp();
         }
 
         /// <summary>
@@ -159,13 +187,16 @@ namespace OLED_Sleeper.Infrastructure.Hosting
         }
 
         /// <summary>
-        /// Stops the orchestrator, disposes the tray icon and the instance manager, flushes the log, and exits.
-        /// A second instance has no orchestrator and restores nothing.
+        /// Tells the main window the application is exiting, stops the orchestrator, disposes the tray icon
+        /// and the instance manager, flushes the log, and exits. A second instance has no orchestrator and
+        /// restores nothing.
         /// </summary>
         public void ShutdownApp()
         {
             if (_isExiting) return; // Prevent re-entrancy
             _isExiting = true;
+
+            _mainWindowService?.PrepareForShutdown();
 
             StopOrchestrator();
 
