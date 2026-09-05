@@ -42,6 +42,7 @@ namespace OLED_Sleeper.Infrastructure.Hosting
         private IMainWindowService? _mainWindowService;
         private IApplicationInstanceManager? _instanceManager;
         private IApplicationOrchestrator? _orchestrator;
+        private IUnsavedSettingsService? _unsavedSettingsService;
         private bool _isExiting = false;
 
         /// <summary>
@@ -143,11 +144,24 @@ namespace OLED_Sleeper.Infrastructure.Hosting
         private void SetupTrayIconService()
         {
             if (_serviceProvider == null) return;
+            _unsavedSettingsService = _serviceProvider.GetRequiredService<IUnsavedSettingsService>();
             _trayIconService = _serviceProvider.GetRequiredService<ITrayIconService>();
             _trayIconService.Initialize(
                 () => _mainWindowService?.ShowMainWindow(),
-                () => ShutdownApp()
+                RequestExit
             );
+        }
+
+        /// <summary>
+        /// Handles the tray menu's Exit. Unsaved settings are answered for first, and the exit is abandoned
+        /// when the user cancels. Only this path asks; <c>OnExit</c> and <c>SessionEnding</c> shut down
+        /// without a prompt.
+        /// </summary>
+        private void RequestExit()
+        {
+            if (_unsavedSettingsService?.ConfirmExit() == false) return;
+
+            ShutdownApp();
         }
 
         /// <summary>
@@ -159,13 +173,16 @@ namespace OLED_Sleeper.Infrastructure.Hosting
         }
 
         /// <summary>
-        /// Stops the orchestrator, disposes the tray icon and the instance manager, flushes the log, and exits.
-        /// A second instance has no orchestrator and restores nothing.
+        /// Tells the main window the application is exiting, stops the orchestrator, disposes the tray icon
+        /// and the instance manager, flushes the log, and exits. A second instance has no orchestrator and
+        /// restores nothing.
         /// </summary>
         public void ShutdownApp()
         {
             if (_isExiting) return; // Prevent re-entrancy
             _isExiting = true;
+
+            _mainWindowService?.PrepareForShutdown();
 
             StopOrchestrator();
 

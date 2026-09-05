@@ -12,11 +12,5 @@ namespace OLED_Sleeper.UI.Services.Interfaces
         /// </summary>
         /// <param name="window">The window to register.</param>
         void SetMainWindow(Window window);
-
-        /// <summary>
-        /// Hides the main window. Does nothing when no main window has been registered.
-        /// Must be called on the UI thread.
-        /// </summary>
-        void HideMainWindow();
     }
 }

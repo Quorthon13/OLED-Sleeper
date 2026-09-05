@@ -320,6 +320,23 @@ namespace OLED_Sleeper.UI.ViewModels
         }
 
         /// <summary>
+        /// Returns every tracked property to the value it had when the configuration was last saved.
+        /// </summary>
+        public void Revert()
+        {
+            IsManaged = _initialIsManaged;
+            Behavior = _initialBehavior;
+            DimLevel = _initialDimLevel;
+            LowerBrightnessOnBlackout = _initialLowerBrightnessOnBlackout;
+            IdleValue = _initialIdleValue;
+            SelectedTimeUnit = _initialSelectedTimeUnit;
+            IsActiveOnInput = _initialIsActiveOnInput;
+            IsActiveOnMousePosition = _initialIsActiveOnMousePosition;
+            IsActiveOnActiveWindow = _initialIsActiveOnActiveWindow;
+            UpdateDirtyState();
+        }
+
+        /// <summary>
         /// Applies settings from a MonitorSettings model to this ViewModel.
         /// </summary>
         /// <param name="settings">The settings to apply.</param>
