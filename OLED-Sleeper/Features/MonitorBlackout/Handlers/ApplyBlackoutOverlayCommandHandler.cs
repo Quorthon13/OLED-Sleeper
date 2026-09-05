@@ -11,7 +11,8 @@ namespace OLED_Sleeper.Features.MonitorBlackout.Handlers
     /// <summary>
     /// Handles the execution of the <see cref="ApplyBlackoutOverlayCommand"/>.
     /// This class contains the business logic for applying the blackout effect to a monitor,
-    /// which includes showing a software overlay and setting the hardware brightness to zero if supported.
+    /// which includes showing a software overlay and, when the command asks for it, setting the hardware
+    /// brightness to zero if supported.
     /// </summary>
     public class ApplyBlackoutOverlayCommandHandler : ICommandHandler<ApplyBlackoutOverlayCommand>
     {
@@ -31,7 +32,7 @@ namespace OLED_Sleeper.Features.MonitorBlackout.Handlers
 
         /// <summary>
         /// Executes the blackout logic asynchronously based on the command's data.
-        /// It shows a blackout overlay and, if the monitor supports DDC/CI,
+        /// It shows a blackout overlay and, if the command asks for it and the monitor supports DDC/CI,
         /// it simultaneously dims the monitor's brightness to 0.
         /// Exceptions are caught and logged to avoid silent failures.
         /// </summary>
@@ -52,7 +53,12 @@ namespace OLED_Sleeper.Features.MonitorBlackout.Handlers
 
                 var showOverlayTask = _monitorBlackoutService.ShowBlackoutOverlayAsync(monitorInfo.HardwareId, monitorInfo.Bounds);
 
-                if (monitorInfo.Capabilities?.IsSupported == true)
+                if (!command.LowerBrightness)
+                {
+                    Log.Information("Blackout for monitor {HardwareId} leaves hardware brightness untouched by user setting.", monitorInfo.HardwareId);
+                    await showOverlayTask;
+                }
+                else if (monitorInfo.Capabilities?.IsSupported == true)
                 {
                     Log.Information("Monitor {HardwareId} supports DDC/CI. Setting brightness to 0 for blackout.", monitorInfo.HardwareId);
                     var dimTask = _monitorDimmingService.DimMonitorAsync(monitorInfo.HardwareId, 0);
