@@ -328,6 +328,12 @@
                                 ToolTip="{Binding DimBehaviorTooltip}"
                                 ToolTipService.InitialShowDelay="200" />
                         </StackPanel>
+                        <CheckBox Content="Also set brightness to zero" Style="{StaticResource ModernCheckBox}" Margin="0,12,0,0" FontSize="13"
+                            IsChecked="{Binding LowerBrightnessOnBlackout, UpdateSourceTrigger=PropertyChanged}"
+                            IsEnabled="{Binding IsLowerBrightnessOptionEnabled}"
+                            ToolTip="{Binding LowerBrightnessTooltip}"
+                            ToolTipService.InitialShowDelay="200"
+                            ToolTipService.ShowOnDisabled="True" />
                     </StackPanel>
 
                     <!-- Brightness Level Section -->

@@ -29,7 +29,7 @@ namespace OLED_Sleeper.Features.MonitorBehavior.Handlers
             switch (e.Settings.Behavior)
             {
                 case MonitorBehaviorType.Blackout:
-                    await _mediator.SendAsync(new ApplyBlackoutOverlayCommand { HardwareId = e.HardwareId });
+                    await _mediator.SendAsync(new ApplyBlackoutOverlayCommand { HardwareId = e.HardwareId, LowerBrightness = e.Settings.LowerBrightnessOnBlackout });
                     break;
                 case MonitorBehaviorType.Dim:
                     await _mediator.SendAsync(new ApplyDimCommand { HardwareId = e.HardwareId, DimLevel = (int)e.Settings.DimLevel });
