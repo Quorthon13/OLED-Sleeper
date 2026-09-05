@@ -98,7 +98,7 @@ namespace OLED_Sleeper.Infrastructure.Hosting
                 ? "Move the OLED Sleeper folder somewhere you can write to, such as your Desktop, and start it again."
                 : "Check that your user profile is accessible and start OLED Sleeper again.";
 
-            new MessageBoxDialogService().ShowError($"{error}{Environment.NewLine}{Environment.NewLine}{guidance}", StorageErrorCaption);
+            new MessageBoxDialogService(new MainWindowAccessor()).ShowError($"{error}{Environment.NewLine}{Environment.NewLine}{guidance}", StorageErrorCaption);
             _applicationShutdown.Shutdown();
             return false;
         }

@@ -12,5 +12,10 @@ namespace OLED_Sleeper.UI.Services.Interfaces
         /// </summary>
         /// <param name="window">The window to register.</param>
         void SetMainWindow(Window window);
+
+        /// <summary>
+        /// The registered main window, or null before one has been registered. Must be read on the UI thread.
+        /// </summary>
+        Window? MainWindow { get; }
     }
 }
