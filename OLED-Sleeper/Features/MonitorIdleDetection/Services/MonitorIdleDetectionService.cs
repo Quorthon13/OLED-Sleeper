@@ -7,6 +7,7 @@ using OLED_Sleeper.Messaging.Interfaces;
 using OLED_Sleeper.Native;
 using Serilog;
 using System.Runtime.InteropServices;
+using System.Text;
 using System.Windows;
 
 namespace OLED_Sleeper.Features.MonitorIdleDetection.Services
@@ -17,6 +18,21 @@ namespace OLED_Sleeper.Features.MonitorIdleDetection.Services
     /// </summary>
     public class MonitorIdleDetectionService : IMonitorIdleDetectionService
     {
+        /// <summary>
+        /// Window classes that make up the shell desktop. The desktop spans the whole virtual screen, so
+        /// it never counts as active-window activity for any monitor.
+        /// </summary>
+        private static readonly HashSet<string> DesktopWindowClasses = new(StringComparer.Ordinal)
+        {
+            "Progman",
+            "WorkerW"
+        };
+
+        /// <summary>
+        /// Buffer size, in characters, for a window class name.
+        /// </summary>
+        private const int ClassNameBufferLength = 256;
+
         // === Dependencies & State ===
         private readonly IMediator _mediator;
 
@@ -290,8 +306,25 @@ namespace OLED_Sleeper.Features.MonitorIdleDetection.Services
             NativeMethods.GetCursorPos(out var nativePoint);
             Point cursorPosition = new(nativePoint.X, nativePoint.Y);
             nint foregroundWindowHandle = NativeMethods.GetForegroundWindow();
-            Rect windowRect = GetForegroundWindowRect(foregroundWindowHandle);
+            Rect windowRect = IsDesktopWindow(foregroundWindowHandle)
+                ? Rect.Empty
+                : GetForegroundWindowRect(foregroundWindowHandle);
             return new SystemState(idleTime, cursorPosition, windowRect, foregroundWindowHandle);
+        }
+
+        /// <summary>
+        /// Determines whether a window is the shell desktop rather than an application window.
+        /// </summary>
+        /// <param name="hwnd">The handle to test.</param>
+        /// <returns>True when the window belongs to one of the <see cref="DesktopWindowClasses"/>; false for a null handle or a class name the shell would not answer.</returns>
+        private static bool IsDesktopWindow(nint hwnd)
+        {
+            if (hwnd == nint.Zero) return false;
+
+            var className = new StringBuilder(ClassNameBufferLength);
+            if (NativeMethods.GetClassName(hwnd, className, className.Capacity) == 0) return false;
+
+            return DesktopWindowClasses.Contains(className.ToString());
         }
 
         /// <summary>

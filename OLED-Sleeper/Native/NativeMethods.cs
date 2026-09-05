@@ -101,6 +101,17 @@ namespace OLED_Sleeper.Native
         [DllImport("user32.dll")]
         public static extern IntPtr SetWindowLongPtr(IntPtr hWnd, int nIndex, IntPtr dwNewLong);
 
+        /// <summary>
+        /// Retrieves the name of the class to which the specified window belongs.
+        /// </summary>
+        /// <param name="hWnd">A handle to the window.</param>
+        /// <param name="lpClassName">The buffer that receives the class name.</param>
+        /// <param name="nMaxCount">The length of the buffer, in characters.</param>
+        /// <returns>The number of characters copied, excluding the terminating null; zero on failure.</returns>
+        /// <seealso href="https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-getclassnamew"/>
+        [DllImport("user32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+        public static extern int GetClassName(IntPtr hWnd, System.Text.StringBuilder lpClassName, int nMaxCount);
+
         #endregion User Input and Window Management
 
         #region Monitor and Display Configuration
