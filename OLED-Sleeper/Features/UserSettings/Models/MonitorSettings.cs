@@ -30,9 +30,9 @@ namespace OLED_Sleeper.Features.UserSettings.Models
 
         /// <summary>
         /// Gets or sets a value indicating whether a blackout also sets the monitor's hardware brightness to zero.
-        /// Absent from a settings file written before this option existed, which leaves it at its default of true.
+        /// Absent from a settings file written before this option existed, which leaves it at its default of false.
         /// </summary>
-        public bool LowerBrightnessOnBlackout { get; set; } = true;
+        public bool LowerBrightnessOnBlackout { get; set; } = false;
 
         /// <summary>
         /// Gets or sets the idle timeout value (unit specified by <see cref="IdleUnit"/>).
