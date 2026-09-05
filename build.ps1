@@ -19,7 +19,7 @@
     Builds only the installer. Useful when iterating on the .iss, since the portable publish is the slow half.
 
 .EXAMPLE
-    .\build\release.ps1
+    .\build.ps1
 #>
 [CmdletBinding()]
 param(
@@ -31,13 +31,14 @@ param(
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 
-$repositoryRoot = Split-Path -Parent $PSScriptRoot
+$repositoryRoot = $PSScriptRoot
 $projectPath = Join-Path $repositoryRoot 'OLED-Sleeper\OLED-Sleeper.csproj'
 $installerDirectory = Join-Path $repositoryRoot 'installer'
 $scriptPath = Join-Path $installerDirectory 'OLED-Sleeper.iss'
-$portableStagingDirectory = Join-Path $repositoryRoot 'build\portable'
-
 if (-not $OutputDirectory) { $OutputDirectory = Join-Path $repositoryRoot 'artifacts' }
+
+# Publish output is staged under the artifacts folder; the shipped files sit at its root.
+$stagingDirectory = Join-Path $OutputDirectory 'publish'
 
 function Write-Step {
     param([string] $Message)
@@ -78,7 +79,7 @@ Install it with:
 
 Then re-run this script, or pass the path directly:
 
-    .\build\release.ps1 -IsccPath 'C:\Path\To\ISCC.exe'
+    .\build.ps1 -IsccPath 'C:\Path\To\ISCC.exe'
 "@
 }
 
@@ -145,26 +146,26 @@ Write-Step 'Reading version'
 $version = Get-BuildVersion
 Write-Host "Version: $version"
 
+Write-Step 'Clearing previously shipped files'
+# Anything left from an earlier run would otherwise be listed in this run's checksum file.
+if (Test-Path -LiteralPath $OutputDirectory) {
+    Get-ChildItem -LiteralPath $OutputDirectory -File | Remove-Item -Force
+}
+
 Write-Step 'Publishing installer payloads'
-Publish-Payload -Runtime 'win-x64' -Destination (Join-Path $installerDirectory 'publish-x64')
-Publish-Payload -Runtime 'win-x86' -Destination (Join-Path $installerDirectory 'publish-x86')
+Publish-Payload -Runtime 'win-x64' -Destination (Join-Path $stagingDirectory 'x64')
+Publish-Payload -Runtime 'win-x86' -Destination (Join-Path $stagingDirectory 'x86')
 
 Write-Step 'Compiling the installer'
 & $iscc "/DAppVersion=$version" $scriptPath
 if ($LASTEXITCODE -ne 0) { throw 'The Inno Setup compile failed.' }
 
-if (-not (Test-Path -LiteralPath $OutputDirectory)) {
-    New-Item -ItemType Directory -Path $OutputDirectory -Force | Out-Null
-}
-
-$setupFileName = "OLED-Sleeper-$version-Setup.exe"
-$setupSource = Join-Path $installerDirectory "InstallerOutput\$setupFileName"
-if (-not (Test-Path -LiteralPath $setupSource)) { throw "The installer was not produced at $setupSource." }
-Copy-Item -LiteralPath $setupSource -Destination (Join-Path $OutputDirectory $setupFileName) -Force
+$setupPath = Join-Path $OutputDirectory "OLED-Sleeper-$version-Setup.exe"
+if (-not (Test-Path -LiteralPath $setupPath)) { throw "The installer was not produced at $setupPath." }
 
 if (-not $SkipPortable) {
     Write-Step 'Publishing the portable build'
-    $portableX64 = Join-Path $portableStagingDirectory 'x64'
+    $portableX64 = Join-Path $stagingDirectory 'portable'
     Publish-Payload -Runtime 'win-x64' -Destination $portableX64 -Portable
 
     Write-Step 'Zipping the portable build'

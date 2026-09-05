@@ -60,7 +60,7 @@ jobs:
 
       - name: Build the release artifacts
         shell: pwsh
-        run: .\build\release.ps1
+        run: .\build.ps1
 
       - name: Read the version
         id: version
@@ -82,7 +82,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: oled-sleeper-${{ steps.version.outputs.version }}
-          path: artifacts/*
+          path: |
+            artifacts/*
+            !artifacts/publish
           if-no-files-found: error
 
       - name: Draft the release

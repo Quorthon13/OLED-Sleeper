@@ -31,13 +31,13 @@ AppMutex=OLED-Sleeper-Mutex
 ; Output installer configuration.
 OutputBaseFilename=OLED-Sleeper-{#AppVersion}-Setup
 SourceDir=.
-OutputDir=.\InstallerOutput
+OutputDir=..\artifacts
 
 ; Default installation directory.
 DefaultDirName={autopf}\OLED Sleeper
 
 ; Enables 64-bit installation mode when running on x64 systems.
-ArchitecturesInstallIn64BitMode=x64
+ArchitecturesInstallIn64BitMode=x64compatible
 
 ; Installer and uninstall entry icons.
 SetupIconFile=..\OLED-Sleeper\Assets\icon.ico
@@ -71,8 +71,8 @@ Type: files; Name: "{userappdata}\OLED-Sleeper\brightness_state.json.tmp"
 
 [Files]
 ; Install platform-specific binaries based on system architecture.
-Source: ".\publish-x64\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs; Check: Is64BitInstallMode
-Source: ".\publish-x86\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs; Check: not Is64BitInstallMode
+Source: "..\artifacts\publish\x64\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs; Check: Is64BitInstallMode
+Source: "..\artifacts\publish\x86\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs; Check: not Is64BitInstallMode
 
 [Icons]
 ; Start Menu and optional Desktop shortcuts.

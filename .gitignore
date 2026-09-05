@@ -75,14 +75,6 @@ _ReSharper*/
 .idea/
 *.sln.iml
 
-# Inno Setup output folders
-/installer/publish-x64/
-/installer/publish-x86/
-/installer/InstallerOutput/
-
-# Release build staging and output
-/build/portable/
-/artifacts/
 
 # SonarQube
 .sonar/
