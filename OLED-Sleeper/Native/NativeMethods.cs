@@ -195,6 +195,16 @@ namespace OLED_Sleeper.Native
         public const uint SWP_NOACTIVATE = 0x0010;
 
         /// <summary>
+        /// Retains the window's current size.
+        /// </summary>
+        public const uint SWP_NOSIZE = 0x0001;
+
+        /// <summary>
+        /// Retains the window's current position.
+        /// </summary>
+        public const uint SWP_NOMOVE = 0x0002;
+
+        /// <summary>
         /// Use with <see cref="DwmGetWindowAttribute"/> to get the extended frame bounds rectangle.
         /// </summary>
         public const int DWMWA_EXTENDED_FRAME_BOUNDS = 9;
