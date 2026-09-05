@@ -29,11 +29,11 @@ namespace OLED_Sleeper.Tests.Features.MonitorBlackout.Handlers
         }
 
         [Fact]
-        public async Task HandleAsync_WhenDdcCiSupported_CallsOverlayAndDimming()
+        public async Task HandleAsync_WhenDdcCiSupportedAndLowerBrightnessRequested_CallsOverlayAndDimming()
         {
             // Arrange
             var hardwareId = "MON-123";
-            var command = new ApplyBlackoutOverlayCommand { HardwareId = hardwareId };
+            var command = new ApplyBlackoutOverlayCommand { HardwareId = hardwareId, LowerBrightness = true };
 
             var monitors = new List<MonitorInfo>
             {
@@ -56,6 +56,32 @@ namespace OLED_Sleeper.Tests.Features.MonitorBlackout.Handlers
             // Assert
             _monitorBlackoutServiceMock.Verify(x => x.ShowBlackoutOverlayAsync(hardwareId, It.IsAny<Rect>()), Times.Once);
             _monitorDimmingServiceMock.Verify(x => x.DimMonitorAsync(hardwareId, 0), Times.Once);
+        }
+
+        [Fact]
+        public async Task HandleAsync_WhenLowerBrightnessNotRequested_CallsOverlayOnly()
+        {
+            // Arrange
+            var hardwareId = "MON-123";
+            var command = new ApplyBlackoutOverlayCommand { HardwareId = hardwareId };
+
+            var monitors = new List<MonitorInfo>
+            {
+                new MonitorInfo { HardwareId = hardwareId, Capabilities = new DdcCiCapabilities(true, 100), Bounds = new Rect(0, 0, 1920, 1080) }
+            };
+
+            SetupMonitors(monitors);
+
+            _monitorBlackoutServiceMock
+                .Setup(x => x.ShowBlackoutOverlayAsync(It.IsAny<string>(), It.IsAny<Rect>()))
+                .Returns(Task.CompletedTask);
+
+            // Act
+            await _handler.HandleAsync(command);
+
+            // Assert
+            _monitorBlackoutServiceMock.Verify(x => x.ShowBlackoutOverlayAsync(hardwareId, It.IsAny<Rect>()), Times.Once);
+            _monitorDimmingServiceMock.Verify(x => x.DimMonitorAsync(It.IsAny<string>(), It.IsAny<int>()), Times.Never);
         }
 
         [Fact]

@@ -15,8 +15,8 @@ namespace OLED_Sleeper.Features.MonitorBlackout.Commands
         public required string HardwareId { get; init; }
 
         /// <summary>
-        /// Whether to also set the monitor's hardware brightness to zero. True when unset.
+        /// Whether to also set the monitor's hardware brightness to zero. False when unset.
         /// </summary>
-        public bool LowerBrightness { get; init; } = true;
+        public bool LowerBrightness { get; init; } = false;
     }
 }
