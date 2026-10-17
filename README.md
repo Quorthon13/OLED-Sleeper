@@ -30,6 +30,7 @@ OLED Sleeper monitors each screen for activity. When a monitor is idle for a set
     * **Mouse:** Tracks cursor movement specifically on the target monitor.
     * **Focused Application:** Tracks activity within the active window currently displayed on that monitor.
     * **System-Wide Input:** Tracks overall keyboard and mouse input across the entire system (similar to standard Windows idle detection).
+* **Pause While a Video Plays:** Optionally keep a monitor awake while a video plays on it, fullscreen or in a window. A video starting never wakes a screen that is already blacked out or dimmed.
 * **Per-Monitor Control:** Blackout or dim any monitor independently.
 * **Two Action Modes:** Full blackout or dimming (DDC/CI supported).
 * **Instant Wake-Up:** Restore the monitor immediately when activity is detected.

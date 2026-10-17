@@ -1,12 +1,13 @@
 ﻿using OLED_Sleeper.Features.MonitorBehavior.Models;
 using OLED_Sleeper.UI.Models;
+using System.Text.Json.Serialization;
 
 namespace OLED_Sleeper.Features.UserSettings.Models
 {
     /// <summary>
     /// Represents user-configurable settings for a monitor, including idle detection and behavior.
     /// </summary>
-    public class MonitorSettings
+    public class MonitorSettings : IJsonOnDeserialized
     {
         /// <summary>
         /// Gets or sets the unique hardware ID for the monitor.
@@ -58,6 +59,24 @@ namespace OLED_Sleeper.Features.UserSettings.Models
         /// Gets or sets a value indicating whether the active window should reset idle state.
         /// </summary>
         public bool IsActiveOnActiveWindow { get; set; } = false;
+
+        /// <summary>
+        /// Gets or sets a value indicating whether a video playing on this monitor, fullscreen or windowed, should reset idle state.
+        /// Absent from a settings file written before this option existed, which leaves it at its default of false.
+        /// </summary>
+        public bool IsActiveOnVideo { get; set; } = false;
+
+        /// <summary>
+        /// Reads the old fullscreen-video option, which was merged into <see cref="IsActiveOnVideo"/>. Write-only, so it is never saved again.
+        /// </summary>
+        public bool IsActiveOnFullscreenVideo { set => _wasActiveOnFullscreenVideo = value; }
+
+        private bool _wasActiveOnFullscreenVideo;
+
+        /// <summary>
+        /// Maps the old fullscreen-video option onto <see cref="IsActiveOnVideo"/> after the whole entry is read, because older files list it first.
+        /// </summary>
+        void IJsonOnDeserialized.OnDeserialized() => IsActiveOnVideo |= _wasActiveOnFullscreenVideo;
 
         /// <summary>
         /// Gets the idle timeout in milliseconds, based on <see cref="IdleValue"/> and <see cref="IdleUnit"/>.

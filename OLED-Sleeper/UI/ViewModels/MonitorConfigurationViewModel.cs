@@ -264,6 +264,23 @@ namespace OLED_Sleeper.UI.ViewModels
             }
         }
 
+        private bool _isActiveOnVideo;
+        private bool _initialIsActiveOnVideo;
+
+        /// <summary>
+        /// Gets or sets whether a video playing on this monitor, fullscreen or windowed, keeps it active.
+        /// </summary>
+        public bool IsActiveOnVideo
+        {
+            get => _isActiveOnVideo;
+            set
+            {
+                _isActiveOnVideo = value;
+                OnPropertyChanged();
+                UpdateDirtyState();
+            }
+        }
+
         #endregion Properties
 
         /// <param name="monitorInfo">The monitor information model.</param>
@@ -297,7 +314,8 @@ namespace OLED_Sleeper.UI.ViewModels
                        SelectedTimeUnit != _initialSelectedTimeUnit ||
                        IsActiveOnInput != _initialIsActiveOnInput ||
                        IsActiveOnMousePosition != _initialIsActiveOnMousePosition ||
-                       IsActiveOnActiveWindow != _initialIsActiveOnActiveWindow;
+                       IsActiveOnActiveWindow != _initialIsActiveOnActiveWindow ||
+                       IsActiveOnVideo != _initialIsActiveOnVideo;
 
             OnPropertyChanged(nameof(IsDirty));
         }
@@ -316,6 +334,7 @@ namespace OLED_Sleeper.UI.ViewModels
             _initialIsActiveOnInput = IsActiveOnInput;
             _initialIsActiveOnMousePosition = IsActiveOnMousePosition;
             _initialIsActiveOnActiveWindow = IsActiveOnActiveWindow;
+            _initialIsActiveOnVideo = IsActiveOnVideo;
             UpdateDirtyState();
         }
 
@@ -333,6 +352,7 @@ namespace OLED_Sleeper.UI.ViewModels
             IsActiveOnInput = _initialIsActiveOnInput;
             IsActiveOnMousePosition = _initialIsActiveOnMousePosition;
             IsActiveOnActiveWindow = _initialIsActiveOnActiveWindow;
+            IsActiveOnVideo = _initialIsActiveOnVideo;
             UpdateDirtyState();
         }
 
@@ -351,6 +371,7 @@ namespace OLED_Sleeper.UI.ViewModels
             IsActiveOnInput = settings.IsActiveOnInput;
             IsActiveOnMousePosition = settings.IsActiveOnMousePosition;
             IsActiveOnActiveWindow = settings.IsActiveOnActiveWindow;
+            IsActiveOnVideo = settings.IsActiveOnVideo;
         }
 
         /// <summary>
@@ -370,7 +391,8 @@ namespace OLED_Sleeper.UI.ViewModels
                 IdleUnit = SelectedTimeUnit,
                 IsActiveOnInput = IsActiveOnInput,
                 IsActiveOnMousePosition = IsActiveOnMousePosition,
-                IsActiveOnActiveWindow = IsActiveOnActiveWindow
+                IsActiveOnActiveWindow = IsActiveOnActiveWindow,
+                IsActiveOnVideo = IsActiveOnVideo
             };
         }
 

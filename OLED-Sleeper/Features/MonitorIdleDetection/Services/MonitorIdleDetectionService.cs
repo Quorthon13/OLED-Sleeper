@@ -1,4 +1,6 @@
 ﻿using OLED_Sleeper.Features.MonitorBehavior.Commands;
+using OLED_Sleeper.Features.MonitorIdleDetection.Media.Interfaces;
+using OLED_Sleeper.Features.MonitorIdleDetection.Media.Models;
 using OLED_Sleeper.Features.MonitorIdleDetection.Models;
 using OLED_Sleeper.Features.MonitorIdleDetection.Services.Interfaces;
 using OLED_Sleeper.Features.MonitorInformation.Models;
@@ -33,8 +35,17 @@ namespace OLED_Sleeper.Features.MonitorIdleDetection.Services
         /// </summary>
         private const int ClassNameBufferLength = 256;
 
+        /// <summary>
+        /// The longest a monitor is kept awake by video playback alone. Some games hold a display request even when paused on a
+        /// static screen, which would otherwise burn that image in. Once the cap is reached, only real activity (input, the mouse
+        /// or the active window) keeps the monitor awake, and it resets the cap.
+        /// </summary>
+        internal static readonly TimeSpan MaxMediaKeepAwake = TimeSpan.FromHours(4);
+
         // === Dependencies & State ===
         private readonly IMediator _mediator;
+        private readonly IMediaActivityMonitor _mediaActivityMonitor;
+        private readonly TimeProvider _timeProvider;
 
         private CancellationTokenSource? _cancellationTokenSource;
         private List<ManagedMonitorState> _managedMonitors = new();
@@ -43,9 +54,11 @@ namespace OLED_Sleeper.Features.MonitorIdleDetection.Services
 
         // === Construction ===
 
-        public MonitorIdleDetectionService(IMediator mediator)
+        public MonitorIdleDetectionService(IMediator mediator, IMediaActivityMonitor mediaActivityMonitor, TimeProvider timeProvider)
         {
             _mediator = mediator;
+            _mediaActivityMonitor = mediaActivityMonitor;
+            _timeProvider = timeProvider;
         }
 
         // === Service Lifecycle ===
@@ -141,15 +154,41 @@ namespace OLED_Sleeper.Features.MonitorIdleDetection.Services
         /// </summary>
         private void ProcessMonitors()
         {
-            var systemState = GetSystemState();
+            ProcessTick(GetSystemState());
+        }
 
+        /// <summary>
+        /// Runs one pass of the state machine over every managed monitor.
+        /// </summary>
+        /// <param name="systemState">The system state for this pass.</param>
+        internal void ProcessTick(SystemState systemState)
+        {
             lock (_lock)
             {
+                var mediaDecisions = EvaluateMedia();
+
                 foreach (var monitor in _managedMonitors)
                 {
-                    ProcessSingleMonitor(monitor, systemState);
+                    mediaDecisions.TryGetValue(monitor.Settings.HardwareId, out var mediaDecision);
+                    ProcessSingleMonitor(monitor, systemState, mediaDecision);
                 }
             }
+        }
+
+        /// <summary>
+        /// Asks the media monitor about every monitor that is not idle and has the video option on.
+        /// A monitor that is idle is never asked, so media can neither wake it nor cost a capture.
+        /// </summary>
+        /// <returns>The decisions, keyed by hardware ID.</returns>
+        private IReadOnlyDictionary<string, MediaDecision> EvaluateMedia()
+        {
+            var requests = _managedMonitors
+                .Where(monitor => monitor.Settings.IsActiveOnVideo &&
+                                  _monitorStates[monitor.Settings.HardwareId].CurrentState != MonitorStateMachine.Idle)
+                .Select(monitor => new MediaMonitorRequest(monitor.Settings.HardwareId, monitor.Bounds))
+                .ToList();
+
+            return _mediaActivityMonitor.Evaluate(requests);
         }
 
         /// <summary>
@@ -157,10 +196,12 @@ namespace OLED_Sleeper.Features.MonitorIdleDetection.Services
         /// </summary>
         /// <param name="monitor">The managed monitor.</param>
         /// <param name="systemState">Current system state.</param>
-        private void ProcessSingleMonitor(ManagedMonitorState monitor, SystemState systemState)
+        /// <param name="mediaDecision">The video decision for the monitor, or null when it was not evaluated.</param>
+        private void ProcessSingleMonitor(ManagedMonitorState monitor, SystemState systemState, MediaDecision? mediaDecision)
         {
             var timerState = _monitorStates[monitor.Settings.HardwareId];
-            var activityReason = GetActivityReason(monitor, systemState);
+            var activityReason = GetActivityReason(monitor, systemState, mediaDecision);
+            activityReason = ApplyMediaKeepAwakeCap(timerState, monitor, activityReason, mediaDecision);
             bool hasActivityNow = activityReason != ActivityReason.None;
 
             var eventArgs = new MonitorIdleStateEventArgs(
@@ -178,9 +219,62 @@ namespace OLED_Sleeper.Features.MonitorIdleDetection.Services
                     break;
 
                 case MonitorStateMachine.Idle:
-                    HandleIdleState(timerState, monitor, hasActivityNow, eventArgs);
+                    // Video playback never wakes a monitor that is already idle; only real activity does.
+                    HandleIdleState(timerState, monitor, hasActivityNow && activityReason != ActivityReason.VideoPlayback, eventArgs);
                     break;
             }
+        }
+
+        // === Media Keep-Awake ===
+
+        /// <summary>
+        /// Tracks how long video playback alone has kept a monitor awake and withdraws it once the cap is reached.
+        /// Real activity resets the tracking; so does the monitor going idle.
+        /// </summary>
+        /// <param name="timerState">The timer state for the monitor.</param>
+        /// <param name="monitor">The managed monitor.</param>
+        /// <param name="reason">The reason found for this pass.</param>
+        /// <param name="mediaDecision">The video decision, for the log.</param>
+        /// <returns>The reason to act on: the one given, or <see cref="ActivityReason.None"/> when the cap withdrew a media reason.</returns>
+        private ActivityReason ApplyMediaKeepAwakeCap(MonitorTimerState timerState, ManagedMonitorState monitor, ActivityReason reason, MediaDecision? mediaDecision)
+        {
+            if (reason != ActivityReason.VideoPlayback)
+            {
+                if (timerState.LastMediaSignal != null)
+                {
+                    Log.Debug("Monitor #{DisplayNumber} media keep-awake ended.", monitor.DisplayNumber);
+                    timerState.LastMediaSignal = null;
+                }
+
+                if (reason != ActivityReason.None || timerState.CurrentState == MonitorStateMachine.Idle)
+                {
+                    timerState.MediaKeepAwakeSince = null;
+                    timerState.MediaCapLogged = false;
+                }
+                return reason;
+            }
+
+            var now = _timeProvider.GetUtcNow().UtcDateTime;
+            timerState.MediaKeepAwakeSince ??= now;
+
+            if (now - timerState.MediaKeepAwakeSince.Value >= MaxMediaKeepAwake)
+            {
+                if (!timerState.MediaCapLogged)
+                {
+                    timerState.MediaCapLogged = true;
+                    Log.Information("Monitor #{DisplayNumber} has been kept awake by video playback for {Hours}h. It may now go idle until there is real activity.",
+                        monitor.DisplayNumber, MaxMediaKeepAwake.TotalHours);
+                }
+                return ActivityReason.None;
+            }
+
+            string signal = mediaDecision?.Signal ?? string.Empty;
+            if (timerState.LastMediaSignal != signal)
+            {
+                Log.Debug("Monitor #{DisplayNumber} kept awake by {Reason} ({Signal}).", monitor.DisplayNumber, reason, signal);
+            }
+            timerState.LastMediaSignal = signal;
+            return reason;
         }
 
         // === State Machine Handlers ===
@@ -195,7 +289,7 @@ namespace OLED_Sleeper.Features.MonitorIdleDetection.Services
             if (!hasActivityNow)
             {
                 timerState.CurrentState = MonitorStateMachine.Counting;
-                timerState.ActivityStoppedTimestamp = DateTime.UtcNow;
+                timerState.ActivityStoppedTimestamp = _timeProvider.GetUtcNow().UtcDateTime;
             }
         }
 
@@ -214,7 +308,7 @@ namespace OLED_Sleeper.Features.MonitorIdleDetection.Services
             }
             else
             {
-                var elapsed = DateTime.UtcNow - timerState.ActivityStoppedTimestamp;
+                var elapsed = _timeProvider.GetUtcNow().UtcDateTime - timerState.ActivityStoppedTimestamp;
                 if (elapsed.TotalMilliseconds >= monitor.Settings.IdleTimeMilliseconds)
                 {
                     timerState.CurrentState = MonitorStateMachine.Idle;
@@ -252,8 +346,9 @@ namespace OLED_Sleeper.Features.MonitorIdleDetection.Services
         /// </summary>
         /// <param name="monitor">The managed monitor.</param>
         /// <param name="state">Current system state.</param>
-        /// <returns>The activity reason.</returns>
-        private static ActivityReason GetActivityReason(ManagedMonitorState monitor, SystemState state)
+        /// <param name="mediaDecision">The video decision for the monitor, or null when it was not evaluated.</param>
+        /// <returns>The activity reason. Real activity is checked first, so a media reason means nothing else applied.</returns>
+        private static ActivityReason GetActivityReason(ManagedMonitorState monitor, SystemState state, MediaDecision? mediaDecision)
         {
             if (IsSystemInputActive(monitor, state))
                 return ActivityReason.SystemInput;
@@ -261,6 +356,8 @@ namespace OLED_Sleeper.Features.MonitorIdleDetection.Services
                 return ActivityReason.MousePosition;
             if (IsActiveWindowActive(monitor, state))
                 return ActivityReason.ActiveWindow;
+            if (monitor.Settings.IsActiveOnVideo && mediaDecision is { IsVideoPlaying: true })
+                return ActivityReason.VideoPlayback;
             return ActivityReason.None;
         }
 
@@ -390,12 +487,21 @@ namespace OLED_Sleeper.Features.MonitorIdleDetection.Services
         {
             public MonitorStateMachine CurrentState { get; set; } = MonitorStateMachine.Active;
             public DateTime ActivityStoppedTimestamp { get; set; }
+
+            /// <summary>When video playback started keeping the monitor awake, or null while it has not (since real activity or idling).</summary>
+            public DateTime? MediaKeepAwakeSince { get; set; }
+
+            /// <summary>Whether the cap on media keep-awake has been logged for the current stretch.</summary>
+            public bool MediaCapLogged { get; set; }
+
+            /// <summary>The signal logged for the current media keep-awake, or null while media is not keeping the monitor awake.</summary>
+            public string? LastMediaSignal { get; set; }
         }
 
         /// <summary>
         /// Snapshot of system state at a point in time.
         /// </summary>
-        private readonly struct SystemState
+        internal readonly struct SystemState
         {
             public readonly uint IdleTimeMilliseconds;
             public readonly Point CursorPosition;
