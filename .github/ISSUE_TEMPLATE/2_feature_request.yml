@@ -1,0 +1,55 @@
+name: ⭐ Feature request
+description: Suggest a new feature or a change to how OLED Sleeper works
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem does this solve?
+      description: Describe the situation where OLED Sleeper falls short today.
+      placeholder: My monitor blacks out while I read long documents on it, because reading doesn't move the mouse.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: Describe how the feature should behave, including any new settings and where they appear.
+      placeholder: A tray menu option to pause OLED Sleeper for 30 minutes, 1 hour, or until resumed.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives you've considered
+      placeholder: A longer idle timer, but then the monitor stays on too long when I actually walk away.
+
+  - type: dropdown
+    id: implement
+    attributes:
+      label: Do you want to implement this yourself?
+      description: If yes, wait until the maintainer agrees on the approach in this issue before you start. Feature pull requests without an agreed issue are closed.
+      options:
+        - "Yes"
+        - "No"
+    validations:
+      required: true
+
+  - type: textarea
+    id: other-details
+    attributes:
+      label: Other details
+      description: Mockups, screenshots, or links to other apps that do this.
+
+  - type: checkboxes
+    id: acknowledgements
+    attributes:
+      label: Acknowledgements
+      description: Issues that skip these will be closed.
+      options:
+        - label: I searched the existing issues, open and closed, and this feature has not been requested.
+          required: true
+        - label: This issue asks for one feature. Separate features go in separate issues.
+          required: true

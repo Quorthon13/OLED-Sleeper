@@ -1,0 +1,141 @@
+name: 🐞 Bug report
+description: Report something in OLED Sleeper that doesn't work right
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Most OLED Sleeper bugs depend on the monitors, connections and GPU involved. Fill in every required field. Reports without a log file and hardware details can't be investigated.
+
+  - type: textarea
+    id: reproduce-steps
+    attributes:
+      label: Steps to reproduce
+      description: Start from OLED Sleeper running and list every step until the problem appears. Include the settings of the affected monitor.
+      placeholder: |
+        1. Set monitor 2 to Dim, brightness level 0, idle timer 30 seconds
+        2. Under "Consider active when...", enable "Mouse cursor is on this monitor"
+        3. Move the mouse to monitor 1 and wait 30 seconds
+        4. Move the mouse back to monitor 2
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected-behavior
+    attributes:
+      label: Expected behavior
+      placeholder: Monitor 2 returns to its previous brightness.
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual-behavior
+    attributes:
+      label: Actual behavior
+      placeholder: Monitor 2 stays at 0% brightness until OLED Sleeper is restarted.
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Log file
+      description: |
+        Drag the log file from the day the problem happened into this box. Log files are named `log-YYYYMMDD.txt` and are kept for 7 days.
+        - **Installed:** press Win + R, paste `%APPDATA%\OLED-Sleeper\Logs` and press Enter.
+        - **Portable:** open the `Data\Logs` folder next to `OLED-Sleeper.exe`.
+
+        If the problem involves your settings, also attach `settings.json` from the folder one level above `Logs`.
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: OLED Sleeper version
+      description: |
+        **Installed:** Windows Settings → Apps → Installed apps → OLED Sleeper.
+        **Portable:** right-click `OLED-Sleeper.exe` → Properties → Details → Product version.
+      placeholder: 2.1.0
+    validations:
+      required: true
+
+  - type: dropdown
+    id: install-type
+    attributes:
+      label: Installation type
+      options:
+        - Installer
+        - Portable zip
+        - Built from source
+    validations:
+      required: true
+
+  - type: input
+    id: windows-version
+    attributes:
+      label: Windows version
+      description: Press Win + R, type `winver` and press Enter. Copy the version and OS build.
+      placeholder: Windows 11 24H2 (OS Build 26100.4652)
+    validations:
+      required: true
+
+  - type: textarea
+    id: monitors
+    attributes:
+      label: Monitors
+      description: List every connected monitor with its brand, model and connection. Include adapters, docks and KVM switches. Mark the monitor with the problem.
+      placeholder: |
+        1. LG 27GR95QE-B (OLED), DisplayPort, direct to GPU ← affected
+        2. Dell U2720Q, USB-C through a CalDigit TS4 dock
+    validations:
+      required: true
+
+  - type: input
+    id: gpu
+    attributes:
+      label: GPU and driver version
+      description: Task Manager → Performance → GPU shows the model and driver version. List every GPU if you have more than one (common on laptops).
+      placeholder: NVIDIA GeForce RTX 3060, driver 32.0.15.7688
+    validations:
+      required: true
+
+  - type: dropdown
+    id: behavior
+    attributes:
+      label: Behavior set on the affected monitor
+      options:
+        - Blackout
+        - Dim
+        - None (monitor is not managed)
+    validations:
+      required: true
+
+  - type: dropdown
+    id: active-conditions
+    attributes:
+      label: '"Consider active when..." options enabled on the affected monitor'
+      multiple: true
+      options:
+        - Mouse cursor is on this monitor
+        - Application is focused on this monitor
+        - System has user input
+
+  - type: textarea
+    id: other-details
+    attributes:
+      label: Other details
+      description: Screenshots, a video, and any other display or brightness software running (DisplayFusion, Twinkle Tray, Monitorian, f.lux, the GPU vendor's control panel, the monitor maker's app).
+
+  - type: checkboxes
+    id: acknowledgements
+    attributes:
+      label: Acknowledgements
+      description: Issues that skip these will be closed.
+      options:
+        - label: I searched the existing issues, open and closed, and this is not a duplicate.
+          required: true
+        - label: I am on the latest version from the [Releases page](https://github.com/Quorthon13/OLED-Sleeper/releases/latest).
+          required: true
+        - label: I filled in every required field with specific values, not "latest" or "default".
+          required: true
