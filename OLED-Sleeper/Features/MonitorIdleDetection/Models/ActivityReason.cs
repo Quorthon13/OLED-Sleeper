@@ -24,6 +24,11 @@
         /// <summary>
         /// System input (keyboard or mouse activity) was detected.
         /// </summary>
-        SystemInput
+        SystemInput,
+
+        /// <summary>
+        /// A video, fullscreen or windowed, is playing on the monitor. Never wakes a monitor that is already idle.
+        /// </summary>
+        VideoPlayback
     }
 }

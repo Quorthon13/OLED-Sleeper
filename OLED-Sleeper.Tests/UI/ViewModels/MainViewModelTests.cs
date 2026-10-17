@@ -176,6 +176,36 @@ namespace OLED_Sleeper.Tests.UI.ViewModels
         }
 
         [Fact]
+        public void RecalculateLayout_WhenTheVideoOptionIsTicked_MarksViewModelDirty()
+        {
+            // Arrange
+            var monitor = CreateMonitor("MON-1");
+            LoadMonitors(monitor);
+
+            // Act
+            monitor.Configuration.IsActiveOnVideo = true;
+
+            // Assert
+            Assert.True(_viewModel.IsDirty);
+        }
+
+        [Fact]
+        public void DiscardChanges_AfterTickingAVideoOption_RevertsIt()
+        {
+            // Arrange
+            var monitor = CreateMonitor("MON-1");
+            LoadMonitors(monitor);
+            monitor.Configuration.IsActiveOnVideo = true;
+
+            // Act
+            _viewModel.DiscardChanges();
+
+            // Assert
+            Assert.False(monitor.Configuration.IsActiveOnVideo);
+            Assert.False(_viewModel.IsDirty);
+        }
+
+        [Fact]
         public void RecalculateLayout_WhenAReplacedMonitorChanges_LeavesTheViewModelClean()
         {
             // Arrange

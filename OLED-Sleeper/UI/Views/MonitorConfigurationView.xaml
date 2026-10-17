@@ -396,6 +396,10 @@
                                      Style="{StaticResource ModernTextBox}"
                                      Text="{Binding IdleValue, UpdateSourceTrigger=PropertyChanged, ValidatesOnDataErrors=True, TargetNullValue=''}" />
                         </Grid>
+                        <CheckBox Content="Pause while a video plays on this monitor" Style="{StaticResource ModernCheckBox}" Margin="0,12,0,0" FontSize="13"
+                            IsChecked="{Binding IsActiveOnVideo, UpdateSourceTrigger=PropertyChanged}"
+                            ToolTip="Keeps this monitor from going idle while a video plays on it, fullscreen or in a window.&#10;A video starting won't wake the screen once it's blacked out."
+                            ToolTipService.InitialShowDelay="200" />
                     </StackPanel>
 
                     <!-- Active Conditions Section -->
