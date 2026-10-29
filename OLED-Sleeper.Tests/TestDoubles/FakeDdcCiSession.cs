@@ -39,6 +39,20 @@ namespace OLED_Sleeper.Tests.TestDoubles
         public List<uint> WrittenBrightnessLevels { get; } = new();
 
         /// <summary>
+        /// Gets or sets the brightness held by this simulated panel.
+        /// </summary>
+        public uint CurrentBrightness
+        {
+            get => _brightness;
+            set => _brightness = value;
+        }
+
+        /// <summary>
+        /// Called after a successful brightness write.
+        /// </summary>
+        public Action<uint>? OnBrightnessSet { get; set; }
+
+        /// <summary>
         /// How many times <see cref="Dispose"/> has run. One per channel the service opened means
         /// no handle was leaked.
         /// </summary>
@@ -57,6 +71,7 @@ namespace OLED_Sleeper.Tests.TestDoubles
             if (WritesAreRejected) return false;
 
             _brightness = ReadBackOverride ?? brightness;
+            OnBrightnessSet?.Invoke(_brightness);
             return true;
         }
 

@@ -16,31 +16,32 @@ Many users have multi-monitor setups but want to turn off or dim secondary monit
 
 ## The Solution
 
-OLED Sleeper monitors each screen for activity. When a monitor is idle for a set time, it will either black it out or dim its brightness based on your preference. 
+OLED Sleeper monitors each screen for activity. When a monitor is idle for a set time, it will either black it out or dim its brightness based on your preference.
 
 <p align="center">
-  <img width="500" height="410" alt="oled-sleeper-002" src="https://github.com/user-attachments/assets/20022234-fe5f-4573-a4e4-ff5ef07b622b" />
+  <img width="600" height="490" alt="oled-sleeper-002" src="https://github.com/user-attachments/assets/1a7f1ce4-d147-436d-b90c-38ada7e3d464" />
 </p>
 
 ---
 
 ## Features
 
-* **Three Idle Detection Modes:** Customize how the application determines if a monitor is idle:
-    * **Mouse:** Tracks cursor movement specifically on the target monitor.
-    * **Focused Application:** Tracks activity within the active window currently displayed on that monitor.
-    * **System-Wide Input:** Tracks overall keyboard and mouse input across the entire system (similar to standard Windows idle detection).
-* **Per-Monitor Control:** Blackout or dim any monitor independently.
-* **Two Action Modes:** Full blackout or dimming (DDC/CI supported).
-* **Instant Wake-Up:** Restore the monitor immediately when activity is detected.
-* **Native WPF Application:** Built from the ground up using native Win32 calls. Requires no external dependencies or third-party tools.
+- **Three Idle Detection Modes:** Customize how the application determines if a monitor is idle:
+  - **Mouse:** Tracks cursor movement specifically on the target monitor.
+  - **Focused Application:** Tracks activity within the active window currently displayed on that monitor.
+  - **System-Wide Input:** Tracks overall keyboard and mouse input across the entire system (similar to standard Windows idle detection).
+- **Per-Monitor Control:** Blackout or dim any monitor independently.
+- **Two Action Modes:** Full blackout or dimming (DDC/CI supported).
+- **Dimming Easing:** Optionally set separate ease-in and ease-out durations for gradual brightness transitions.
+- **Instant Wake-Up:** Restore the monitor immediately when activity is detected.
+- **Native WPF Application:** Built from the ground up using native Win32 calls. Requires no external dependencies or third-party tools.
 
 ---
 
 ## Requirements
 
-* **Operating System:** Windows 10 or 11
-* **DDC/CI Support (for Dimming Mode):** Dimming requires a monitor that supports DDC/CI brightness control via VCP codes. Most modern monitors support this, but it is not guaranteed on all displays.
+- **Operating System:** Windows 10 or 11
+- **DDC/CI Support (for Dimming Mode):** Dimming requires a monitor that supports DDC/CI brightness control via VCP codes. Most modern monitors support this, but it is not guaranteed on all displays.
 
 ---
 

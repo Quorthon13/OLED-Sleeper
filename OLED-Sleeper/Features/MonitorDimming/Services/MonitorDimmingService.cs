@@ -3,6 +3,7 @@ using OLED_Sleeper.Features.MonitorDimming.Services.Interfaces;
 using OLED_Sleeper.Features.MonitorInformation.Services.Interfaces;
 using Serilog;
 using System.Collections.Concurrent;
+using System.Diagnostics;
 
 namespace OLED_Sleeper.Features.MonitorDimming.Services
 {
@@ -25,10 +26,24 @@ namespace OLED_Sleeper.Features.MonitorDimming.Services
         /// <summary>Largest difference between the requested and read-back brightness that still counts as applied.</summary>
         private const uint BrightnessReadBackTolerance = 2;
 
+        /// <summary>Interval between brightness writes while a transition is in progress.</summary>
+        private const int TransitionUpdateIntervalMs = 5;
+
         /// <summary>
         /// One gate per hardware ID. Dim, undim and restore for the same monitor run one at a time.
         /// </summary>
         private readonly ConcurrentDictionary<string, SemaphoreSlim> _monitorGates = new();
+
+        /// <summary>
+        /// The latest brightness operation for each monitor. Replacing it interrupts the active transition.
+        /// </summary>
+        private readonly Dictionary<string, CancellationTokenSource> _monitorOperations = new();
+        private readonly object _monitorOperationsLock = new();
+
+        /// <summary>
+        /// The brightness target of the current dim operation, used to scale a reversed fade to its remaining distance.
+        /// </summary>
+        private readonly ConcurrentDictionary<string, uint> _dimTargets = new();
 
         public MonitorDimmingService(
             IMonitorInfoManager monitorManager,
@@ -43,17 +58,32 @@ namespace OLED_Sleeper.Features.MonitorDimming.Services
         /// <inheritdoc />
         public async Task DimMonitorAsync(string? hardwareId, int dimLevel)
         {
+            await DimMonitorAsync(hardwareId, dimLevel, 0);
+        }
+
+        /// <inheritdoc />
+        public async Task DimMonitorAsync(string? hardwareId, int dimLevel, double easeInDurationSeconds)
+        {
             if (string.IsNullOrEmpty(hardwareId))
             {
                 Log.Warning("DimMonitorAsync called without a hardware ID.");
                 return;
             }
 
-            await WithMonitorGateAsync(hardwareId, () => DimCoreAsync(hardwareId, dimLevel));
+            var duration = GetTransitionDuration(easeInDurationSeconds, "dim");
+            await RunMonitorOperationAsync(
+                hardwareId,
+                token => DimCoreAsync(hardwareId, dimLevel, duration, token));
         }
 
         /// <inheritdoc />
         public async Task UndimMonitorAsync(string hardwareId)
+        {
+            await UndimMonitorAsync(hardwareId, 0);
+        }
+
+        /// <inheritdoc />
+        public async Task UndimMonitorAsync(string hardwareId, double easeOutDurationSeconds)
         {
             if (string.IsNullOrEmpty(hardwareId))
             {
@@ -61,7 +91,10 @@ namespace OLED_Sleeper.Features.MonitorDimming.Services
                 return;
             }
 
-            await WithMonitorGateAsync(hardwareId, () => UndimCoreAsync(hardwareId));
+            var duration = GetTransitionDuration(easeOutDurationSeconds, "restore");
+            await RunMonitorOperationAsync(
+                hardwareId,
+                token => UndimCoreAsync(hardwareId, duration, token));
         }
 
         /// <inheritdoc />
@@ -93,17 +126,25 @@ namespace OLED_Sleeper.Features.MonitorDimming.Services
         /// </summary>
         /// <param name="hardwareId">The hardware ID of the monitor.</param>
         /// <param name="dimLevel">The dim level as a percentage.</param>
-        private async Task DimCoreAsync(string hardwareId, int dimLevel)
+        private async Task DimCoreAsync(
+            string hardwareId,
+            int dimLevel,
+            TimeSpan transitionDuration,
+            CancellationToken cancellationToken)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             var targetBrightness = await ScaleToMonitorRangeAsync(hardwareId, dimLevel);
 
-            await WithSessionAsync(hardwareId, session =>
+            await WithSessionAsync(hardwareId, async session =>
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 var currentBrightness = GetCurrentBrightness(session, hardwareId);
                 if (currentBrightness is null) return false;
 
                 _originalBrightnessStore.RecordOriginal(hardwareId, currentBrightness.Value);
-                return SetMonitorBrightness(session, hardwareId, targetBrightness);
+                _dimTargets[hardwareId] = targetBrightness;
+                return await TransitionBrightnessAsync(
+                    session, hardwareId, currentBrightness.Value, targetBrightness, transitionDuration, cancellationToken);
             });
         }
 
@@ -135,14 +176,144 @@ namespace OLED_Sleeper.Features.MonitorDimming.Services
         /// so a later reconnect, settings save, or the next launch retries it.
         /// </summary>
         /// <param name="hardwareId">The hardware ID of the monitor.</param>
-        private async Task UndimCoreAsync(string hardwareId)
+        private async Task UndimCoreAsync(
+            string hardwareId,
+            TimeSpan transitionDuration,
+            CancellationToken cancellationToken)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             if (!_originalBrightnessStore.TryGetOriginal(hardwareId, out var originalBrightness)) return;
+
+            if (transitionDuration > TimeSpan.Zero)
+            {
+                var transitionOutcome = await TransitionRestoreCoreAsync(
+                    hardwareId, originalBrightness, transitionDuration, cancellationToken);
+                if (transitionOutcome == MonitorAccessOutcome.Succeeded)
+                {
+                    _originalBrightnessStore.RemoveOriginal(hardwareId);
+                    _dimTargets.TryRemove(hardwareId, out _);
+                    return;
+                }
+
+                cancellationToken.ThrowIfCancellationRequested();
+            }
 
             if (await RestoreCoreAsync(hardwareId, originalBrightness))
             {
                 _originalBrightnessStore.RemoveOriginal(hardwareId);
+                _dimTargets.TryRemove(hardwareId, out _);
             }
+        }
+
+        /// <summary>
+        /// Transitions from the current brightness to the recorded original value, confirming the final write.
+        /// </summary>
+        private async Task<MonitorAccessOutcome> TransitionRestoreCoreAsync(
+            string hardwareId,
+            uint originalBrightness,
+            TimeSpan transitionDuration,
+            CancellationToken cancellationToken)
+        {
+            return await WithSessionAsync(hardwareId, async session =>
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                var currentBrightness = GetCurrentBrightness(session, hardwareId);
+                if (currentBrightness is null) return false;
+
+                var effectiveDuration = ScaleTransitionDuration(
+                    transitionDuration,
+                    currentBrightness.Value,
+                    originalBrightness,
+                    _dimTargets.TryGetValue(hardwareId, out var dimTarget) ? dimTarget : null);
+                var transitioned = await TransitionBrightnessAsync(
+                    session,
+                    hardwareId,
+                    currentBrightness.Value,
+                    originalBrightness,
+                    effectiveDuration,
+                    cancellationToken,
+                    isRestore: true);
+                return transitioned && BrightnessWasApplied(session, hardwareId, originalBrightness);
+            });
+        }
+
+        /// <summary>
+        /// Gradually writes brightness levels between the current value and target, ending exactly at the target.
+        /// </summary>
+        private static async Task<bool> TransitionBrightnessAsync(
+            IDdcCiSession session,
+            string hardwareId,
+            uint startingBrightness,
+            uint targetBrightness,
+            TimeSpan duration,
+            CancellationToken cancellationToken,
+            bool isRestore = false)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (duration <= TimeSpan.Zero)
+                return SetMonitorBrightness(session, hardwareId, targetBrightness, isRestore);
+
+            var stopwatch = Stopwatch.StartNew();
+            uint? lastBrightness = null;
+            while (true)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                var progress = Math.Min(1, stopwatch.Elapsed.TotalMilliseconds / duration.TotalMilliseconds);
+                var brightness = (uint)Math.Round(
+                    startingBrightness + ((double)targetBrightness - startingBrightness) * progress,
+                    MidpointRounding.AwayFromZero);
+
+                if (brightness != lastBrightness)
+                {
+                    if (!SetMonitorBrightness(session, hardwareId, brightness, isRestore, isTransition: progress < 1))
+                        return false;
+                    lastBrightness = brightness;
+                }
+
+                if (progress >= 1)
+                    return true;
+
+                var remainingMilliseconds = duration.TotalMilliseconds - stopwatch.Elapsed.TotalMilliseconds;
+                var delayMilliseconds = Math.Min(TransitionUpdateIntervalMs, Math.Max(1, remainingMilliseconds));
+                await Task.Delay(TimeSpan.FromMilliseconds(delayMilliseconds), cancellationToken);
+            }
+        }
+
+        /// <summary>
+        /// Shortens a transition in proportion to the remaining distance from the stored dim target.
+        /// </summary>
+        private static TimeSpan ScaleTransitionDuration(
+            TimeSpan duration,
+            uint currentBrightness,
+            uint originalBrightness,
+            uint? dimTarget)
+        {
+            if (dimTarget is null)
+                return duration;
+
+            var fullDistance = Math.Abs((long)originalBrightness - dimTarget.Value);
+            if (fullDistance == 0)
+                return TimeSpan.Zero;
+
+            var remainingDistance = Math.Abs((long)originalBrightness - currentBrightness);
+            var scale = Math.Min(1, (double)remainingDistance / fullDistance);
+            return TimeSpan.FromTicks((long)(duration.Ticks * scale));
+        }
+
+        /// <summary>
+        /// Converts a configured duration to a safe transition duration, logging and disabling invalid values.
+        /// </summary>
+        private static TimeSpan GetTransitionDuration(double durationSeconds, string action)
+        {
+            if (!double.IsFinite(durationSeconds)
+                || durationSeconds < 0
+                || durationSeconds > TimeSpan.MaxValue.TotalSeconds)
+            {
+                Log.Warning("Invalid {Action} easing duration {DurationSeconds}; applying brightness immediately.", action, durationSeconds);
+                return TimeSpan.Zero;
+            }
+
+            return TimeSpan.FromSeconds(durationSeconds);
         }
 
         /// <summary>
@@ -212,17 +383,44 @@ namespace OLED_Sleeper.Features.MonitorDimming.Services
         /// </summary>
         /// <param name="hardwareId">The hardware ID of the monitor.</param>
         /// <param name="operation">The operation to run.</param>
-        private async Task WithMonitorGateAsync(string hardwareId, Func<Task> operation)
+        private async Task RunMonitorOperationAsync(string hardwareId, Func<CancellationToken, Task> operation)
         {
+            var cancellationTokenSource = new CancellationTokenSource();
+            CancellationTokenSource? previousOperation;
+            lock (_monitorOperationsLock)
+            {
+                _monitorOperations.TryGetValue(hardwareId, out previousOperation);
+                previousOperation?.Cancel();
+                _monitorOperations[hardwareId] = cancellationTokenSource;
+            }
+
             var gate = _monitorGates.GetOrAdd(hardwareId, _ => new SemaphoreSlim(1, 1));
-            await gate.WaitAsync();
+            var gateAcquired = false;
             try
             {
-                await operation();
+                await gate.WaitAsync(cancellationTokenSource.Token);
+                gateAcquired = true;
+                await operation(cancellationTokenSource.Token);
+            }
+            catch (OperationCanceledException) when (cancellationTokenSource.IsCancellationRequested)
+            {
+                Log.Debug("Interrupted brightness transition for monitor {HardwareId}.", hardwareId);
             }
             finally
             {
-                gate.Release();
+                if (gateAcquired)
+                    gate.Release();
+
+                lock (_monitorOperationsLock)
+                {
+                    if (_monitorOperations.TryGetValue(hardwareId, out var currentOperation)
+                        && ReferenceEquals(currentOperation, cancellationTokenSource))
+                    {
+                        _monitorOperations.Remove(hardwareId);
+                    }
+                }
+
+                cancellationTokenSource.Dispose();
             }
         }
 
@@ -246,6 +444,24 @@ namespace OLED_Sleeper.Features.MonitorDimming.Services
             }
 
             return operation(session) ? MonitorAccessOutcome.Succeeded : MonitorAccessOutcome.Failed;
+        }
+
+        /// <summary>
+        /// Opens a DDC/CI channel for an asynchronous operation and closes it afterwards.
+        /// </summary>
+        private async Task<MonitorAccessOutcome> WithSessionAsync(string hardwareId, Func<IDdcCiSession, Task<bool>> operation)
+        {
+            var monitors = await _monitorManager.GetCurrentMonitorsAsync();
+            var targetMonitor = monitors.FirstOrDefault(m => m.HardwareId == hardwareId);
+
+            using var session = targetMonitor is null ? null : _ddcCiAccess.OpenSession(targetMonitor.DeviceName);
+            if (session is null)
+            {
+                Log.Warning("Could not find monitor handle for HardwareId {HardwareId}.", hardwareId);
+                return MonitorAccessOutcome.Unavailable;
+            }
+
+            return await operation(session) ? MonitorAccessOutcome.Succeeded : MonitorAccessOutcome.Failed;
         }
 
         /// <summary>
@@ -273,7 +489,12 @@ namespace OLED_Sleeper.Features.MonitorDimming.Services
         /// <param name="brightness">The brightness value to set.</param>
         /// <param name="isRestore">True if restoring, false if dimming.</param>
         /// <returns>True when the monitor accepted the write; otherwise, false.</returns>
-        private static bool SetMonitorBrightness(IDdcCiSession session, string hardwareId, uint brightness, bool isRestore = false)
+        private static bool SetMonitorBrightness(
+            IDdcCiSession session,
+            string hardwareId,
+            uint brightness,
+            bool isRestore = false,
+            bool isTransition = false)
         {
             if (!session.SetBrightness(brightness))
             {
@@ -282,7 +503,11 @@ namespace OLED_Sleeper.Features.MonitorDimming.Services
                 return false;
             }
 
-            if (isRestore)
+            if (isTransition)
+            {
+                Log.Debug("Transitioned monitor {HardwareId} to brightness {Brightness}.", hardwareId, brightness);
+            }
+            else if (isRestore)
             {
                 Log.Debug("Wrote original brightness {OriginalBrightness} to monitor {HardwareId}, pending read-back.", brightness, hardwareId);
             }

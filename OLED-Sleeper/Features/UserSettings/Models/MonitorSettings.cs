@@ -29,6 +29,21 @@ namespace OLED_Sleeper.Features.UserSettings.Models
         public double DimLevel { get; set; } = 15;
 
         /// <summary>
+        /// Gets or sets whether dimming and restoring brightness should transition gradually.
+        /// </summary>
+        public bool IsEasingEnabled { get; set; }
+
+        /// <summary>
+        /// Gets or sets the duration in seconds for dimming to reach the configured level.
+        /// </summary>
+        public double EaseInDurationSeconds { get; set; } = 1.0;
+
+        /// <summary>
+        /// Gets or sets the duration in seconds for restoring the original brightness.
+        /// </summary>
+        public double EaseOutDurationSeconds { get; set; } = 1.0;
+
+        /// <summary>
         /// Gets or sets a value indicating whether a blackout also sets the monitor's hardware brightness to zero.
         /// Absent from a settings file written before this option existed, which leaves it at its default of false.
         /// </summary>

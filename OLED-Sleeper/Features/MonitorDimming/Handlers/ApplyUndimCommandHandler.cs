@@ -29,7 +29,10 @@ namespace OLED_Sleeper.Features.MonitorDimming.Handlers
             try
             {
                 Log.Information("Executing UndimMonitorCommand for monitor {HardwareId}.", command.HardwareId);
-                await _monitorDimmingService.UndimMonitorAsync(command.HardwareId);
+                if (command.EaseOutDurationSeconds == 0)
+                    await _monitorDimmingService.UndimMonitorAsync(command.HardwareId);
+                else
+                    await _monitorDimmingService.UndimMonitorAsync(command.HardwareId, command.EaseOutDurationSeconds);
             }
             catch (Exception ex)
             {

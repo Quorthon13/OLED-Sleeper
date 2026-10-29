@@ -27,7 +27,11 @@ namespace OLED_Sleeper.Features.MonitorBehavior.Handlers
         {
             Log.Information("Restoring state for monitor {HardwareId}.", command.HardwareId);
             _mediator.SendAsync(new HideBlackoutOverlayCommand { HardwareId = command.HardwareId });
-            _mediator.SendAsync(new ApplyUndimCommand { HardwareId = command.HardwareId });
+            _mediator.SendAsync(new ApplyUndimCommand
+            {
+                HardwareId = command.HardwareId,
+                EaseOutDurationSeconds = command.EaseOutDurationSeconds
+            });
             return Task.CompletedTask;
         }
     }

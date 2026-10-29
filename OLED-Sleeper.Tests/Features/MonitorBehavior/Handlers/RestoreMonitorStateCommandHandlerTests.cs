@@ -24,14 +24,15 @@ namespace OLED_Sleeper.Tests.Features.MonitorBehavior.Handlers
         public async Task HandleAsync_SendsHideOverlayAndUndimForTheMonitor()
         {
             // Arrange
-            var command = new RestoreMonitorStateCommand { HardwareId = HardwareId };
+            var command = new RestoreMonitorStateCommand { HardwareId = HardwareId, EaseOutDurationSeconds = 2.5 };
 
             // Act
             await _handler.HandleAsync(command);
 
             // Assert
             _mediatorMock.Verify(m => m.SendAsync(It.Is<HideBlackoutOverlayCommand>(c => c.HardwareId == HardwareId)), Times.Once);
-            _mediatorMock.Verify(m => m.SendAsync(It.Is<ApplyUndimCommand>(c => c.HardwareId == HardwareId)), Times.Once);
+            _mediatorMock.Verify(m => m.SendAsync(It.Is<ApplyUndimCommand>(c =>
+                c.HardwareId == HardwareId && c.EaseOutDurationSeconds == 2.5)), Times.Once);
             _mediatorMock.VerifyNoOtherCalls();
         }
 

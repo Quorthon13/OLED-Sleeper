@@ -32,6 +32,25 @@ namespace OLED_Sleeper.Tests.Features.MonitorDimming.Handlers
         }
 
         [Fact]
+        public async Task HandleAsync_WhenEasingIsRequested_PassesTheEaseOutDuration()
+        {
+            // Arrange
+            var command = new ApplyUndimCommand
+            {
+                HardwareId = HardwareId,
+                EaseOutDurationSeconds = 2.5
+            };
+
+            // Act
+            await _handler.HandleAsync(command);
+
+            // Assert
+            _monitorDimmingServiceMock.Verify(
+                x => x.UndimMonitorAsync(HardwareId, 2.5),
+                Times.Once);
+        }
+
+        [Fact]
         public async Task HandleAsync_WhenTheServiceThrows_SwallowsTheException()
         {
             // Arrange

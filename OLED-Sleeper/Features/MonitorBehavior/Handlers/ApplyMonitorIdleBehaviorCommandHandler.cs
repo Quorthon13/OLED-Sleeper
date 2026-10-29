@@ -32,7 +32,12 @@ namespace OLED_Sleeper.Features.MonitorBehavior.Handlers
                     await _mediator.SendAsync(new ApplyBlackoutOverlayCommand { HardwareId = e.HardwareId, LowerBrightness = e.Settings.LowerBrightnessOnBlackout });
                     break;
                 case MonitorBehaviorType.Dim:
-                    await _mediator.SendAsync(new ApplyDimCommand { HardwareId = e.HardwareId, DimLevel = (int)e.Settings.DimLevel });
+                    await _mediator.SendAsync(new ApplyDimCommand
+                    {
+                        HardwareId = e.HardwareId,
+                        DimLevel = (int)e.Settings.DimLevel,
+                        EaseInDurationSeconds = e.Settings.IsEasingEnabled ? e.Settings.EaseInDurationSeconds : 0
+                    });
                     break;
                 default:
                     Log.Information("No idle behavior to apply for monitor {HardwareId}.", e.HardwareId);

@@ -59,6 +59,25 @@ namespace OLED_Sleeper.Tests.Features.MonitorBehavior.Handlers
             _mediatorMock.Verify(m => m.SendAsync(It.Is<RestoreMonitorStateCommand>(c => c.HardwareId == HardwareId)), Times.Once);
         }
 
+        [Fact]
+        public async Task HandleAsync_WhenDimEasingIsEnabled_PassesTheEaseOutDuration()
+        {
+            // Arrange
+            var eventArgs = CreateEventArgs(ActivityReason.SystemInput, ForeignHandle);
+            eventArgs.Settings.Behavior = OLED_Sleeper.Features.MonitorBehavior.Models.MonitorBehaviorType.Dim;
+            eventArgs.Settings.IsEasingEnabled = true;
+            eventArgs.Settings.EaseOutDurationSeconds = 2.5;
+
+            // Act
+            await _handler.HandleAsync(new ApplyMonitorActiveBehaviorCommand(eventArgs));
+
+            // Assert
+            _mediatorMock.Verify(
+                m => m.SendAsync(It.Is<RestoreMonitorStateCommand>(c =>
+                    c.HardwareId == HardwareId && c.EaseOutDurationSeconds == 2.5)),
+                Times.Once);
+        }
+
         [Theory]
         [InlineData(ActivityReason.MousePosition)]
         [InlineData(ActivityReason.SystemInput)]

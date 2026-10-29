@@ -53,6 +53,23 @@ namespace OLED_Sleeper.Tests.Features.MonitorBehavior.Handlers
         }
 
         [Fact]
+        public async Task HandleAsync_WhenEasingIsEnabled_PassesTheEaseInDuration()
+        {
+            // Arrange
+            var command = new ApplyMonitorIdleBehaviorCommand(
+                CreateEventArgs(MonitorBehaviorType.Dim, dimLevel: 20, isEasingEnabled: true, easeInDurationSeconds: 1.5));
+
+            // Act
+            await _handler.HandleAsync(command);
+
+            // Assert
+            _mediatorMock.Verify(
+                m => m.SendAsync(It.Is<ApplyDimCommand>(c =>
+                    c.HardwareId == HardwareId && c.EaseInDurationSeconds == 1.5)),
+                Times.Once);
+        }
+
+        [Fact]
         public async Task HandleAsync_WhenDimLevelIsFractional_TruncatesTowardZero()
         {
             // Arrange
@@ -98,14 +115,20 @@ namespace OLED_Sleeper.Tests.Features.MonitorBehavior.Handlers
         /// <summary>
         /// Builds idle event args for a monitor configured with the given behavior and dim level.
         /// </summary>
-        private static MonitorIdleStateEventArgs CreateEventArgs(MonitorBehaviorType behavior, double dimLevel = 15)
+        private static MonitorIdleStateEventArgs CreateEventArgs(
+            MonitorBehaviorType behavior,
+            double dimLevel = 15,
+            bool isEasingEnabled = false,
+            double easeInDurationSeconds = 1.0)
         {
             var settings = new MonitorSettings
             {
                 HardwareId = HardwareId,
                 IsManaged = true,
                 Behavior = behavior,
-                DimLevel = dimLevel
+                DimLevel = dimLevel,
+                IsEasingEnabled = isEasingEnabled,
+                EaseInDurationSeconds = easeInDurationSeconds
             };
 
             return new MonitorIdleStateEventArgs(

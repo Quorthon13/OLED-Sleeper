@@ -1,6 +1,7 @@
 using OLED_Sleeper.Features.MonitorBehavior.Commands;
 using OLED_Sleeper.Features.MonitorBlackout.Services.Interfaces;
 using OLED_Sleeper.Features.MonitorIdleDetection.Models;
+using OLED_Sleeper.Features.MonitorBehavior.Models;
 using OLED_Sleeper.Messaging.Interfaces;
 using Serilog;
 
@@ -37,7 +38,14 @@ namespace OLED_Sleeper.Features.MonitorBehavior.Handlers
                 return Task.CompletedTask;
             }
             Log.Information("Monitor became active. Initiating state restore for monitor #{DisplayNumber}.", e.DisplayNumber);
-            _mediator.SendAsync(new RestoreMonitorStateCommand { HardwareId = e.HardwareId });
+            _mediator.SendAsync(new RestoreMonitorStateCommand
+            {
+                HardwareId = e.HardwareId,
+                EaseOutDurationSeconds = e.Settings.Behavior == MonitorBehaviorType.Dim
+                    && e.Settings.IsEasingEnabled
+                    ? e.Settings.EaseOutDurationSeconds
+                    : 0
+            });
             return Task.CompletedTask;
         }
     }

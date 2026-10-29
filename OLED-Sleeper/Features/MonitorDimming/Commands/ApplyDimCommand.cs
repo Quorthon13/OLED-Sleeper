@@ -17,5 +17,10 @@ namespace OLED_Sleeper.Features.MonitorDimming.Commands
         /// The brightness level to set (0-100).
         /// </summary>
         public int DimLevel { get; init; }
+
+        /// <summary>
+        /// The duration in seconds over which to reach the dim level; zero applies it immediately.
+        /// </summary>
+        public double EaseInDurationSeconds { get; init; }
     }
 }

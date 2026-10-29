@@ -48,6 +48,10 @@ namespace OLED_Sleeper.UI.Helpers
                 var config = monitor.Configuration;
                 if (!string.IsNullOrWhiteSpace(config.BehaviorError))
                     errorBuilder.AppendLine($"     • {config.BehaviorError}");
+                if (!string.IsNullOrWhiteSpace(config.EaseInDurationError))
+                    errorBuilder.AppendLine($"     • {config.EaseInDurationError}");
+                if (!string.IsNullOrWhiteSpace(config.EaseOutDurationError))
+                    errorBuilder.AppendLine($"     • {config.EaseOutDurationError}");
                 if (!string.IsNullOrWhiteSpace(config.IdleValueError))
                     errorBuilder.AppendLine($"     • {config.IdleValueError}");
                 if (!string.IsNullOrWhiteSpace(config.ActiveConditionsError))

@@ -29,7 +29,10 @@ namespace OLED_Sleeper.Features.MonitorDimming.Handlers
             try
             {
                 Log.Information("Executing ApplyDimCommand for monitor {HardwareId} to level {DimLevel}.", command.HardwareId, command.DimLevel);
-                await _monitorDimmingService.DimMonitorAsync(command.HardwareId, command.DimLevel);
+                if (command.EaseInDurationSeconds == 0)
+                    await _monitorDimmingService.DimMonitorAsync(command.HardwareId, command.DimLevel);
+                else
+                    await _monitorDimmingService.DimMonitorAsync(command.HardwareId, command.DimLevel, command.EaseInDurationSeconds);
             }
             catch (Exception ex)
             {

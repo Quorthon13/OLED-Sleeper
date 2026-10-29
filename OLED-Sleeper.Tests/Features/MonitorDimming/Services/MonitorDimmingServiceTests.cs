@@ -4,6 +4,7 @@ using OLED_Sleeper.Features.MonitorDimming.Services.Interfaces;
 using OLED_Sleeper.Features.MonitorInformation.Models;
 using OLED_Sleeper.Features.MonitorInformation.Services.Interfaces;
 using OLED_Sleeper.Tests.TestDoubles;
+using System.Diagnostics;
 
 namespace OLED_Sleeper.Tests.Features.MonitorDimming.Services
 {
@@ -109,6 +110,20 @@ namespace OLED_Sleeper.Tests.Features.MonitorDimming.Services
         }
 
         [Fact]
+        public async Task DimMonitorAsync_WithEaseInDuration_TransitionsToTheTargetBrightness()
+        {
+            // Act
+            await _service.DimMonitorAsync(HardwareId, 15, 0.2);
+
+            // Assert
+            Assert.True(_panel.WrittenBrightnessLevels.Count > 1);
+            Assert.Equal(38u, _panel.WrittenBrightnessLevels[^1]);
+            Assert.All(
+                _panel.WrittenBrightnessLevels.Zip(_panel.WrittenBrightnessLevels.Skip(1)),
+                pair => Assert.True(pair.First >= pair.Second));
+        }
+
+        [Fact]
         public async Task DimMonitorAsync_WhenMonitorIsNotAttached_OpensNoChannel()
         {
             // Act
@@ -166,6 +181,62 @@ namespace OLED_Sleeper.Tests.Features.MonitorDimming.Services
 
             // Assert
             Assert.Equal(new[] { 80u }, _panel.WrittenBrightnessLevels);
+            _store.Verify(s => s.RemoveOriginal(HardwareId), Times.Once);
+        }
+
+        [Fact]
+        public async Task UndimMonitorAsync_WithEaseOutDuration_TransitionsToOriginalBrightness()
+        {
+            // Arrange
+            SetupRecording(HardwareId, 80);
+            _panel.CurrentBrightness = 38;
+            _panel.WrittenBrightnessLevels.Clear();
+
+            // Act
+            await _service.UndimMonitorAsync(HardwareId, 0.2);
+
+            // Assert
+            Assert.True(_panel.WrittenBrightnessLevels.Count > 1);
+            Assert.Equal(80u, _panel.WrittenBrightnessLevels[^1]);
+            Assert.All(
+                _panel.WrittenBrightnessLevels.Zip(_panel.WrittenBrightnessLevels.Skip(1)),
+                pair => Assert.True(pair.First <= pair.Second));
+            _store.Verify(s => s.RemoveOriginal(HardwareId), Times.Once);
+        }
+
+        [Fact]
+        public async Task UndimMonitorAsync_WhenDimTransitionIsInterrupted_ReversesFromCurrentBrightnessWithProportionalDuration()
+        {
+            // Arrange
+            SetupRecording(HardwareId, 80);
+            var interrupted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            _panel.OnBrightnessSet = brightness =>
+            {
+                if (brightness <= 60 && brightness > 38)
+                    interrupted.TrySetResult();
+            };
+
+            var dimming = _service.DimMonitorAsync(HardwareId, 15, 1.5);
+            await interrupted.Task.WaitAsync(TimeSpan.FromSeconds(1));
+            var reverseTimer = Stopwatch.StartNew();
+
+            // Act
+            await _service.UndimMonitorAsync(HardwareId, 1.5);
+            reverseTimer.Stop();
+            await dimming;
+
+            // Assert
+            Assert.True(reverseTimer.Elapsed < TimeSpan.FromSeconds(1.25),
+                $"Interrupted reverse fade took {reverseTimer.Elapsed.TotalMilliseconds:F0} ms.");
+            Assert.Equal(80u, _panel.WrittenBrightnessLevels[^1]);
+            var brightnessWrites = _panel.WrittenBrightnessLevels;
+            var firstReverseWrite = Enumerable.Range(0, brightnessWrites.Count - 1)
+                .FirstOrDefault(index => brightnessWrites[index + 1] > brightnessWrites[index], -1);
+            Assert.True(firstReverseWrite >= 0, "The interrupted fade should begin increasing brightness.");
+            var reverseWrites = brightnessWrites.Skip(firstReverseWrite + 1).ToList();
+            Assert.All(
+                reverseWrites.Zip(reverseWrites.Skip(1)),
+                pair => Assert.True(pair.First <= pair.Second));
             _store.Verify(s => s.RemoveOriginal(HardwareId), Times.Once);
         }
 
@@ -280,7 +351,7 @@ namespace OLED_Sleeper.Tests.Features.MonitorDimming.Services
         }
 
         [Fact]
-        public async Task UndimMonitorAsync_WhenADimIsInFlightOnTheSameMonitor_WaitsForTheGate()
+        public async Task UndimMonitorAsync_WhenDimIsInFlight_CancelsItBeforeRestoring()
         {
             // Arrange
             SetupRecording(HardwareId, 80);
@@ -299,7 +370,7 @@ namespace OLED_Sleeper.Tests.Features.MonitorDimming.Services
             release.Set();
             await dim;
             await undim;
-            Assert.Equal(new[] { 38u, 80u }, _panel.WrittenBrightnessLevels);
+            Assert.Equal(new[] { 80u }, _panel.WrittenBrightnessLevels);
         }
 
         [Fact]

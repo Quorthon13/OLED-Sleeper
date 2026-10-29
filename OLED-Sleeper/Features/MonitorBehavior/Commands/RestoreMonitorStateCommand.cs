@@ -12,5 +12,10 @@ namespace OLED_Sleeper.Features.MonitorBehavior.Commands
         /// The unique hardware identifier of the target monitor.
         /// </summary>
         public required string HardwareId { get; init; }
+
+        /// <summary>
+        /// The duration in seconds over which to restore brightness; zero restores immediately.
+        /// </summary>
+        public double EaseOutDurationSeconds { get; init; }
     }
 }

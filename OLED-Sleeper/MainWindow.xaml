@@ -9,7 +9,7 @@
         mc:Ignorable="d"
         Title="{Binding WindowTitle}"
         d:DataContext="{d:DesignInstance viewModels1:MainViewModel}"
-        Height="650" Width="800" MinHeight="500" MinWidth="700"
+        Height="760" Width="900" MinHeight="500" MinWidth="700"
         FontFamily="Bahnschrift"
         Background="{StaticResource PrimaryBackgroundColor}"
         WindowStyle="None"

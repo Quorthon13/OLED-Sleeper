@@ -48,6 +48,8 @@ namespace OLED_Sleeper.UI.ViewModels
                 OnPropertyChanged(nameof(IdleValueError));
                 OnPropertyChanged(nameof(ActiveConditionsError));
                 OnPropertyChanged(nameof(BehaviorError)); // Ensure all errors update
+                OnPropertyChanged(nameof(EaseInDurationError));
+                OnPropertyChanged(nameof(EaseOutDurationError));
                 UpdateDirtyState();
             }
         }
@@ -95,8 +97,12 @@ namespace OLED_Sleeper.UI.ViewModels
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(IsDimSliderEnabled));
                 OnPropertyChanged(nameof(IsLowerBrightnessOptionEnabled));
+                OnPropertyChanged(nameof(IsEasingOptionEnabled));
+                OnPropertyChanged(nameof(IsEaseTimersEnabled));
                 OnPropertyChanged(nameof(LowerBrightnessTooltip));
                 OnPropertyChanged(nameof(BehaviorError));
+                OnPropertyChanged(nameof(EaseInDurationError));
+                OnPropertyChanged(nameof(EaseOutDurationError));
                 UpdateDirtyState();
             }
         }
@@ -124,6 +130,77 @@ namespace OLED_Sleeper.UI.ViewModels
         /// Returns true if the dim slider should be enabled (only for Dim behavior).
         /// </summary>
         public bool IsDimSliderEnabled => Behavior == MonitorBehaviorType.Dim;
+
+        // --- Easing ---
+        private bool _isEasingEnabled;
+        private bool _initialIsEasingEnabled;
+
+        /// <summary>
+        /// Gets or sets whether dimming and restoring brightness should transition gradually.
+        /// </summary>
+        public bool IsEasingEnabled
+        {
+            get => _isEasingEnabled;
+            set
+            {
+                _isEasingEnabled = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(IsEaseTimersEnabled));
+                OnPropertyChanged(nameof(EaseInDurationError));
+                OnPropertyChanged(nameof(EaseOutDurationError));
+                UpdateDirtyState();
+            }
+        }
+
+        /// <summary>
+        /// Gets whether easing can be selected for the current behavior.
+        /// </summary>
+        public bool IsEasingOptionEnabled => Behavior == MonitorBehaviorType.Dim;
+
+        /// <summary>
+        /// Gets whether the easing duration inputs are enabled.
+        /// </summary>
+        public bool IsEaseTimersEnabled => IsEasingOptionEnabled && IsEasingEnabled;
+
+        private double _easeInDurationSeconds = 1.0;
+        private double _initialEaseInDurationSeconds = 1.0;
+
+        /// <summary>
+        /// Gets or sets the duration in seconds for dimming to reach the configured level.
+        /// </summary>
+        public double EaseInDurationSeconds
+        {
+            get => _easeInDurationSeconds;
+            set
+            {
+                _easeInDurationSeconds = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(EaseInDurationError));
+                UpdateDirtyState();
+            }
+        }
+
+        public string EaseInDurationError => this[nameof(EaseInDurationSeconds)];
+
+        private double _easeOutDurationSeconds = 1.0;
+        private double _initialEaseOutDurationSeconds = 1.0;
+
+        /// <summary>
+        /// Gets or sets the duration in seconds for restoring the original brightness.
+        /// </summary>
+        public double EaseOutDurationSeconds
+        {
+            get => _easeOutDurationSeconds;
+            set
+            {
+                _easeOutDurationSeconds = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(EaseOutDurationError));
+                UpdateDirtyState();
+            }
+        }
+
+        public string EaseOutDurationError => this[nameof(EaseOutDurationSeconds)];
 
         // --- LowerBrightnessOnBlackout ---
         private bool _lowerBrightnessOnBlackout;
@@ -292,6 +369,9 @@ namespace OLED_Sleeper.UI.ViewModels
             IsDirty = IsManaged != _initialIsManaged ||
                        Behavior != _initialBehavior ||
                        Math.Abs(DimLevel - _initialDimLevel) > epsilon ||
+                       IsEasingEnabled != _initialIsEasingEnabled ||
+                       Math.Abs(EaseInDurationSeconds - _initialEaseInDurationSeconds) > epsilon ||
+                       Math.Abs(EaseOutDurationSeconds - _initialEaseOutDurationSeconds) > epsilon ||
                        LowerBrightnessOnBlackout != _initialLowerBrightnessOnBlackout ||
                        IdleValue != _initialIdleValue ||
                        SelectedTimeUnit != _initialSelectedTimeUnit ||
@@ -310,6 +390,9 @@ namespace OLED_Sleeper.UI.ViewModels
             _initialIsManaged = IsManaged;
             _initialBehavior = Behavior;
             _initialDimLevel = DimLevel;
+            _initialIsEasingEnabled = IsEasingEnabled;
+            _initialEaseInDurationSeconds = EaseInDurationSeconds;
+            _initialEaseOutDurationSeconds = EaseOutDurationSeconds;
             _initialLowerBrightnessOnBlackout = LowerBrightnessOnBlackout;
             _initialIdleValue = IdleValue;
             _initialSelectedTimeUnit = SelectedTimeUnit;
@@ -327,6 +410,9 @@ namespace OLED_Sleeper.UI.ViewModels
             IsManaged = _initialIsManaged;
             Behavior = _initialBehavior;
             DimLevel = _initialDimLevel;
+            IsEasingEnabled = _initialIsEasingEnabled;
+            EaseInDurationSeconds = _initialEaseInDurationSeconds;
+            EaseOutDurationSeconds = _initialEaseOutDurationSeconds;
             LowerBrightnessOnBlackout = _initialLowerBrightnessOnBlackout;
             IdleValue = _initialIdleValue;
             SelectedTimeUnit = _initialSelectedTimeUnit;
@@ -345,6 +431,9 @@ namespace OLED_Sleeper.UI.ViewModels
             IsManaged = settings.IsManaged;
             Behavior = settings.Behavior;
             DimLevel = settings.DimLevel;
+            IsEasingEnabled = settings.IsEasingEnabled;
+            EaseInDurationSeconds = settings.EaseInDurationSeconds;
+            EaseOutDurationSeconds = settings.EaseOutDurationSeconds;
             LowerBrightnessOnBlackout = settings.LowerBrightnessOnBlackout && IsDimBehaviorEnabled;
             IdleValue = settings.IdleValue;
             SelectedTimeUnit = settings.IdleUnit;
@@ -365,6 +454,9 @@ namespace OLED_Sleeper.UI.ViewModels
                 IsManaged = IsManaged,
                 Behavior = Behavior,
                 DimLevel = DimLevel,
+                IsEasingEnabled = IsEasingEnabled,
+                EaseInDurationSeconds = EaseInDurationSeconds,
+                EaseOutDurationSeconds = EaseOutDurationSeconds,
                 LowerBrightnessOnBlackout = LowerBrightnessOnBlackout,
                 IdleValue = IdleValue,
                 IdleUnit = SelectedTimeUnit,
@@ -387,7 +479,11 @@ namespace OLED_Sleeper.UI.ViewModels
             {
                 if (!IsManaged) return true; // Unmanaged monitors are always "valid"
 
-                return ValidateIdleValue() == null && ValidateActiveConditions() == null && ValidateBehavior() == null;
+                return ValidateIdleValue() == null
+                    && ValidateActiveConditions() == null
+                    && ValidateBehavior() == null
+                    && ValidateEaseDuration(EaseInDurationSeconds) == null
+                    && ValidateEaseDuration(EaseOutDurationSeconds) == null;
             }
         }
 
@@ -422,6 +518,14 @@ namespace OLED_Sleeper.UI.ViewModels
 
                     case nameof(Behavior):
                         result = ValidateBehavior();
+                        break;
+
+                    case nameof(EaseInDurationSeconds):
+                    case nameof(EaseOutDurationSeconds):
+                        result = ValidateEaseDuration(
+                            columnName == nameof(EaseInDurationSeconds)
+                                ? EaseInDurationSeconds
+                                : EaseOutDurationSeconds);
                         break;
                 }
                 return result ?? string.Empty;
@@ -460,6 +564,23 @@ namespace OLED_Sleeper.UI.ViewModels
         {
             if (Behavior == MonitorBehaviorType.None)
                 return "A monitor behavior must be selected.";
+            return null;
+        }
+
+        /// <summary>
+        /// Validates an easing duration when easing is applicable to the selected behavior.
+        /// </summary>
+        private string? ValidateEaseDuration(double durationSeconds)
+        {
+            if (!IsManaged || !IsEaseTimersEnabled)
+                return null;
+
+            if (!double.IsFinite(durationSeconds) || durationSeconds < 0)
+                return "Ease duration must be zero or greater.";
+
+            if (Math.Abs(durationSeconds * 10 - Math.Round(durationSeconds * 10)) > 0.000001)
+                return "Ease duration must use increments of 0.1 seconds.";
+
             return null;
         }
 

@@ -307,6 +307,7 @@
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
 
                     <!-- Behavior Section -->
@@ -334,6 +335,12 @@
                             ToolTip="{Binding LowerBrightnessTooltip}"
                             ToolTipService.InitialShowDelay="200"
                             ToolTipService.ShowOnDisabled="True" />
+                        <CheckBox Content="Ease dimming in and out" Style="{StaticResource ModernCheckBox}" Margin="0,12,0,0" FontSize="13"
+                            IsChecked="{Binding IsEasingEnabled, UpdateSourceTrigger=PropertyChanged}"
+                            IsEnabled="{Binding IsEasingOptionEnabled}"
+                            ToolTip="Gradually transition to and from the dimmed brightness."
+                            ToolTipService.InitialShowDelay="200"
+                            ToolTipService.ShowOnDisabled="True" />
                     </StackPanel>
 
                     <!-- Brightness Level Section -->
@@ -356,8 +363,43 @@
                         </Grid>
                     </StackPanel>
 
+                    <!-- Dimming Easing Timers Section -->
+                    <StackPanel Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" Margin="0,20,0,0"
+                                IsEnabled="{Binding IsEaseTimersEnabled}" ToolTipService.InitialShowDelay="200">
+                        <StackPanel.ToolTip>
+                            <ToolTip Content="Set how long each brightness transition takes. Values use 0.1-second increments." />
+                        </StackPanel.ToolTip>
+                        <TextBlock Text="DIMMING EASING" Foreground="{StaticResource SecondaryForegroundColor}" FontSize="12" FontWeight="Light" />
+                        <Grid Margin="0,8,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0" Margin="0,0,24,0">
+                                <TextBlock Text="Ease in (seconds)" Foreground="{StaticResource SecondaryForegroundColor}" FontSize="11" Margin="4,0,0,3" />
+                                <TextBox Width="100" Height="32" HorizontalAlignment="Left"
+                                         FontSize="14" Padding="8,5" Style="{StaticResource ModernTextBox}"
+                                         ToolTip="{Binding EaseInDurationError}"
+                                         Text="{Binding EaseInDurationSeconds, StringFormat={}{0:F1}, UpdateSourceTrigger=PropertyChanged, ValidatesOnDataErrors=True}" />
+                                <TextBlock Text="{Binding EaseInDurationError}" Foreground="{StaticResource DestructiveColorBrush}"
+                                           FontSize="10" Margin="4,3,0,0"
+                                           Visibility="{Binding EaseInDurationError, Converter={StaticResource ErrorVisibilityConverter}}" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="1">
+                                <TextBlock Text="Ease out (seconds)" Foreground="{StaticResource SecondaryForegroundColor}" FontSize="11" Margin="4,0,0,3" />
+                                <TextBox Width="100" Height="32" HorizontalAlignment="Left"
+                                         FontSize="14" Padding="8,5" Style="{StaticResource ModernTextBox}"
+                                         ToolTip="{Binding EaseOutDurationError}"
+                                         Text="{Binding EaseOutDurationSeconds, StringFormat={}{0:F1}, UpdateSourceTrigger=PropertyChanged, ValidatesOnDataErrors=True}" />
+                                <TextBlock Text="{Binding EaseOutDurationError}" Foreground="{StaticResource DestructiveColorBrush}"
+                                           FontSize="10" Margin="4,3,0,0"
+                                           Visibility="{Binding EaseOutDurationError, Converter={StaticResource ErrorVisibilityConverter}}" />
+                            </StackPanel>
+                        </Grid>
+                    </StackPanel>
+
                     <!-- Idle Timer Section -->
-                    <StackPanel Grid.Row="1" Grid.Column="0" Margin="0,20,0,0" ToolTipService.InitialShowDelay="200">
+                    <StackPanel Grid.Row="2" Grid.Column="0" Margin="0,20,0,0" ToolTipService.InitialShowDelay="200">
                         <StackPanel.ToolTip>
                             <ToolTip Content="Set the duration of user inactivity required before the selected behavior is triggered." />
                         </StackPanel.ToolTip>
@@ -399,7 +441,7 @@
                     </StackPanel>
 
                     <!-- Active Conditions Section -->
-                    <StackPanel Grid.Row="1" Grid.Column="1" Margin="40,20,0,0" ToolTipService.InitialShowDelay="200">
+                    <StackPanel Grid.Row="2" Grid.Column="1" Margin="40,20,0,0" ToolTipService.InitialShowDelay="200">
                         <StackPanel.ToolTip>
                             <ToolTip>
                                 <TextBlock>
