@@ -178,6 +178,10 @@
 
                         <Border Grid.Row="1" BorderBrush="{StaticResource SeparatorColorBrush}" BorderThickness="0,1,0,0" Margin="0,10,0,0" Padding="15">
                             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="20,0">
+                                <Button Content="{Binding ManualBlackoutButtonText}"
+                                        Command="{Binding ToggleManualBlackoutCommand}"
+                                        Style="{StaticResource ModernActionButton}"
+                                        Background="Transparent" BorderBrush="{StaticResource SecondaryForegroundColor}" BorderThickness="1" Margin="0,0,15,0" />
                                 <Button Content="Discard Changes"
                                         Command="{Binding DiscardChangesCommand}"
                                         IsEnabled="{Binding IsDirty}"

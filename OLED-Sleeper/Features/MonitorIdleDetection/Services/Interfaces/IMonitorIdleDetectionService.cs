@@ -1,5 +1,6 @@
 using OLED_Sleeper.Features.MonitorInformation.Models;
 using OLED_Sleeper.Features.UserSettings.Models;
+using System.Windows;
 
 namespace OLED_Sleeper.Features.MonitorIdleDetection.Services.Interfaces
 {
@@ -29,5 +30,8 @@ namespace OLED_Sleeper.Features.MonitorIdleDetection.Services.Interfaces
         /// </param>
         /// <returns>A task that completes once the new settings are in effect.</returns>
         Task UpdateSettingsAsync(List<MonitorSettings> monitorSettings, IReadOnlyList<MonitorInfo> monitors);
+
+        void TrackManualWake(string hardwareId, Rect bounds, Point cursorAtBlackout);
+        void ClearManualWake(string hardwareId);
     }
 }

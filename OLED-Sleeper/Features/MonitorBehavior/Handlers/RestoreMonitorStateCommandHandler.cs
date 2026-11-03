@@ -23,12 +23,19 @@ namespace OLED_Sleeper.Features.MonitorBehavior.Handlers
         /// Handles the command to restore the monitor's state.
         /// </summary>
         /// <param name="command">The command containing the monitor's hardware ID.</param>
-        public Task HandleAsync(RestoreMonitorStateCommand command)
+        public async Task HandleAsync(RestoreMonitorStateCommand command)
         {
             Log.Information("Restoring state for monitor {HardwareId}.", command.HardwareId);
-            _mediator.SendAsync(new HideBlackoutOverlayCommand { HardwareId = command.HardwareId });
-            _mediator.SendAsync(new ApplyUndimCommand { HardwareId = command.HardwareId });
-            return Task.CompletedTask;
+            var hideTask = _mediator.SendAsync(new HideBlackoutOverlayCommand { HardwareId = command.HardwareId });
+            var undimTask = _mediator.SendAsync(new ApplyUndimCommand { HardwareId = command.HardwareId });
+            try
+            {
+                await Task.WhenAll(hideTask, undimTask);
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Could not fully restore monitor {HardwareId}.", command.HardwareId);
+            }
         }
     }
 }

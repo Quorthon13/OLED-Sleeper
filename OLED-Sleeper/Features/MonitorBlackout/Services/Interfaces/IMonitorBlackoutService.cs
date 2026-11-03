@@ -1,4 +1,4 @@
-using System.Windows;
+﻿using System.Windows;
 
 namespace OLED_Sleeper.Features.MonitorBlackout.Services.Interfaces
 {
@@ -28,5 +28,11 @@ namespace OLED_Sleeper.Features.MonitorBlackout.Services.Interfaces
         /// <param name="windowHandle">The window handle to check.</param>
         /// <returns>True if the handle is an overlay window; otherwise, false.</returns>
         bool IsOverlayWindow(nint windowHandle);
+
+        /// <summary>Returns whether a blackout overlay is currently displayed for the monitor.</summary>
+        bool IsBlackoutShown(string hardwareId);
+
+        /// <summary>Raised on the UI thread whenever an overlay is shown or closed.</summary>
+        event Action<string>? BlackoutStateChanged;
     }
 }

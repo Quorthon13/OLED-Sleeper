@@ -1,4 +1,4 @@
-using OLED_Sleeper.Features.MonitorBlackout.Services;
+﻿using OLED_Sleeper.Features.MonitorBlackout.Services;
 using OLED_Sleeper.Tests.TestDoubles;
 using System.Windows;
 
@@ -19,6 +19,18 @@ namespace OLED_Sleeper.Tests.Features.MonitorBlackout.Services
             _overlayWindowFactory = new FakeOverlayWindowFactory();
 
             _service = new MonitorBlackoutService(_dispatcher, _overlayWindowFactory);
+        }
+
+        [Fact]
+        public async Task OverlayStateChanges_NotifyAfterStateIsUpdatedAndOnlyOncePerTransition()
+        {
+            var states = new List<bool>();
+            _service.BlackoutStateChanged += id => states.Add(_service.IsBlackoutShown(id));
+            await _service.ShowBlackoutOverlayAsync("external", PrimaryBounds);
+            await _service.ShowBlackoutOverlayAsync("external", PrimaryBounds);
+            await _service.HideBlackoutOverlayAsync("external");
+            await _service.HideBlackoutOverlayAsync("external");
+            Assert.Equal(new[] { true, false }, states);
         }
 
         [Fact]

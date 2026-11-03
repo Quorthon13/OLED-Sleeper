@@ -31,6 +31,7 @@ namespace OLED_Sleeper.UI.ViewModels
         /// Runs actions on the UI thread.
         /// </summary>
         private readonly IDispatcher _dispatcher;
+        private readonly IManualBlackoutService _hotkeys;
 
         /// <summary>
         /// The width of the container used for monitor layout calculations.
@@ -90,6 +91,7 @@ namespace OLED_Sleeper.UI.ViewModels
                 if (_selectedMonitor != null) { _selectedMonitor.IsSelected = true; }
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(IsMonitorSelected));
+                OnPropertyChanged(nameof(ManualBlackoutButtonText));
             }
         }
 
@@ -97,6 +99,7 @@ namespace OLED_Sleeper.UI.ViewModels
         /// Returns true if a monitor is currently selected in the UI.
         /// </summary>
         public bool IsMonitorSelected => SelectedMonitor != null;
+        public string ManualBlackoutButtonText => SelectedMonitor != null && _hotkeys.IsBlackoutActive(SelectedMonitor.HardwareId) ? "Restore Monitor" : "Blackout Now";
 
         /// <summary>
         /// Gets or sets a value indicating whether any monitor settings have been changed and not saved.
@@ -169,6 +172,7 @@ namespace OLED_Sleeper.UI.ViewModels
         /// Command to discard any unsaved changes and reload monitor settings.
         /// </summary>
         public ICommand DiscardChangesCommand { get; }
+        public ICommand ToggleManualBlackoutCommand { get; }
 
         #endregion Commands
 
@@ -177,16 +181,21 @@ namespace OLED_Sleeper.UI.ViewModels
         public MainViewModel(
             IWorkspaceService workspaceService,
             IMonitorSettingsSaveService saveService,
-            IDispatcher dispatcher)
+            IDispatcher dispatcher,
+            IManualBlackoutService hotkeys)
         {
             _workspaceService = workspaceService;
             _saveService = saveService;
             _dispatcher = dispatcher;
+            _hotkeys = hotkeys;
+            _hotkeys.BlackoutStateChanged += OnManualBlackoutStateChanged;
+            _hotkeys.ShortcutsChanged += OnShortcutsChanged;
 
             SelectMonitorCommand = new RelayCommand(ExecuteSelectMonitor);
             ReloadMonitorsCommand = new RelayCommand(() => RefreshMonitors(false));
             SaveSettingsCommand = new AsyncRelayCommand(ExecuteSaveSettings, () => IsDirty);
             DiscardChangesCommand = new RelayCommand(DiscardChanges, () => IsDirty);
+            ToggleManualBlackoutCommand = new AsyncRelayCommand(ToggleManualBlackout, () => SelectedMonitor != null);
         }
 
         #endregion Constructor
@@ -217,6 +226,8 @@ namespace OLED_Sleeper.UI.ViewModels
         {
             if (!_saveService.TrySave(Monitors)) return false;
 
+            _hotkeys.Update(Monitors.Select(m => m.Configuration.ToSettings()));
+
             CheckDirtyState();
             return true;
         }
@@ -243,6 +254,28 @@ namespace OLED_Sleeper.UI.ViewModels
         private void ExecuteSelectMonitor(object? parameter)
         {
             if (parameter is MonitorLayoutViewModel monitor) { SelectedMonitor = monitor; }
+        }
+
+        private async Task ToggleManualBlackout()
+        {
+            var monitor = SelectedMonitor;
+            if (monitor == null || string.IsNullOrWhiteSpace(monitor.HardwareId)) return;
+            await _hotkeys.ToggleAsync(monitor.HardwareId);
+            OnPropertyChanged(nameof(ManualBlackoutButtonText));
+        }
+
+        public void SetShortcutCaptureActive(bool active) => _hotkeys.SetCaptureActive(active);
+
+        private void OnShortcutsChanged()
+        {
+            foreach (var monitor in Monitors)
+                monitor.Configuration.ManualHotkeyError = _hotkeys.GetShortcutError(monitor.HardwareId);
+        }
+
+        private void OnManualBlackoutStateChanged(string hardwareId)
+        {
+            if (SelectedMonitor?.HardwareId == hardwareId)
+                OnPropertyChanged(nameof(ManualBlackoutButtonText));
         }
 
         /// <summary>
@@ -301,6 +334,7 @@ namespace OLED_Sleeper.UI.ViewModels
                 if (generation != _buildGeneration) return;
 
                 PopulateMonitors(newMonitorLayoutViewModels);
+                _hotkeys.Update(Monitors.Select(m => m.Configuration.ToSettings()));
                 RestoreSelection(monitorIdToRestore);
                 CheckDirtyState();
                 IsLoading = false;

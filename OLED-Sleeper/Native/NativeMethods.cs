@@ -8,6 +8,14 @@ namespace OLED_Sleeper.Native
     /// </summary>
     internal static class NativeMethods
     {
+        [DllImport("user32.dll", SetLastError = true)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        internal static extern bool RegisterHotKey(nint hWnd, int id, uint modifiers, uint virtualKey);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        internal static extern bool UnregisterHotKey(nint hWnd, int id);
+
         #region User Input and Window Management
 
         /// <summary>

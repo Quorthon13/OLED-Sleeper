@@ -1,4 +1,4 @@
-using OLED_Sleeper.Features.MonitorBlackout.Services.Interfaces;
+﻿using OLED_Sleeper.Features.MonitorBlackout.Services.Interfaces;
 using OLED_Sleeper.Infrastructure.Runtime.Interfaces;
 using System.Windows;
 
@@ -10,6 +10,8 @@ namespace OLED_Sleeper.Features.MonitorBlackout.Services
     /// </summary>
     public class MonitorBlackoutService : IMonitorBlackoutService
     {
+        public event Action<string>? BlackoutStateChanged;
+
         private readonly IDispatcher _dispatcher;
         private readonly IOverlayWindowFactory _overlayWindowFactory;
 
@@ -69,6 +71,7 @@ namespace OLED_Sleeper.Features.MonitorBlackout.Services
 
                     _overlayWindows[hardwareId] = new OverlayRegistration(overlay, hwnd);
                 }
+                BlackoutStateChanged?.Invoke(hardwareId);
             });
         }
 
@@ -92,6 +95,7 @@ namespace OLED_Sleeper.Features.MonitorBlackout.Services
                 }
 
                 registration.Window.Close();
+                BlackoutStateChanged?.Invoke(hardwareId);
             });
         }
 
@@ -104,6 +108,11 @@ namespace OLED_Sleeper.Features.MonitorBlackout.Services
             {
                 return _overlayHandles.Contains(windowHandle);
             }
+        }
+
+        public bool IsBlackoutShown(string hardwareId)
+        {
+            lock (_overlayLock) return _overlayWindows.ContainsKey(hardwareId);
         }
     }
 }

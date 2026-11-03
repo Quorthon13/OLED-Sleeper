@@ -40,6 +40,7 @@ namespace OLED_Sleeper.Features.MonitorIdleDetection.Services
         private List<ManagedMonitorState> _managedMonitors = new();
         private readonly object _lock = new();
         private readonly Dictionary<string, MonitorTimerState> _monitorStates = new();
+        private readonly ManualWakeTracker _manualWakeMonitors = new();
 
         // === Construction ===
 
@@ -101,6 +102,7 @@ namespace OLED_Sleeper.Features.MonitorIdleDetection.Services
                                         DisplayNumber = monitorInfo.DisplayNumber
                                     }).ToList();
 
+                _manualWakeMonitors.SynchronizeBounds(monitors);
                 _monitorStates.Clear();
                 foreach (var monitor in _managedMonitors)
                 {
@@ -112,6 +114,16 @@ namespace OLED_Sleeper.Features.MonitorIdleDetection.Services
 
             Log.Information("MonitorIdleDetectionService settings updated. Now tracking {Count} monitors.", trackedCount);
             return Task.CompletedTask;
+        }
+
+        public void TrackManualWake(string hardwareId, Rect bounds, Point cursorAtBlackout)
+        {
+            lock (_lock) _manualWakeMonitors.Track(hardwareId, bounds, cursorAtBlackout);
+        }
+
+        public void ClearManualWake(string hardwareId)
+        {
+            lock (_lock) _manualWakeMonitors.Clear(hardwareId);
         }
 
         // === Idle Detection Loop ===
@@ -148,6 +160,11 @@ namespace OLED_Sleeper.Features.MonitorIdleDetection.Services
                 foreach (var monitor in _managedMonitors)
                 {
                     ProcessSingleMonitor(monitor, systemState);
+                }
+                foreach (var hardwareId in _manualWakeMonitors.TakeAwakenedMonitors(systemState.CursorPosition))
+                {
+                    _mediator.SendAsync(new RestoreMonitorStateCommand { HardwareId = hardwareId });
+                    Log.Information("Manually blacked-out monitor {HardwareId} woke after mouse movement.", hardwareId);
                 }
             }
         }
