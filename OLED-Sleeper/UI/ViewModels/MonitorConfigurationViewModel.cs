@@ -17,6 +17,21 @@ namespace OLED_Sleeper.UI.ViewModels
         /// The underlying monitor information model.
         /// </summary>
         private readonly MonitorInfo _monitorInfo;
+        private string _manualHotkeyError = string.Empty;
+        public string ManualHotkeyError
+        {
+            get => _manualHotkeyError;
+            set { _manualHotkeyError = value; OnPropertyChanged(); }
+        }
+
+        private string _manualHotkey = string.Empty;
+        private string _initialManualHotkey = string.Empty;
+
+        public string ManualHotkey
+        {
+            get => _manualHotkey;
+            set { _manualHotkey = value ?? string.Empty; ManualHotkeyError = string.Empty; OnPropertyChanged(); UpdateDirtyState(); }
+        }
 
         #region Properties
 
@@ -293,6 +308,7 @@ namespace OLED_Sleeper.UI.ViewModels
                        Behavior != _initialBehavior ||
                        Math.Abs(DimLevel - _initialDimLevel) > epsilon ||
                        LowerBrightnessOnBlackout != _initialLowerBrightnessOnBlackout ||
+                       ManualHotkey != _initialManualHotkey ||
                        IdleValue != _initialIdleValue ||
                        SelectedTimeUnit != _initialSelectedTimeUnit ||
                        IsActiveOnInput != _initialIsActiveOnInput ||
@@ -311,6 +327,7 @@ namespace OLED_Sleeper.UI.ViewModels
             _initialBehavior = Behavior;
             _initialDimLevel = DimLevel;
             _initialLowerBrightnessOnBlackout = LowerBrightnessOnBlackout;
+            _initialManualHotkey = ManualHotkey;
             _initialIdleValue = IdleValue;
             _initialSelectedTimeUnit = SelectedTimeUnit;
             _initialIsActiveOnInput = IsActiveOnInput;
@@ -328,6 +345,7 @@ namespace OLED_Sleeper.UI.ViewModels
             Behavior = _initialBehavior;
             DimLevel = _initialDimLevel;
             LowerBrightnessOnBlackout = _initialLowerBrightnessOnBlackout;
+            ManualHotkey = _initialManualHotkey;
             IdleValue = _initialIdleValue;
             SelectedTimeUnit = _initialSelectedTimeUnit;
             IsActiveOnInput = _initialIsActiveOnInput;
@@ -346,6 +364,7 @@ namespace OLED_Sleeper.UI.ViewModels
             Behavior = settings.Behavior;
             DimLevel = settings.DimLevel;
             LowerBrightnessOnBlackout = settings.LowerBrightnessOnBlackout && IsDimBehaviorEnabled;
+            ManualHotkey = settings.ManualHotkey;
             IdleValue = settings.IdleValue;
             SelectedTimeUnit = settings.IdleUnit;
             IsActiveOnInput = settings.IsActiveOnInput;
@@ -366,6 +385,7 @@ namespace OLED_Sleeper.UI.ViewModels
                 Behavior = Behavior,
                 DimLevel = DimLevel,
                 LowerBrightnessOnBlackout = LowerBrightnessOnBlackout,
+                ManualHotkey = ManualHotkey,
                 IdleValue = IdleValue,
                 IdleUnit = SelectedTimeUnit,
                 IsActiveOnInput = IsActiveOnInput,

@@ -1,4 +1,4 @@
-using Moq;
+﻿using Moq;
 using OLED_Sleeper.Features.MonitorInformation.Models;
 using OLED_Sleeper.Features.UserSettings.Models;
 using OLED_Sleeper.Features.UserSettings.Services.Interfaces;
@@ -29,7 +29,8 @@ namespace OLED_Sleeper.Tests.UI.ViewModels
             _viewModel = new MainViewModel(
                 _workspaceServiceMock.Object,
                 _saveServiceMock.Object,
-                _dispatcher);
+                _dispatcher,
+                Mock.Of<IManualBlackoutService>());
         }
 
         [Fact]

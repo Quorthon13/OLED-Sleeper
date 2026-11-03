@@ -429,9 +429,23 @@
                         IsChecked="{Binding IsActiveOnActiveWindow, UpdateSourceTrigger=PropertyChanged, ValidatesOnDataErrors=True}" />
                             <CheckBox Margin="0,0,0,0" Style="{StaticResource ModernCheckBox}" Content="System has user input"
                         IsChecked="{Binding IsActiveOnInput, UpdateSourceTrigger=PropertyChanged, ValidatesOnDataErrors=True}" />
+
                         </StackPanel>
                     </StackPanel>
                 </Grid>
+            </StackPanel>
+            <StackPanel Margin="0,15,0,0">
+                            <TextBlock Text="MANUAL BLACKOUT SHORTCUT" Foreground="{StaticResource SecondaryForegroundColor}" FontSize="12" Margin="0,12,0,4" />
+                            <TextBlock Text="Click and press Ctrl, Alt, Shift, or Win with another key. Esc clears. Save to activate."
+                                       Foreground="{StaticResource SecondaryForegroundColor}" FontSize="11" Margin="0,0,0,4" />
+                            <TextBox Width="190" Height="32" HorizontalAlignment="Left" FontSize="14" Style="{StaticResource ModernTextBox}"
+                                     IsReadOnly="True" PreviewKeyDown="ManualHotkey_PreviewKeyDown"
+                                     GotKeyboardFocus="ManualHotkey_GotKeyboardFocus" LostKeyboardFocus="ManualHotkey_LostKeyboardFocus"
+                                     ToolTip="Press a shortcut such as Shift+4 or Win+Shift+4. Press Escape to clear it."
+                                     Text="{Binding ManualHotkey, UpdateSourceTrigger=PropertyChanged}" />
+                <TextBlock Text="{Binding ManualHotkeyError}" TextWrapping="Wrap" Margin="0,4,0,0"
+                           Foreground="{StaticResource DestructiveColorBrush}" FontSize="12"
+                           Visibility="{Binding ManualHotkeyError, Converter={StaticResource ErrorVisibilityConverter}}" />
             </StackPanel>
         </StackPanel>
     </Grid>

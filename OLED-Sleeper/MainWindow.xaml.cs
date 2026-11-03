@@ -1,4 +1,4 @@
-using System.Windows;
+﻿using System.Windows;
 using System.Windows.Input;
 
 namespace OLED_Sleeper
@@ -9,11 +9,15 @@ namespace OLED_Sleeper
     /// </summary>
     public partial class MainWindow : Window
     {
+        private readonly OLED_Sleeper.UI.Services.Interfaces.IManualBlackoutService _hotkeys;
         #region Constructor
 
-        public MainWindow()
+        public MainWindow(OLED_Sleeper.UI.Services.Interfaces.IManualBlackoutService hotkeys)
         {
+            _hotkeys = hotkeys;
             InitializeComponent();
+            SourceInitialized += (_, _) => _hotkeys.Attach(this);
+            Closed += (_, _) => _hotkeys.Dispose();
         }
 
         #endregion Constructor

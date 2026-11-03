@@ -34,6 +34,9 @@ namespace OLED_Sleeper.Features.UserSettings.Models
         /// </summary>
         public bool LowerBrightnessOnBlackout { get; set; } = false;
 
+        /// <summary>Optional global shortcut used to manually toggle this monitor's blackout.</summary>
+        public string ManualHotkey { get; set; } = string.Empty;
+
         /// <summary>
         /// Gets or sets the idle timeout value (unit specified by <see cref="IdleUnit"/>).
         /// </summary>

@@ -1,4 +1,4 @@
-using Microsoft.Extensions.DependencyInjection;
+﻿using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using OLED_Sleeper.Features.MonitorBehavior.Commands;
 using OLED_Sleeper.Features.MonitorBehavior.Handlers;
@@ -91,6 +91,8 @@ namespace OLED_Sleeper.Infrastructure.Hosting
             services.AddSingleton<IUnsavedSettings>(sp => sp.GetRequiredService<MainViewModel>());
             services.AddSingleton<IUnsavedSettingsService, UnsavedSettingsService>();
             services.AddSingleton<IMonitorSettingsSaveService, MonitorSettingsSaveService>();
+            services.AddSingleton<IGlobalHotkeyRegistrar, GlobalHotkeyRegistrar>();
+            services.AddSingleton<IManualBlackoutService, ManualHotkeyService>();
 
             return services.BuildServiceProvider();
         }

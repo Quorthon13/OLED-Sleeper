@@ -1,4 +1,4 @@
-using Moq;
+﻿using Moq;
 using OLED_Sleeper.Features.MonitorBehavior.Commands;
 using OLED_Sleeper.Features.MonitorBehavior.Handlers;
 using OLED_Sleeper.Features.MonitorBlackout.Commands;
@@ -18,6 +18,21 @@ namespace OLED_Sleeper.Tests.Features.MonitorBehavior.Handlers
         {
             _mediatorMock = new Mock<IMediator>();
             _handler = new RestoreMonitorStateCommandHandler(_mediatorMock.Object);
+        }
+
+        [Fact]
+        public async Task HandleAsync_CompletesOnlyAfterOverlayAndBrightnessAreRestored()
+        {
+            var hide = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            var undim = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            _mediatorMock.Setup(m => m.SendAsync(It.IsAny<HideBlackoutOverlayCommand>())).Returns(hide.Task);
+            _mediatorMock.Setup(m => m.SendAsync(It.IsAny<ApplyUndimCommand>())).Returns(undim.Task);
+            var task = _handler.HandleAsync(new RestoreMonitorStateCommand { HardwareId = HardwareId });
+            Assert.False(task.IsCompleted);
+            hide.SetResult();
+            Assert.False(task.IsCompleted);
+            undim.SetResult();
+            await task;
         }
 
         [Fact]
